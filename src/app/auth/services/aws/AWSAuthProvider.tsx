@@ -1,14 +1,14 @@
 import { Authenticator } from '@aws-amplify/ui-react';
 import { Amplify } from 'aws-amplify';
 import awsAuthConfig from './awsAuthConfig';
+import awsExports from '../../../../../src2/aws-exports';
 
 type AWSAuthProviderProps = {
 	children: React.ReactNode;
 };
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-expect-error
-Amplify.configure(awsAuthConfig);
+Amplify.configure(awsExports);
 
 function AWSAuthProvider(props: AWSAuthProviderProps) {
 	const { children } = props;

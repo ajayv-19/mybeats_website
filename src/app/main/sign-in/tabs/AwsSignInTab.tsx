@@ -4,9 +4,11 @@ function AwsSignInTab() {
 	return (
 		<AwsAuthenticator
 			initialState="signIn"
-			socialProviders={['amazon', 'apple', 'facebook', 'google']}
+			socialProviders={[]}
 			hideSignUp
 		/>
+		
+
 	);
 }
 

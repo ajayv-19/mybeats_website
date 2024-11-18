@@ -103,7 +103,7 @@ class FuseAuthorization extends Component<FuseAuthorizationProps, State> {
 		Redirect to Login Page
 		*/
 		if (isUserGuest(userRole)) {
-			setTimeout(() => navigate('/sign-in'), 0);
+			setTimeout(() => navigate('/home'), 0);
 		} else {
 			/*
 		  User is member
