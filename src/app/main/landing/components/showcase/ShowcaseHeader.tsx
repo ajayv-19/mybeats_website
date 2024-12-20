@@ -2,12 +2,14 @@ import React from "react";
 import { motion } from "framer-motion";
 import Text from "app/shared-components/texts/Text";
 import Button from "app/shared-components/buttons/Button";
+import { useNavigate } from "react-router";
 
 interface ShowcaseHeaderProps {
   openModal: () => void;
 }
 
 const ShowcaseHeader: React.FC<ShowcaseHeaderProps> = ({ openModal }) => {
+  const navigate = useNavigate();
   return (
     <motion.div
       initial={{
@@ -27,7 +29,12 @@ const ShowcaseHeader: React.FC<ShowcaseHeaderProps> = ({ openModal }) => {
           <Button variant="contained" onClick={openModal}>
             <span className="text-white">Sign in</span>
           </Button>
-          <Button variant="outlined" onClick={() => {}}>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              navigate("/sign-in?demo=true"), window.location.reload();
+            }}
+          >
             <span className="text-orange-400">Try it for free</span>
           </Button>
         </div>

@@ -1,290 +1,325 @@
-import Avatar from '@mui/material/Avatar';
-import Button from '@mui/material/Button';
-import Card from '@mui/material/Card';
-import CardContent from '@mui/material/CardContent';
-import IconButton from '@mui/material/IconButton';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
-import ListItemSecondaryAction from '@mui/material/ListItemSecondaryAction';
-import ListItemText from '@mui/material/ListItemText';
-import Typography from '@mui/material/Typography';
-import { motion } from 'framer-motion';
-import FuseSvgIcon from '@fuse/core/FuseSvgIcon';
-import FuseLoading from '@fuse/core/FuseLoading';
-import { useGetProfileAboutQuery } from '../../ProfileApi';
+import Avatar from "@mui/material/Avatar";
+import Button from "@mui/material/Button";
+import Card from "@mui/material/Card";
+import CardContent from "@mui/material/CardContent";
+import IconButton from "@mui/material/IconButton";
+import List from "@mui/material/List";
+import ListItem from "@mui/material/ListItem";
+import ListItemSecondaryAction from "@mui/material/ListItemSecondaryAction";
+import ListItemText from "@mui/material/ListItemText";
+import Typography from "@mui/material/Typography";
+import { motion } from "framer-motion";
+import FuseSvgIcon from "@fuse/core/FuseSvgIcon";
+import FuseLoading from "@fuse/core/FuseLoading";
+import { useGetProfileAboutQuery } from "../../ProfileApi";
+import { log } from "console";
+import { fetchProfileData } from "../../../../../backendServices/ProfileServices";
+import { useEffect, useState } from "react";
+import { is } from "immutable";
 
 /**
  * The about tab.
  */
 function AboutTab() {
-	const { data: profile, isLoading } = useGetProfileAboutQuery();
+  const { data: profile, isLoading } = useGetProfileAboutQuery();
+  //console.log("profile", profile);
+  const [user, setUser] = useState(null);
+  const [company, setCompany] = useState(null);
+  //const [admin, setAdmin] = useState(null);
+  console.log(user, "user");
+  console.log(company, "company");
+  console.log(isLoading, "isLoading");
 
-	if (isLoading) {
-		return <FuseLoading />;
-	}
+  const [isLoading2, setIsLoading] = useState(true);
 
-	const { general, work, contact, groups, friends } = profile;
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const getUserData = await fetchProfileData();
+        //console.log(getUserData, "getUserData");
 
-	const container = {
-		show: {
-			transition: {
-				staggerChildren: 0.04
-			}
-		}
-	};
+        if (getUserData.status === 200) {
+          const userData = getUserData.data.userdata.user;
+          const companyData = getUserData.data.userdata.company;
+          //const adminData = getUserData.data.userdata.admin;
+          // Extracting and setting the user data fields
+          setUser(userData);
+          setCompany(companyData);
+          //setAdmin(adminData);
+          //console.log(userData, "userData");
+        }
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
 
-	const item = {
-		hidden: { opacity: 0, y: 40 },
-		show: { opacity: 1, y: 0 }
-	};
+    fetchUserData();
+  }, []);
 
-	return (
-		<motion.div
-			variants={container}
-			initial="hidden"
-			animate="show"
-			className="w-full"
-		>
-			<div className="md:flex">
-				<div className="flex flex-col flex-1 md:ltr:pr-32 md:rtl:pl-32">
-					<Card
-						component={motion.div}
-						variants={item}
-						className="w-full mb-32"
-					>
-						<div className="px-32 pt-24">
-							<Typography className="text-2xl font-semibold leading-tight">
-								General Information
-							</Typography>
-						</div>
+  if (isLoading2) {
+    return <FuseLoading />;
+  }
 
-						<CardContent className="px-32 py-24">
-							<div className="mb-24">
-								<Typography className="font-semibold mb-4 text-lg">Gender</Typography>
-								<Typography>{general.gender}</Typography>
-							</div>
+  const { general, work, contact, groups, friends } = profile;
 
-							<div className="mb-24">
-								<Typography className="font-semibold mb-4 text-lg">Birthday</Typography>
-								<Typography>{general.birthday}</Typography>
-							</div>
+  const container = {
+    show: {
+      transition: {
+        staggerChildren: 0.04,
+      },
+    },
+  };
 
-							<div className="mb-24">
-								<Typography className="font-semibold mb-4 text-lg">Locations</Typography>
+  const item = {
+    hidden: { opacity: 0, y: 40 },
+    show: { opacity: 1, y: 0 },
+  };
 
-								{general.locations.map((location) => (
-									<div
-										className="flex items-center"
-										key={location}
-									>
-										<Typography>{location}</Typography>
-										<FuseSvgIcon
-											className="mx-4"
-											size={16}
-											color="action"
-										>
-											heroicons-outline:map-pin
-										</FuseSvgIcon>
-									</div>
-								))}
-							</div>
+  return (
+    <motion.div
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="w-full"
+    >
+      <div className="md:flex">
+        <div className="flex flex-col flex-1 md:ltr:pr-32 md:rtl:pl-32">
+          {/* <Card component={motion.div} variants={item} className="w-full mb-32">
+            <div className="px-32 pt-24">
+              <Typography className="text-2xl font-semibold leading-tight">
+                General Information
+              </Typography>
+            </div>
 
-							<div className="mb-24">
-								<Typography className="font-semibold mb-4 text-lg">About Me</Typography>
-								<Typography>{general.about}</Typography>
-							</div>
-						</CardContent>
-					</Card>
+            <CardContent className="px-32 py-24">
+              <div className="mb-24">
+                <Typography className="font-semibold mb-4 text-lg">
+                  Gender
+                </Typography>
+                <Typography>{general.gender}</Typography>
+              </div>
 
-					<Card
-						component={motion.div}
-						variants={item}
-						className="w-full mb-32"
-					>
-						<div className="px-32 pt-24">
-							<Typography className="text-2xl font-semibold leading-tight">Work</Typography>
-						</div>
+              <div className="mb-24">
+                <Typography className="font-semibold mb-4 text-lg">
+                  Birthday
+                </Typography>
+                <Typography>{general.birthday}</Typography>
+              </div>
 
-						<CardContent className="px-32 py-24">
-							<div className="mb-24">
-								<Typography className="font-semibold mb-4 text-lg">Occupation</Typography>
-								<Typography>{work.occupation}</Typography>
-							</div>
+              <div className="mb-24">
+                <Typography className="font-semibold mb-4 text-lg">
+                  Locations
+                </Typography>
 
-							<div className="mb-24">
-								<Typography className="font-semibold mb-4 text-lg">Skills</Typography>
-								<Typography>{work.skills}</Typography>
-							</div>
+                {general.locations.map((location) => (
+                  <div className="flex items-center" key={location}>
+                    <Typography>{location}</Typography>
+                    <FuseSvgIcon className="mx-4" size={16} color="action">
+                      heroicons-outline:map-pin
+                    </FuseSvgIcon>
+                  </div>
+                ))}
+              </div>
 
-							<div className="mb-24">
-								<Typography className="font-semibold mb-4 text-lg">Jobs</Typography>
-								<table>
-									<tbody>
-										{work.jobs.map((job) => (
-											<tr key={job.company}>
-												<td>
-													<Typography>{job.company}</Typography>
-												</td>
-												<td className="px-16">
-													<Typography color="text.secondary">{job.date}</Typography>
-												</td>
-											</tr>
-										))}
-									</tbody>
-								</table>
-							</div>
-						</CardContent>
-					</Card>
+              <div className="mb-24">
+                <Typography className="font-semibold mb-4 text-lg">
+                  About Me
+                </Typography>
+                <Typography>{general.about}</Typography>
+              </div>
+            </CardContent>
+          </Card> */}
 
-					<Card
-						component={motion.div}
-						variants={item}
-						className="w-full mb-32"
-					>
-						<div className="px-32 pt-24">
-							<Typography className="text-2xl font-semibold leading-tight">Contact</Typography>
-						</div>
+          <Card component={motion.div} variants={item} className="w-full mb-32">
+            <div className="px-32 pt-24">
+              <Typography className="text-2xl font-semibold leading-tight">
+                Company details
+              </Typography>
+            </div>
 
-						<CardContent className="px-32 py-24">
-							<div className="mb-24">
-								<Typography className="font-semibold mb-4 text-lg">Address</Typography>
-								<Typography>{contact.address}</Typography>
-							</div>
+            <CardContent className="px-32 py-24">
+              <div className="mb-24">
+                <Typography className="font-semibold mb-4 text-lg">
+                  Company Name
+                </Typography>
+                <Typography>{user?.Company_Name || "null"}</Typography>
+              </div>
 
-							<div className="mb-24">
-								<Typography className="font-semibold mb-4 text-lg">Tel.</Typography>
+              <div className="mb-24">
+                <Typography className="font-semibold mb-4 text-lg">
+                  Subscription Plan
+                </Typography>
+                <Typography>{company?.plan_type || "null"}</Typography>
+              </div>
 
-								{contact.tel.map((tel) => (
-									<div
-										className="flex items-center"
-										key={tel}
-									>
-										<Typography>{tel}</Typography>
-									</div>
-								))}
-							</div>
+              <div className="mb-24">
+                <Typography className="font-semibold mb-4 text-lg">
+                  Admin Contact
+                </Typography>
+                {/* <table>
+                  <tbody>
+                    {work.jobs.map((job) => (
+                      <tr key={job.company}>
+                        <td>
+                          <Typography>{job.company}</Typography>
+                        </td>
+                        <td className="px-16">
+                          <Typography color="text.secondary">
+                            {job.date}
+                          </Typography>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table> */}
+                {/* <div className="flex items-center" key={admin.Customer_Name}>
+                  <Typography>{admin.Customer_Name}</Typography>
+                </div>
 
-							<div className="mb-24">
-								<Typography className="font-semibold mb-4 text-lg">Website</Typography>
+                <div className="flex items-center" key={admin.email}>
+                  <Typography>{admin.email}</Typography>
+                </div> */}
+              </div>
+            </CardContent>
+          </Card>
 
-								{contact.websites.map((website) => (
-									<div
-										className="flex items-center"
-										key={website}
-									>
-										<Typography>{website}</Typography>
-									</div>
-								))}
-							</div>
+          {/* <Card component={motion.div} variants={item} className="w-full mb-32">
+            <div className="px-32 pt-24">
+              <Typography className="text-2xl font-semibold leading-tight">
+                Contact
+              </Typography>
+            </div>
 
-							<div className="mb-24">
-								<Typography className="font-semibold mb-4 text-lg">Emails</Typography>
+            <CardContent className="px-32 py-24">
+              <div className="mb-24">
+                <Typography className="font-semibold mb-4 text-lg">
+                  Address
+                </Typography>
+                <Typography>{contact.address}</Typography>
+              </div>
 
-								{contact.emails.map((email) => (
-									<div
-										className="flex items-center"
-										key={email}
-									>
-										<Typography>{email}</Typography>
-									</div>
-								))}
-							</div>
-						</CardContent>
-					</Card>
-				</div>
+              <div className="mb-24">
+                <Typography className="font-semibold mb-4 text-lg">
+                  Tel.
+                </Typography>
 
-				<div className="flex flex-col md:w-320">
-					<Card
-						component={motion.div}
-						variants={item}
-						className="w-full mb-32"
-					>
-						<div className="flex items-center px-32 pt-24">
-							<Typography className="flex flex-1 text-2xl font-semibold leading-tight">
-								Friends
-							</Typography>
+                {contact.tel.map((tel) => (
+                  <div className="flex items-center" key={tel}>
+                    <Typography>{tel}</Typography>
+                  </div>
+                ))}
+              </div>
 
-							<Button
-								className="-mx-8"
-								size="small"
-							>
-								See 454 more
-							</Button>
-						</div>
+              <div className="mb-24">
+                <Typography className="font-semibold mb-4 text-lg">
+                  Website
+                </Typography>
 
-						<CardContent className="flex flex-wrap px-32">
-							{friends.map((friend) => (
-								<Avatar
-									key={friend.id}
-									className="w-64 h-64 rounded-lg m-4"
-									src={friend.avatar}
-									alt={friend.name}
-								/>
-							))}
-						</CardContent>
-					</Card>
+                {contact.websites.map((website) => (
+                  <div className="flex items-center" key={website}>
+                    <Typography>{website}</Typography>
+                  </div>
+                ))}
+              </div>
 
-					<Card
-						component={motion.div}
-						variants={item}
-						className="w-full mb-32 rounded-xl shadow"
-					>
-						<div className="px-32 pt-24 flex items-center">
-							<Typography className="flex flex-1 text-2xl font-semibold leading-tight">
-								Joined Groups
-							</Typography>
-							<div className="-mx-8">
-								<Button
-									color="inherit"
-									size="small"
-								>
-									See 6 more
-								</Button>
-							</div>
-						</div>
-						<CardContent className="px-32">
-							<List className="p-0">
-								{groups.map((group) => (
-									<ListItem
-										key={group.id}
-										className="px-0 space-x-8"
-									>
-										<Avatar alt={group.name}>{group.name[0]}</Avatar>
-										<ListItemText
-											primary={
-												<div className="flex">
-													<Typography
-														className="font-medium"
-														color="secondary.main"
-														paragraph={false}
-													>
-														{group.name}
-													</Typography>
+              <div className="mb-24">
+                <Typography className="font-semibold mb-4 text-lg">
+                  Emails
+                </Typography>
 
-													<Typography
-														className="mx-4 font-normal"
-														paragraph={false}
-													>
-														{group.category}
-													</Typography>
-												</div>
-											}
-											secondary={group.members}
-										/>
-										<ListItemSecondaryAction>
-											<IconButton size="large">
-												<FuseSvgIcon>heroicons-outline:ellipsis-vertical</FuseSvgIcon>
-											</IconButton>
-										</ListItemSecondaryAction>
-									</ListItem>
-								))}
-							</List>
-						</CardContent>
-					</Card>
-				</div>
-			</div>
-		</motion.div>
-	);
+                {contact.emails.map((email) => (
+                  <div className="flex items-center" key={email}>
+                    <Typography>{email}</Typography>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card> */}
+        </div>
+
+        <div className="flex flex-col md:w-320">
+          <Card component={motion.div} variants={item} className="w-full mb-32">
+            <div className="flex items-center px-32 pt-24">
+              <Typography className="flex flex-1 text-2xl font-semibold leading-tight">
+                Friends
+              </Typography>
+
+              <Button className="-mx-8" size="small">
+                See 454 more
+              </Button>
+            </div>
+
+            <CardContent className="flex flex-wrap px-32">
+              {friends.map((friend) => (
+                <Avatar
+                  key={friend.id}
+                  className="w-64 h-64 rounded-lg m-4"
+                  src={friend.avatar}
+                  alt={friend.name}
+                />
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* <Card
+            component={motion.div}
+            variants={item}
+            className="w-full mb-32 rounded-xl shadow"
+          >
+            <div className="px-32 pt-24 flex items-center">
+              <Typography className="flex flex-1 text-2xl font-semibold leading-tight">
+                Joined Groups
+              </Typography>
+              <div className="-mx-8">
+                <Button color="inherit" size="small">
+                  See 6 more
+                </Button>
+              </div>
+            </div>
+            <CardContent className="px-32">
+              <List className="p-0">
+                {groups.map((group) => (
+                  <ListItem key={group.id} className="px-0 space-x-8">
+                    <Avatar alt={group.name}>{group.name[0]}</Avatar>
+                    <ListItemText
+                      primary={
+                        <div className="flex">
+                          <Typography
+                            className="font-medium"
+                            color="secondary.main"
+                            paragraph={false}
+                          >
+                            {group.name}
+                          </Typography>
+
+                          <Typography
+                            className="mx-4 font-normal"
+                            paragraph={false}
+                          >
+                            {group.category}
+                          </Typography>
+                        </div>
+                      }
+                      secondary={group.members}
+                    />
+                    <ListItemSecondaryAction>
+                      <IconButton size="large">
+                        <FuseSvgIcon>
+                          heroicons-outline:ellipsis-vertical
+                        </FuseSvgIcon>
+                      </IconButton>
+                    </ListItemSecondaryAction>
+                  </ListItem>
+                ))}
+              </List>
+            </CardContent>
+          </Card> */}
+        </div>
+      </div>
+    </motion.div>
+  );
 }
 
 export default AboutTab;

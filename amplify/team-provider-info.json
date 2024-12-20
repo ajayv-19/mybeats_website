@@ -19,11 +19,25 @@
       "function": {
         "getQuickSightDashboardEmbedURL": {
           "deploymentBucketName": "amplify-amplifyquicksightdas-dev-dd445-deployment",
-          "s3Key": "amplify-builds/getQuickSightDashboardEmbedURL-642f613846437a624175-build.zip"
+          "s3Key": "amplify-builds/getQuickSightDashboardEmbedURL-616c3743624738437866-build.zip"
+        },
+        "companyname": {},
+        "getcompanyofuser": {
+          "deploymentBucketName": "amplify-amplifyquicksightdas-dev-dd445-deployment",
+          "s3Key": "amplify-builds/getcompanyofuser-7132514c535a55663577-build.zip"
+        },
+        "user": {
+          "deploymentBucketName": "amplify-amplifyquicksightdas-dev-dd445-deployment",
+          "s3Key": "amplify-builds/user-572b58414239436b3233-build.zip"
         }
       },
       "api": {
-        "quicksight": {}
+        "quicksight": {},
+        "backendapis": {},
+        "backendapi": {}
+      },
+      "storage": {
+        "InsuranceDashboardImages": {}
       }
     }
   }

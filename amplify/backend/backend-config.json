@@ -1,5 +1,33 @@
 {
   "api": {
+    "backendapi": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "user"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "API Gateway"
+    },
+    "backendapis": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "getcompanyofuser"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "API Gateway"
+    },
     "quicksight": {
       "dependsOn": [
         {
@@ -48,6 +76,16 @@
       "build": true,
       "providerPlugin": "awscloudformation",
       "service": "Lambda"
+    },
+    "getcompanyofuser": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    },
+    "user": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
     }
   },
   "parameters": {
@@ -66,6 +104,45 @@
           "resourceName": "getQuickSightDashboardEmbedURL"
         }
       ]
+    },
+    "AMPLIFY_function_getcompanyofuser_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getcompanyofuser"
+        }
+      ]
+    },
+    "AMPLIFY_function_getcompanyofuser_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getcompanyofuser"
+        }
+      ]
+    },
+    "AMPLIFY_function_user_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "user"
+        }
+      ]
+    },
+    "AMPLIFY_function_user_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "user"
+        }
+      ]
+    }
+  },
+  "storage": {
+    "InsuranceDashboardImages": {
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "S3"
     }
   }
 }

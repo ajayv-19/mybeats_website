@@ -1,0 +1,14 @@
+import { Client } from "pg";
+import dotenv from "dotenv";
+
+dotenv.config();
+
+const client = new Client({
+  connectionString: process.env.DATABASE_URL || 
+    "postgres://u7de1gksepndnt:pc9cf448765b86e4e33da258b19cb59a9c52c61efcea2fa686a2cd24170ef2bd0@c3gtj1dt5vh48j.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/d4cndihsitnn9n",
+  ssl: {
+    rejectUnauthorized: false,
+  },
+});
+
+export default client;

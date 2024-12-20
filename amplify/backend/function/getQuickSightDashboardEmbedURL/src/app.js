@@ -45,6 +45,12 @@ const client = new Client({
 
 client.connect();
 
+// Function to extract domain from email
+function getDomainFromEmail(email) {
+  const domain = email.split("@")[1];
+  return domain;
+}
+
 app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
   const { email, jwtToken, payloadSub } = req.query;
 
@@ -174,20 +180,56 @@ app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
       console.error("Error listing users in QuickSight:", err);
     }
 
-    // Step 6: Save UserName to PostgreSQL
-    const queryText =
-      'INSERT INTO "public"."RLS"("email", "username", "role") VALUES($1, $2, $3) ON CONFLICT ("email") DO UPDATE SET "username" = EXCLUDED."username", "role" = EXCLUDED."role";';
-    const values = [email, userName, "READER"];
+    // Step 6: Save UserName to PostgreSQL (public.RLS table)
+    if (userName) {
+      const queryText =
+        'INSERT INTO "public"."RLS"("email", "username", "role_id", "Company_Name") VALUES($1, $2, $3, $4) ON CONFLICT ("email") DO UPDATE SET "username" = EXCLUDED."username", "role_id" = EXCLUDED."role_id", "Company_Name" = EXCLUDED."Company_Name";';
+      const domain = getDomainFromEmail(email);
+      let company;
 
-    try {
-      await client.query(queryText, values);
-      console.log("User information saved to PostgreSQL database");
-    } catch (dbError) {
-      console.error("Error saving user to PostgreSQL database:", dbError);
-      res.status(500).json({
-        error: "Error saving user to PostgreSQL database",
-        details: dbError.message,
-      });
+      try {
+        // Fetch company from PostgreSQL based on domain
+        const selectQuery =
+          'SELECT company FROM "public"."Domain_companies" WHERE domain = $1';
+        const selectResult = await client.query(selectQuery, [domain]);
+
+        if (selectResult.rows.length > 0) {
+          company = selectResult.rows[0].company;
+          console.log(`Fetched company: ${company}`);
+        } else {
+          console.error(`No company found for domain: ${domain}`);
+          company = null;
+        }
+      } catch (dbError) {
+        console.error("Error interacting with PostgreSQL database:", dbError);
+        company = null;
+      }
+
+      const values = [email, userName, 2, company];
+
+      try {
+        await client.query(queryText, values);
+
+        // Step 7: Add data to Row_level_security table
+        const rlsInsertQuery =
+          'INSERT INTO "public"."Row_level_security"("Company Name", "username") VALUES($1, $2) ON CONFLICT ("username") DO NOTHING;';
+        const rlsValues = [company, userName];
+        try {
+          await client.query(rlsInsertQuery, rlsValues);
+          console.log("User information saved to Row_level_security table");
+        } catch (dbError) {
+          console.error(
+            "Error saving user to Row_level_security table:",
+            dbError
+          );
+        }
+      } catch (dbError) {
+        console.error("Error saving user to PostgreSQL database:", dbError);
+        res.status(500).json({
+          error: "Error saving user to PostgreSQL database",
+          details: dbError.message,
+        });
+      }
     }
 
     // Step 7: Get Dashboard Embed URL

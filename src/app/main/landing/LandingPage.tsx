@@ -36,7 +36,8 @@ const LandingPage = () => {
 
   const openModal = () => {
     // setShowLogin(true);
-    navigate("/sign-in")
+    navigate("/sign-in");
+    window.location.reload();
   };
 
   return (

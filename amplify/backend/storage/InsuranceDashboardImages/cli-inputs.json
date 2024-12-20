@@ -1,0 +1,14 @@
+{
+  "resourceName": "InsuranceDashboardImages",
+  "policyUUID": "e17e5492",
+  "bucketName": "insurance-dashboard-images",
+  "storageAccess": "auth",
+  "guestAccess": [],
+  "authAccess": [
+    "CREATE_AND_UPDATE",
+    "READ",
+    "DELETE"
+  ],
+  "triggerFunction": "NONE",
+  "groupAccess": {}
+}
