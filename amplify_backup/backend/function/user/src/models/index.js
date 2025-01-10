@@ -26,7 +26,6 @@ const User = sequelize.define(
     is_varified: { type: DataTypes.BOOLEAN, allowNull: true },
     is_invited: { type: DataTypes.BOOLEAN, allowNull: true },
     invited_by: { type: DataTypes.INTEGER, allowNull: true },
-    company_id: { type: DataTypes.INTEGER, allowNull: true },
   },
   { tableName: "RLS", timestamps: false } // Assuming table name is "RLS" and timestamps are not auto-managed
 );
@@ -42,15 +41,13 @@ const Company = sequelize.define(
     //   type: DataTypes.TEXT,
     //   allowNull: true,
     // },
-    subscription_id: { type: DataTypes.INTEGER, allowNull: true },
-    plan_id: { type: DataTypes.INTEGER, allowNull: true },
+    subscription_id: { type: DataTypes.STRING, allowNull: true },
     purchased_date: { type: DataTypes.DATE, allowNull: true },
     last_renewal: { type: DataTypes.DATE, allowNull: true },
     expiry_date: { type: DataTypes.DATE, allowNull: true },
     number_of_users_invited: { type: DataTypes.INTEGER, allowNull: true },
     number_of_users_accepted: { type: DataTypes.INTEGER, allowNull: true },
     phone_number: { type: DataTypes.STRING, allowNull: true },
-    policyholder_count: { type: DataTypes.INTEGER, allowNull: true },
   },
   {
     sequelize,
@@ -86,14 +83,6 @@ const Plans = sequelize.define(
     },
     feature_description: {
       type: DataTypes.TEXT,
-      allowNull: true,
-    },
-    interval: {
-      type: DataTypes.STRING,
-      allowNull: true,
-    },
-    interval_count: {
-      type: DataTypes.INTEGER,
       allowNull: true,
     },
   },

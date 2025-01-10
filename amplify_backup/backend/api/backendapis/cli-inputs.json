@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "paths": {
+    "/getcompanybyemail": {
+      "name": "/getcompanybyemail",
+      "lambdaFunction": "getcompanyofuser",
+      "permissions": {
+        "setting": "private",
+        "auth": [
+          "create",
+          "read",
+          "update",
+          "delete"
+        ]
+      }
+    }
+  }
+}

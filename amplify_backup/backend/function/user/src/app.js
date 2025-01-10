@@ -41,7 +41,6 @@ router.get("/canShowBilling", UserController.canShowBilling);
 router.post("/create-payment", PaymentController.CreatePayment);
 router.get("/payment-success", PaymentController.PaymentSuccess);
 router.get("/payment-cancel", PaymentController.PaymentCancel);
-router.get("/payment-session", PaymentController.GetPaymentSubscribed);
 // Use router for specific path
 app.use(API_PREFIX, router);
 
