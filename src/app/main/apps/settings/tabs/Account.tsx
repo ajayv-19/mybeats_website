@@ -29,12 +29,10 @@ const convertBlobToBase64 = (blob: Blob): Promise<string> =>
 // Fetch default email
 const fetchDefaultEmail = async () => {
 	const data = await fetchAuthSession();
-	console.log(data);
 
 	const defaultemail: string = data.tokens.idToken.payload.email
 		? String(data.tokens.idToken.payload.email)
 		: 'default@example.com';
-	console.log(defaultemail, 'defaultemail');
 
 	return defaultemail;
 };
@@ -85,25 +83,20 @@ function AccountTab() {
 		mode: 'all',
 		resolver: zodResolver(schema)
 	});
-	console.log('formState', formState);
-	console.log('isvalid', formState.isValid);
 
 	const { isValid, dirtyFields, errors } = formState;
 
-	console.log(isValid, dirtyFields, errors, 'isValid, dirtyFields, errors');
 
 	// Fetch user data
 	const fetchUserData = async () => {
 		try {
 			const getUserData = await fetchProfileData();
-			console.log(getUserData, 'getUserData');
 
 			if (getUserData.status === 200) {
 				const userData = getUserData.data.userdata.user;
 				setProfileImage(userData.image);
 				setUser(userData);
 				reset(userData);
-				console.log(userData, 'userData');
 			}
 		} catch (error) {
 			console.log(error);
@@ -123,9 +116,7 @@ function AccountTab() {
 
 	useEffect(() => {
 		checkUserExist()
-			.then((res) => {
-				console.log(res, 'res');
-
+			.then((res) => {	
 				if (res.status === 200) {
 					setIsUserExists(true);
 				} else {
@@ -136,18 +127,14 @@ function AccountTab() {
 				console.log(error);
 			});
 	}, []);
-
-	console.log(profileImageLink, 'profile result');
 	// Form submit handler
 	const onSubmit = async (formData: FormType) => {
 		try {
-			console.log(formData, 'formData');
+			console.log("form data", formData);
 			let linkFromS3;
 
 			if (profileImageLink) {
 				const result = await uploadImageToS3(profileImageLink);
-				console.log(result, 'result');
-
 				linkFromS3 = `https://insurance-dashboard-imagesdd445-dev.s3.us-east-1.amazonaws.com/public/${result.key}`;
 				formData = { ...formData, image: linkFromS3 };
 			}
@@ -157,8 +144,6 @@ function AccountTab() {
 			if (res.status === 200) {
 				fetchUserData();
 			}
-
-			console.log(res, 'res');
 		} catch (error) {
 			console.error('Failed to update account settings:', error);
 		}
@@ -176,8 +161,6 @@ function AccountTab() {
 			// Concatenate sanitized email and file extension
 			const fileName = `profiles/${sanitizedEmail}${fileExtension}`;
 
-			console.log('Generated File Name:', fileName); // Debugging
-
 			// Upload the file to S3
 			const result = await uploadData({
 				key: fileName,
@@ -185,11 +168,9 @@ function AccountTab() {
 				options: { level: 'public' } as any
 			}).result;
 
-			console.log('Image uploaded successfully:', result);
 
 			// Fetch and convert the uploaded image to Base64
 			const base64Image = await fetchProfileImageFromS3(fileName);
-			console.log(base64Image, 'base64Image');
 			setProfileImage(base64Image); // Update the profile image
 			return result;
 		} catch (error) {
@@ -265,7 +246,6 @@ function AccountTab() {
 			reader.readAsDataURL(file);
 		}
 	};
-	console.log('gte data', user);
 
 	return (
 		<div className="w-full max-w-3xl">

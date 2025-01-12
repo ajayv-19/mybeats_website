@@ -1,12 +1,12 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Avatar, Dialog, DialogActions, DialogContent, Button } from '@mui/material';
 import Cropper from 'react-easy-crop';
 import { motion } from 'framer-motion';
 
 interface AccountProfileProps {
-	profileImage: string;
+	profileImage: string; // Initial S3 image URL
 	setProfileImage: (image: string) => void;
-	uploadImageToS3: (file: File) => Promise<void>;
+	setImageFile: (file: File | null) => void;
 }
 
 interface Area {
@@ -16,13 +16,20 @@ interface Area {
 	height: number;
 }
 
-function AccountProfile({ profileImage, setProfileImage, uploadImageToS3 }: AccountProfileProps) {
+function AccountProfile({ profileImage, setProfileImage, setImageFile }: AccountProfileProps) {
 	const [imageSrc, setImageSrc] = useState<string | null>(null);
 	const [crop, setCrop] = useState({ x: 0, y: 0 });
 	const [zoom, setZoom] = useState(1);
-	const [croppedArea, setCroppedArea] = useState<Area>(null);
+	const [croppedArea, setCroppedArea] = useState<Area | null>(null);
 	const [isCropDialogOpen, setIsCropDialogOpen] = useState(false);
 	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	// Initialize the profile image from the S3 URL
+	useEffect(() => {
+		if (profileImage) {
+			setImageSrc(profileImage); // Set the initial image from props
+		}
+	}, [profileImage]);
 
 	// Handle image selection
 	const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>): void => {
@@ -32,8 +39,8 @@ function AccountProfile({ profileImage, setProfileImage, uploadImageToS3 }: Acco
 			const reader = new FileReader();
 			reader.onloadend = () => {
 				if (typeof reader.result === 'string') {
-					setImageSrc(reader.result);
-					setIsCropDialogOpen(true);
+					setImageSrc(reader.result); // Display selected image in cropper
+					setIsCropDialogOpen(true); // Open crop dialog
 				}
 			};
 			reader.readAsDataURL(file);
@@ -43,36 +50,30 @@ function AccountProfile({ profileImage, setProfileImage, uploadImageToS3 }: Acco
 	// Handle cropped image
 	const getCroppedImage = async (): Promise<void> => {
 		try {
+			if (!imageSrc || !croppedArea) return;
+
 			const canvas = document.createElement('canvas');
 			const image = new Image();
-			image.src = imageSrc!;
+			image.src = imageSrc;
 			await new Promise<void>((resolve) => {
 				image.onload = () => resolve();
 			});
 
-			const { width, height } = croppedArea;
+			const { width, height, x, y } = croppedArea;
 			canvas.width = width;
 			canvas.height = height;
 
 			const ctx = canvas.getContext('2d');
-			ctx?.drawImage(
-				image,
-				croppedArea.x,
-				croppedArea.y,
-				croppedArea.width,
-				croppedArea.height,
-				0,
-				0,
-				width,
-				height
-			);
+			ctx?.drawImage(image, x, y, width, height, 0, 0, width, height);
 
 			canvas.toBlob(async (blob) => {
 				if (blob) {
 					const file = new File([blob], `cropped-image.jpg`, { type: 'image/jpeg' });
-					setProfileImage(URL.createObjectURL(file));
-					await uploadImageToS3(file);
-					setIsCropDialogOpen(false);
+					const croppedImageURL = URL.createObjectURL(file);
+
+					setProfileImage(croppedImageURL); // Update the displayed avatar
+					setImageFile(file); // Store the cropped file for upload
+					setIsCropDialogOpen(false); // Close crop dialog
 				}
 			}, 'image/jpeg');
 		} catch (error) {
@@ -88,10 +89,10 @@ function AccountProfile({ profileImage, setProfileImage, uploadImageToS3 }: Acco
 			>
 				<Avatar
 					sx={{ borderColor: 'background.paper' }}
-					className="w-128 h-128 border-4"
-					src={profileImage}
+					className="w-128 h-128 border-4 cursor-pointer"
+					src={profileImage || undefined} // Show the S3 image or default avatar
 					alt="User avatar"
-					onClick={() => fileInputRef.current?.click()}
+					onClick={() => fileInputRef.current?.click()} // Trigger file upload
 				/>
 			</motion.div>
 			<input
@@ -109,10 +110,24 @@ function AccountProfile({ profileImage, setProfileImage, uploadImageToS3 }: Acco
 					maxWidth="lg"
 					fullWidth
 				>
-					<DialogContent>
-						<div style={{ width: '100%', height: '100%' }}>
+					<DialogContent
+						sx={{
+							display: 'flex',
+							justifyContent: 'center',
+							alignItems: 'center',
+							height: '80vh',
+							padding: 0
+						}}
+					>
+						<div
+							style={{
+								position: 'relative',
+								width: '100%',
+								height: '100%'
+							}}
+						>
 							<Cropper
-								image={imageSrc}
+								image={imageSrc} // Use the selected image for cropping
 								crop={crop}
 								zoom={zoom}
 								aspect={1}

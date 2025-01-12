@@ -1,5 +1,4 @@
 import Divider from '@mui/material/Divider';
-import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import { z } from 'zod';
 import { Controller, useForm } from 'react-hook-form';
@@ -10,24 +9,40 @@ import FuseSvgIcon from '@fuse/core/FuseSvgIcon';
 import _ from 'lodash';
 import { useEffect, useState } from 'react';
 import { fetchDefaultEmail } from 'src/utils/apis/userAuthApis';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+	fetchAccountDetails,
+	selectAccount,
+	selectAccountLoading,
+	submitAccountDetails
+} from 'src/app/features/account/accountSlice';
+import FuseLoading from '@fuse/core/FuseLoading';
 import { SettingsAccount } from '../SettingsApi';
 import AccountProfile from '../tabcomponents/AccountProfile';
 
 type FormType = SettingsAccount;
 
 const defaultValues: FormType = {
-	name: ''
+	Customer_Name: '',
+	email: ''
 };
 
 /**
  * Form Validation Schema
  */
 const schema = z.object({
-	name: z.string().nonempty('Name is required')
+	Customer_Name: z.string().nonempty('Name is required'),
+	email: z.string().email('Invalid email')
 });
 
 function AccountTab() {
-	const [profileImage, setProfileImage] = useState('assets/images/avatars/male-04.jpg');
+	const [profileImage, setProfileImage] = useState('');
+	const [imageAdded, setImageAdded] = useState<File | null>(null);
+	const [emailFetched, setEmailFetched] = useState('');
+	const account = useSelector(selectAccount);
+	const loading = useSelector(selectAccountLoading);
+
+	const dispatch = useDispatch();
 
 	const { control, reset, handleSubmit, formState, setValue } = useForm<FormType>({
 		defaultValues,
@@ -41,7 +56,8 @@ function AccountTab() {
 		const setDefaultEmail = async () => {
 			try {
 				const email = await fetchDefaultEmail();
-				setValue('email', email); // Set email value but don't mark it as dirty
+				setValue('email', email);
+				setEmailFetched(email);
 			} catch (error) {
 				console.error('Error setting default email:', error);
 			}
@@ -49,10 +65,24 @@ function AccountTab() {
 		setDefaultEmail();
 	}, [setValue]);
 
+	useEffect(() => {
+		setValue('Customer_Name', account.Customer_Name);
+		setProfileImage(account.image ?? '');
+	}, [account]);
+
 	/**
 	 * Form Submit
 	 */
-	function onSubmit(formData: FormType) {}
+	async function onSubmit(formData: FormType) {
+		await dispatch(
+			submitAccountDetails({
+				formData,
+				profileImageLink: imageAdded,
+				defaultEmail: emailFetched
+			})
+		);
+		await dispatch(fetchAccountDetails());
+	}
 
 	/**
 	 * Handle Reset
@@ -67,7 +97,15 @@ function AccountTab() {
 				keepValues: true // Keep the existing value of email
 			}
 		);
+		setImageAdded(null); // Reset image state
 	}
+
+	if (loading)
+		return (
+			<div className="w-full h-full items-center justify-center flex">
+				<FuseLoading />;
+			</div>
+		);
 
 	return (
 		<div className="w-full max-w-3xl">
@@ -75,22 +113,22 @@ function AccountTab() {
 				<AccountProfile
 					profileImage={profileImage}
 					setProfileImage={setProfileImage}
-					uploadImageToS3={(file: File) => Promise.resolve()} // Replace with actual S3 logic
+					setImageFile={(file: File) => setImageAdded(file)} // Store the added image
 				/>
 
 				<div className="mt-32 grid w-full gap-24 sm:grid-cols-4">
 					<div className="sm:col-span-4">
 						<Controller
 							control={control}
-							name="name"
+							name="Customer_Name"
 							render={({ field }) => (
 								<TextField
 									{...field}
 									label="Name"
 									placeholder="Name"
 									id="name"
-									error={!!errors.name}
-									helperText={errors?.name?.message}
+									error={!!errors.Customer_Name}
+									helperText={errors?.Customer_Name?.message}
 									variant="outlined"
 									required
 									fullWidth
@@ -107,14 +145,7 @@ function AccountTab() {
 					</div>
 				</div>
 
-				<div className="my-40 border-t" />
-				<div className="w-full">
-					<Typography className="text-xl">Personal Information</Typography>
-					<Typography color="text.secondary">
-						Communication details in case we want to connect with you. These will be kept private.
-					</Typography>
-				</div>
-				<div className="grid w-full gap-24 sm:grid-cols-4 mt-32">
+				<div className="w-full gap-24 mt-32">
 					<div className="sm:col-span-2">
 						<Controller
 							control={control}
@@ -146,7 +177,7 @@ function AccountTab() {
 				<div className="flex items-center justify-end space-x-8">
 					<Button
 						variant="outlined"
-						disabled={_.isEmpty(dirtyFields)}
+						disabled={_.isEmpty(dirtyFields) && !imageAdded} // Ensure reset button is enabled if image is added
 						onClick={handleReset} // Custom reset logic
 					>
 						Cancel
@@ -154,7 +185,7 @@ function AccountTab() {
 					<Button
 						variant="contained"
 						color="secondary"
-						disabled={_.isEmpty(dirtyFields) || !isValid}
+						disabled={(_.isEmpty(dirtyFields) || !isValid) && !imageAdded} // Enable Save if an image is added
 						type="submit"
 					>
 						Save
