@@ -36,9 +36,10 @@ const schema = z.object({
 });
 
 function AccountTab() {
-	const [profileImage, setProfileImage] = useState('');
+	const [profileImage, setProfileImage] = useState<string>('');
 	const [imageAdded, setImageAdded] = useState<File | null>(null);
 	const [emailFetched, setEmailFetched] = useState('');
+	const [fullName, setFullName] = useState('');
 	const account = useSelector(selectAccount);
 	const loading = useSelector(selectAccountLoading);
 
@@ -67,6 +68,7 @@ function AccountTab() {
 
 	useEffect(() => {
 		setValue('Customer_Name', account.Customer_Name);
+		setFullName(account.Customer_Name);
 		setProfileImage(account.image ?? '');
 	}, [account]);
 
@@ -88,16 +90,11 @@ function AccountTab() {
 	 * Handle Reset
 	 */
 	function handleReset() {
-		reset(
-			{
-				...defaultValues,
-				email: undefined // Prevent email field from resetting to default
-			},
-			{
-				keepValues: true // Keep the existing value of email
-			}
-		);
-		setImageAdded(null); // Reset image state
+		reset({
+			Customer_Name: account.Customer_Name ?? '',
+			email: undefined // Prevent email field from resetting to default
+		});
+		setImageAdded(profileImage); // Reset image state
 	}
 
 	if (loading)

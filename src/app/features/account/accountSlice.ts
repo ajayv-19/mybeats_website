@@ -47,7 +47,7 @@ export const submitAccountDetails = createAsyncThunk(
 				const result = await uploadData({
 					key: fileName,
 					data: profileImageLink,
-					options: { level: 'public' } as any
+					options: { level: 'public' }
 				}).result;
 
 				linkFromS3 = `https://insurance-dashboard-imagesdd445-dev.s3.us-east-1.amazonaws.com/public/${result.key}`;

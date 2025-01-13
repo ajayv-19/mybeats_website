@@ -1,15 +1,13 @@
 import { useEffect, useState } from 'react';
 import { styled } from '@mui/material/styles';
 import useThemeMediaQuery from '@fuse/hooks/useThemeMediaQuery';
+import { useSelector, useDispatch } from 'react-redux';
 import { Outlet, useLocation, Navigate } from 'react-router-dom';
+import { fetchAccountDetails, selectAccount } from 'src/app/features/account/accountSlice';
+import { AppDispatch } from 'app/store/store';
 import FusePageSimple from '@fuse/core/FusePageSimple';
 import SettingsAppSidebarContent from './SettingsAppSidebarContent';
 import SettingsAppHeader from './SettingsAppHeader';
-import { useGetAccountSettingsQuery } from './SettingsApi';
-import { checkUserExist } from '../profile/ProfileApis/checkUserApi';
-import { useSelector } from 'react-redux';
-import { fetchAccountDetails, selectAccount } from 'src/app/features/account/accountSlice';
-import { useDispatch } from 'react-redux';
 
 const Root = styled(FusePageSimple)(() => ({
 	'& .FusePageCarded-header': {},
@@ -24,10 +22,9 @@ function SettingsApp() {
 	const location = useLocation();
 	const isMobile = useThemeMediaQuery((theme) => theme.breakpoints.down('lg'));
 	const [leftSidebarOpen, setLeftSidebarOpen] = useState(!isMobile);
-	const [isUserExists, setIsUserExists]= useState(false);
+	const [isUserExists, setIsUserExists] = useState(false);
 	const account = useSelector(selectAccount);
-	
-	const dispatch = useDispatch();
+	const dispatch = useDispatch<AppDispatch>();
 
 	useEffect(() => {
 		setLeftSidebarOpen(!isMobile);
@@ -45,7 +42,9 @@ function SettingsApp() {
 	}, []);
 
 	useEffect(() => {
-		if (account) {
+		if (account.error) {
+			setIsUserExists(false);
+		} else {
 			setIsUserExists(true);
 		}
 	}, [account]);
