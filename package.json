@@ -28,6 +28,8 @@
         "@mui/x-date-pickers": "7.6.2",
         "@popperjs/core": "2.11.8",
         "@reduxjs/toolkit": "^2.2.5",
+        "@sentry/react": "^8.48.0",
+        "@sentry/vite-plugin": "^2.23.0",
         "apexcharts": "3.49.1",
         "autosuggest-highlight": "3.3.4",
         "aws-amplify": "^6.10.3",

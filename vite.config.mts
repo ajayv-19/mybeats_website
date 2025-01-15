@@ -1,3 +1,4 @@
+import { sentryVitePlugin } from "@sentry/vite-plugin";
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import svgrPlugin from 'vite-plugin-svgr';
@@ -5,30 +6,29 @@ import tsconfigPaths from 'vite-tsconfig-paths'
 
 // https://vitejs.dev/config/
 export default defineConfig({
-	plugins: [
-		react({
-			jsxImportSource: '@emotion/react',
-		}),
-		tsconfigPaths({
-			parseNative: false,
-		}),
-		svgrPlugin(),
-		{
-			name: 'custom-hmr-control',
-			handleHotUpdate({ file, server }) {
-				if (file.includes('src/app/configs/')) {
-					server.ws.send({
-						type: 'full-reload',
-					});
-					return [];
-				}
-				return;
-			},
-		},
-	],
+	plugins: [react({
+        jsxImportSource: '@emotion/react',
+    }), tsconfigPaths({
+        parseNative: false,
+    }), svgrPlugin(), {
+        name: 'custom-hmr-control',
+        handleHotUpdate({ file, server }) {
+            if (file.includes('src/app/configs/')) {
+                server.ws.send({
+                    type: 'full-reload',
+                });
+                return [];
+            }
+            return;
+        },
+    }, sentryVitePlugin({
+        org: "firebeats",
+        project: "mybeats-dashboard"
+    })],
 	build: {
-		outDir: 'build',
-	},
+        outDir: 'build',
+        sourcemap: true
+    },
 	server: {
 		host: '0.0.0.0',
 		open: true,
