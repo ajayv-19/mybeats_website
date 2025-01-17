@@ -13,6 +13,7 @@ sequelize
 const User = sequelize.define(
   "User",
   {
+    id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     username: { type: DataTypes.STRING, allowNull: true },
     Company_Name: { type: DataTypes.STRING, allowNull: true },
     email: { type: DataTypes.STRING, allowNull: false },

@@ -8,7 +8,7 @@ class CompanyController {
 
   async createCompany(req, res) {
     const { name, address, phone, email, user_id } = req.body;
-    const user = User.findByPk(user_id);
+    const user = await User.findOne({ where: { id: user_id } });
     const company = await Company.create({
       name,
       address,
@@ -21,9 +21,12 @@ class CompanyController {
       return res.status(400).json({
         message: "Company creation failed",
       });
+    } else if (user) {
+      user.update({ company_id: company.id });
     } else {
-      user.company_id = company.id;
-      await user.save();
+      return res.status(400).json({
+        message: "User not found",
+      });
     }
     res.status(200).json({
       message: "Company created successfully",

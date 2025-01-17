@@ -5,7 +5,11 @@ const {
   awsServerlessExpressMiddleware,
   conditionalAuthMiddleware,
 } = require("./middlewares");
-const { UserController, PaymentController } = require("./controllers");
+const {
+  UserController,
+  PaymentController,
+  CompanyController,
+} = require("./controllers");
 const upload = require("./config/multer");
 // Declare a new express app
 const app = express();
