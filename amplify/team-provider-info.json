@@ -28,7 +28,7 @@
         },
         "user": {
           "deploymentBucketName": "amplify-amplifyquicksightdas-dev-dd445-deployment",
-          "s3Key": "amplify-builds/user-572b58414239436b3233-build.zip"
+          "s3Key": "amplify-builds/user-32663743305746457174-build.zip"
         }
       },
       "api": {

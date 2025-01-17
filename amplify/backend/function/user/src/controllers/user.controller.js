@@ -83,13 +83,10 @@ const UserController = {
       const {
         email,
         username,
-        Company_Name,
         role_id,
         Customer_Name,
         usertype,
-        created_timestamp,
         image,
-        domain,
         removedByAdmin,
       } = req.body;
 
@@ -99,6 +96,14 @@ const UserController = {
           error: "Email and Customer Name are required",
         });
       }
+      const domain = email.split("@")[1];
+      let company_id;
+      const company = await Company.findOne({ where: { domain } });
+      if (company) {
+        company_id = company.id;
+      }
+
+      const created_timestamp = new Date().toISOString();
 
       // Find the existing user by email
       const existingUser = await User.findOne({ where: { email } });
@@ -107,8 +112,6 @@ const UserController = {
       if (existingUser) {
         const updatedUser = await existingUser.update({
           username: username !== null ? username : existingUser.username,
-          Company_Name:
-            Company_Name !== null ? Company_Name : existingUser.Company_Name,
           role_id: role_id !== null ? role_id : existingUser.role_id,
           Customer_Name:
             Customer_Name !== null ? Customer_Name : existingUser.Customer_Name,
@@ -118,11 +121,12 @@ const UserController = {
               ? created_timestamp
               : existingUser.created_timestamp,
           image: image !== null ? image : existingUser.image,
-          domain: domain !== null ? domain : existingUser.domain,
           removedByAdmin:
             removedByAdmin !== null
               ? removedByAdmin
               : existingUser.removedByAdmin,
+          domain: domain !== null ? domain : existingUser.domain,
+          ...(company_id && { company_id }),
         });
 
         return res.json({
@@ -136,7 +140,6 @@ const UserController = {
       const newUser = await User.create({
         email,
         username,
-        Company_Name,
         role,
         Customer_Name,
         usertype,
@@ -147,6 +150,7 @@ const UserController = {
         is_varified: 1,
         is_invited: 0,
         invited_by: 0,
+        ...(comapany_id && { company_id }),
       });
 
       res.json({
