@@ -1,4 +1,5 @@
 const { User, Company } = require("../models");
+
 const UserController = {
   async getUserById(req, res) {
     try {

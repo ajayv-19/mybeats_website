@@ -5,7 +5,6 @@ class CompanyController {
     app.post("/company", this.createCompany);
     app.put("/company", this.updateCompany);
   }
-
   async createCompany(req, res) {
     const { name, address, phone, email, user_id } = req.body;
     const user = await User.findOne({ where: { id: user_id } });
