@@ -1,6 +1,16 @@
-const { API_URL, API_PREFIX, STRIPE_SECRET_KEY } = require("../globals.const");
+const {
+  API_URL,
+  API_PREFIX,
+  STRIPE_SECRET_KEY,
+} = require("../globals.const.js");
 const StripeClient = require("stripe");
-const { Company, User, Plans, Payment, Subscriptions } = require("../models");
+const {
+  Company,
+  User,
+  Plans,
+  Payment,
+  Subscriptions,
+} = require("../models/index.js");
 const datelib = require("../lib/date.js");
 const getCustomerDetails = async (email, payload) => {
   const stripe = StripeClient(STRIPE_SECRET_KEY);
