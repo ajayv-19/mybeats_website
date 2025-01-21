@@ -1,6 +1,16 @@
-const { API_URL, API_PREFIX, STRIPE_SECRET_KEY } = require("../globals.const");
+const {
+  API_URL,
+  API_PREFIX,
+  STRIPE_SECRET_KEY,
+} = require("../globals.const.js");
 const StripeClient = require("stripe");
-const { Company, User, Plans, Payment, Subscriptions } = require("../models");
+const {
+  Company,
+  User,
+  Plans,
+  Payment,
+  Subscriptions,
+} = require("../models/index.js");
 const datelib = require("../lib/date.js");
 const getCustomerDetails = async (email, payload) => {
   const stripe = StripeClient(STRIPE_SECRET_KEY);
@@ -19,6 +29,14 @@ const getCustomerDetails = async (email, payload) => {
   return customer;
 };
 class PaymentController {
+  setupRoutes(router) {
+    router.post("/create-payment", this.CreatePayment);
+    router.get("/payment-success", this.PaymentSuccess);
+    router.get("/payment-cancel", this.PaymentCancel);
+    router.get("/payment-session", this.GetPaymentSubscribed);
+    router.post("/cancel-subscription", this.MakeSubscribtionCancel);
+    router.post("/create-payment-intent", this.FetchPaymentIntent);
+  }
   async CreatePayment(req, res) {
     try {
       const stripe = StripeClient(STRIPE_SECRET_KEY);
@@ -46,7 +64,7 @@ class PaymentController {
         user_id,
         company_id,
         plan_id,
-        vendor: "strip",
+        vendor: "stripe",
         status: "INITIATING",
       });
 
@@ -239,6 +257,56 @@ class PaymentController {
     res.status(200).json({
       message: "Payment Session retrived successfully",
       session,
+    });
+  }
+
+  async MakeSubscribtionCancel(req, res) {
+    const { user_id } = req.body;
+    const user = await User.findOne({ where: { id: user_id } });
+    const company_id = user.company_id;
+    const company = await Company.findOne({ where: { id: company_id } });
+    const subscription_id = company.subscription_id;
+    const subscription = await Subscriptions.findOne({
+      where: { id: subscription_id },
+    });
+    const payment_id = subscription.payment_id;
+    const payment = await Payment.findOne({ where: { id: payment_id } });
+    const stripe = StripeClient(STRIPE_SECRET_KEY);
+    const session = await stripe.checkout.sessions.retrieve(
+      payment.transaction_id
+    );
+    const remote_subscription_id = session.subscription;
+    //const result = await stripe.subscriptions.del(remote_subscription_id);
+    try {
+      const result = await stripe.subscriptions.del(remote_subscription_id);
+      console.log(result, "result");
+      res.status(200).json({
+        message: "Subscription cancelled successfully",
+        result,
+      });
+    } catch (error) {
+      console.log(error, "error");
+      res.status(400).json({
+        error: true,
+        message: "Unable to cancel subscription",
+      });
+    }
+  }
+  async FetchPaymentIntent(req, res) {
+    const { items } = req.body;
+    const stripe = StripeClient(STRIPE_SECRET_KEY);
+    // Create a PaymentIntent with the order amount and currency
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: 30,
+      currency: "usd",
+      // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
+      automatic_payment_methods: {
+        enabled: true,
+      },
+    });
+
+    res.send({
+      clientSecret: paymentIntent.client_secret,
     });
   }
 }

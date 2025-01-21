@@ -1,4 +1,6 @@
-const { User, Company } = require("../models");
+// const { is } = require("immutable");
+const { User, Company, Subscriptions } = require("../models");
+
 const UserController = {
   async getUserById(req, res) {
     try {
@@ -9,12 +11,24 @@ const UserController = {
           .status(404)
           .json({ success: false, error: "User not found" });
       }
-      const company = await Company.findOne({ where: { domain: user.domain } });
-      //const admin = await User.findOne({ where: { id: company.admin_id } });
-      // user.company = company;
-
-      //const userdata = { user, company, admin };
-      const userdata = { user, company };
+      let company = null;
+      if (user.company_id) {
+        company = await Company.findOne({ where: { id: user.company_id } });
+      } else {
+        company = await Company.findOne({ where: { domain: user.domain } });
+      }
+      const subscription = await Subscriptions.findOne({
+        where: { id: company.subscription_id },
+      });
+      if (subscription && subscription.isactive) {
+        const currentDate = new Date();
+        const expiryDate = new Date(subscription.expiry_date);
+        if (currentDate > expiryDate) {
+          subscription.isactive = false;
+          await subscription.update({ isactive: false });
+        }
+      }
+      const userdata = { user, company, isactive: subscription.isactive };
       res.json({ success: true, userdata });
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -83,13 +97,10 @@ const UserController = {
       const {
         email,
         username,
-        Company_Name,
         role_id,
         Customer_Name,
         usertype,
-        created_timestamp,
         image,
-        domain,
         removedByAdmin,
       } = req.body;
 
@@ -99,16 +110,17 @@ const UserController = {
           error: "Email and Customer Name are required",
         });
       }
+      const domain = email.split("@")[1];
+      let company_id;
+
+      const created_timestamp = new Date().toISOString();
 
       // Find the existing user by email
       const existingUser = await User.findOne({ where: { email } });
-
       // If the user exists, update only the fields that are not null
       if (existingUser) {
         const updatedUser = await existingUser.update({
           username: username !== null ? username : existingUser.username,
-          Company_Name:
-            Company_Name !== null ? Company_Name : existingUser.Company_Name,
           role_id: role_id !== null ? role_id : existingUser.role_id,
           Customer_Name:
             Customer_Name !== null ? Customer_Name : existingUser.Customer_Name,
@@ -118,13 +130,11 @@ const UserController = {
               ? created_timestamp
               : existingUser.created_timestamp,
           image: image !== null ? image : existingUser.image,
-          domain: domain !== null ? domain : existingUser.domain,
           removedByAdmin:
             removedByAdmin !== null
               ? removedByAdmin
               : existingUser.removedByAdmin,
         });
-
         return res.json({
           success: true,
           message: "User updated successfully",
@@ -132,11 +142,15 @@ const UserController = {
         });
       }
 
+      const company = await Company.findOne({ where: { domain } });
+      if (company) {
+        company_id = company.id;
+      }
+
       // If the user does not exist, create a new user
       const newUser = await User.create({
         email,
         username,
-        Company_Name,
         role,
         Customer_Name,
         usertype,
@@ -147,6 +161,7 @@ const UserController = {
         is_varified: 1,
         is_invited: 0,
         invited_by: 0,
+        ...(company_id && { company_id }),
       });
 
       res.json({

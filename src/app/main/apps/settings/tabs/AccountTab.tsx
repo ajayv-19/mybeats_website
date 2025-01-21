@@ -76,15 +76,14 @@ function AccountTab() {
 	 * Form Submit
 	 */
 	async function onSubmit(formData: FormType) {
-		throw new Error("Verifying sentry if it works");
-		// await dispatch(
-		// 	submitAccountDetails({
-		// 		formData,
-		// 		profileImageLink: imageAdded,
-		// 		defaultEmail: emailFetched
-		// 	})
-		// );
-		// await dispatch(fetchAccountDetails());
+		await dispatch(
+			submitAccountDetails({
+				formData,
+				profileImageLink: imageAdded,
+				defaultEmail: emailFetched
+			})
+		);
+		await dispatch(fetchAccountDetails());
 	}
 
 	/**
