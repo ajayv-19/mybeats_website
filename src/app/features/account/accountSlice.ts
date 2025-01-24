@@ -2,20 +2,38 @@
 import { createAsyncThunk, createSlice } from '@reduxjs/toolkit';
 import { RootState } from 'app/store/store';
 import _ from '@lodash';
-import { SettingsAccount } from 'src/app/main/apps/settings/SettingsApi';
 import { uploadData } from '@aws-amplify/storage';
 import { addOrUpdateUser } from 'src/app/main/apps/settings/apis/Accountapis';
 import { fetchAuthSession } from '@aws-amplify/auth';
 import axios from 'axios';
 
-type AccountFormType = SettingsAccount;
+type UserDetails = {
+	Customer_Name: string;
+	email: string;
+	image?: string;
+};
+
+type CompanyDetails = {
+	Company_Name: string;
+	domain: string;
+	phone_number: number;
+	plan_type: string;
+};
+
+type AccountState = {
+	user: UserDetails;
+	company: CompanyDetails;
+	loading: boolean;
+	error: string;
+	success: boolean;
+};
 
 /**
- * The initial state of the account slice.
+ * The initital state for account details
  */
-const initialState: AccountFormType & { loading: boolean; error: string | null; success: boolean } = {
-	Customer_Name: '',
-	email: '',
+const initialState: AccountState = {
+	user: null,
+	company: null,
 	loading: false,
 	error: null,
 	success: false
@@ -31,7 +49,7 @@ export const submitAccountDetails = createAsyncThunk(
 			formData,
 			profileImageLink,
 			defaultEmail
-		}: { formData: AccountFormType; profileImageLink: File | null; defaultEmail: string },
+		}: { formData: UserDetails; profileImageLink: File | null; defaultEmail: string },
 		{ rejectWithValue }
 	) => {
 		try {
@@ -43,11 +61,11 @@ export const submitAccountDetails = createAsyncThunk(
 				const fileExtension = profileImageLink.name.substring(profileImageLink.name.lastIndexOf('.'));
 				const fileName = `profiles/${sanitizedEmail}${fileExtension}`;
 
-				// Upload image to S3
+				// Upload image
+				// TODO: uploadData is deprecated, have to change this method. 
 				const result = await uploadData({
 					key: fileName,
-					data: profileImageLink,
-					options: { level: 'public' }
+					data: profileImageLink
 				}).result;
 
 				linkFromS3 = `https://insurance-dashboard-imagesdd445-dev.s3.us-east-1.amazonaws.com/public/${result.key}`;
@@ -58,7 +76,7 @@ export const submitAccountDetails = createAsyncThunk(
 			const response = await addOrUpdateUser(formData);
 
 			if (response.status === 200) {
-				return response.data;
+				return response.data.userdata as UserDetails;
 			}
 
 			return rejectWithValue('Failed to submit account details');
@@ -91,13 +109,11 @@ export const fetchAccountDetails = createAsyncThunk('account/fetchDetails', asyn
 		);
 
 		if (response.status === 200) {
-			return response.data.userdata.user;
-		}	
-
+			return response.data.userdata;
+		}
 
 		return rejectWithValue('Failed to fetch account details');
 	} catch (error) {
-		console.error('Failed to fetch account details:', error);
 		return rejectWithValue(error.message || 'Unknown error');
 	}
 });
@@ -172,10 +188,10 @@ export const selectAccountError = (state: RootState) => state.account.error;
 
 export const selectAccountSuccess = (state: RootState) => state.account.success;
 
-export const selectAccountImage = (state: RootState) => state.account.image;
+export const selectAccountImage = (state: RootState) => state.account.user.image;
 
-export const selectAccountEmail = (state: RootState) => state.account.email;
+export const selectAccountEmail = (state: RootState) => state.account.user.email;
 
-export const selectAccountName = (state: RootState) => state.account.name;
+export const selectAccountName = (state: RootState) => state.account.user.Customer_Name;
 
 export default accountSlice.reducer;

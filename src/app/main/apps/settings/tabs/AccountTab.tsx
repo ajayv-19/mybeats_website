@@ -40,7 +40,7 @@ function AccountTab() {
 	const [imageAdded, setImageAdded] = useState<File | null>(null);
 	const [emailFetched, setEmailFetched] = useState('');
 	const [fullName, setFullName] = useState('');
-	const account = useSelector(selectAccount);
+	const { user } = useSelector(selectAccount);
 	const loading = useSelector(selectAccountLoading);
 
 	const dispatch = useDispatch();
@@ -67,10 +67,12 @@ function AccountTab() {
 	}, [setValue]);
 
 	useEffect(() => {
-		setValue('Customer_Name', account.Customer_Name);
-		setFullName(account.Customer_Name);
-		setProfileImage(account.image ?? '');
-	}, [account]);
+		if (user) {
+			setValue('Customer_Name', user.Customer_Name);
+			setFullName(user.Customer_Name);
+			setProfileImage(user.image);
+		}
+	}, [user]);
 
 	/**
 	 * Form Submit
@@ -91,7 +93,7 @@ function AccountTab() {
 	 */
 	function handleReset() {
 		reset({
-			Customer_Name: account.Customer_Name ?? '',
+			Customer_Name: user.Customer_Name ?? '',
 			email: undefined // Prevent email field from resetting to default
 		});
 		setImageAdded(profileImage); // Reset image state
