@@ -1,16 +1,6 @@
 import { z } from 'zod';
-import { Controller, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import Typography from '@mui/material/Typography';
-import Divider from '@mui/material/Divider';
-import Button from '@mui/material/Button';
-import _ from '@lodash';
-import clsx from 'clsx';
-import Paper from '@mui/material/Paper';
-import FuseSvgIcon from '@fuse/core/FuseSvgIcon';
-import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
-import Alert from '@mui/material/Alert';
 
 import { useEffect, useState } from 'react';
 import { fetchProfileData } from 'src/app/backendServices/ProfileServices';
@@ -20,7 +10,6 @@ import axios from 'axios';
 import { fetchAuthSession } from '@aws-amplify/auth';
 import CompanyRegisterDialog from '../tabcomponents/plancomponts/RegisterCompanyPopUp';
 import UserInvitationDialog from '../tabcomponents/plancomponts/ShareorCancle';
-import CheckoutForm from '../tabcomponents/PlanBillingComponents/CheckoutForm';
 import SubscriptionForm from '../tabcomponents/PlanBillingComponents/SubscriptionForm';
 
 type FormType = {
@@ -113,7 +102,7 @@ function PlanBillingTab() {
 			if (getUserData.status === 200) {
 				const companyData = getUserData.data.userdata.company;
 
-				console.log("plan billing tab", companyData);
+				console.log('plan billing tab', companyData);
 
 				if (!companyData) {
 					setCompanyExists(false);
@@ -166,7 +155,7 @@ function PlanBillingTab() {
 			const authToken = session.tokens?.accessToken?.toString();
 
 			const paymentIntent = await axios.post(
-				'https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/create-payment-intent',
+				'https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/create-payment',
 				{},
 				{
 					headers: {
@@ -197,9 +186,7 @@ function PlanBillingTab() {
 	// 	);
 	// }
 
-	const onSubmit = () => {
 
-	}
 
 	return (
 		<div className="w-full max-w-3xl">
@@ -219,7 +206,7 @@ function PlanBillingTab() {
 				/>
 			)}
 
-			<SubscriptionForm />
+			<SubscriptionForm/>
 
 			{/* {showSubscriptionForm && (
 				// <form onSubmit={handleSubmit(onSubmit)}>

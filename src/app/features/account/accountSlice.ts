@@ -8,12 +8,14 @@ import { fetchAuthSession } from '@aws-amplify/auth';
 import axios from 'axios';
 
 type UserDetails = {
+	id?: number;
 	Customer_Name: string;
 	email: string;
 	image?: string;
 };
 
 type CompanyDetails = {
+	id?: number;
 	Company_Name: string;
 	domain: string;
 	phone_number: number;

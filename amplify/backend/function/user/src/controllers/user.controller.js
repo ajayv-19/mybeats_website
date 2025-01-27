@@ -179,3 +179,5 @@ const UserController = {
 };
 
 module.exports = UserController;
+
+// Bank, Apple pay, Card, G-pay.

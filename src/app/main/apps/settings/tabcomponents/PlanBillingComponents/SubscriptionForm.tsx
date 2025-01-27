@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { z } from 'zod';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,13 +14,23 @@ import InputAdornment from '@mui/material/InputAdornment';
 import Alert from '@mui/material/Alert';
 import { useSelector } from 'react-redux';
 import { selectAccount } from 'src/app/features/account/accountSlice';
+import { fetchAuthSession } from '@aws-amplify/auth';
+import axios from 'axios';
 import SubscriptionFormType from '../../types/SubscriptionFormTypes';
+import { Elements } from '@stripe/react-stripe-js';
+import CheckoutForm from './CheckoutForm';
+import { loadStripe } from '@stripe/stripe-js';
+
+const stripePromise = loadStripe(
+	'pk_test_51QVNrHDIv4SXGrBxLk9llPOeoiczwAeRWCINxXbBNNw2Ecr1FTlk4ZasY3wHAZrjDcANw5bJN318FKvXtS2qpJEA00O6QyClPD'
+);
+
 
 const defaultValues: SubscriptionFormType = {
 	companyName: '',
 	emailDomain: '',
 	website: '',
-	plan: ''
+	planValue: ''
 };
 
 const plans = [
@@ -49,8 +59,7 @@ function SubscriptionForm() {
 	 * Form Validation Schema
 	 */
 	const schema = z.object({
-		plan: z.enum(['basic', 'team', 'enterprise']),
-		country: z.string(),
+		planValue: z.enum(['basic', 'team', 'enterprise']),
 		phone: z.number(),
 		website: z.string()
 	});
@@ -62,21 +71,56 @@ function SubscriptionForm() {
 	});
 	const { isValid, dirtyFields, errors } = formState;
 
-	const { company } = useSelector(selectAccount);
+	const { company, user } = useSelector(selectAccount);
+
+	const [redirectUrl, setRedirectUrl] = useState(null);
 
 	useEffect(() => {
 		if (company) {
 			reset({
-				plan: company.plan_type,
+				planValue: company.plan_type,
 				companyName: company.Company_Name,
 				emailDomain: company.domain,
-				phone: company.phone_number
+				phone: 1234567890
 			});
 		}
 	}, [company, reset]);
 
+	const onSubmit = async () => {
+		const session = await fetchAuthSession();
+		const authToken = session.tokens?.accessToken?.toString();
+
+		const requestData = {
+			currency_code: 'USD', // Replace with desired currency code if different
+			company_id: company.id, // Replace with actual company ID
+			plan_id: 1, // Replace with actual plan ID
+			user_id: user.id // Replace with actual user ID
+		};
+
+		const response = await axios.post(
+			'https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/create-subscription',
+			requestData,
+			{
+				headers: {
+					Authorization: authToken
+				}
+			}
+		);
+
+		setRedirectUrl(response.data.redirect_link);
+
+	};
+
+	if (redirectUrl) {
+		return (
+			<Elements stripe={stripePromise} options={{clientSecret: redirectUrl}}>
+				<CheckoutForm clientSecret={redirectUrl} />
+			</Elements>
+		)
+	} 
+
 	return (
-		<form>
+		<form onSubmit={handleSubmit(onSubmit)}>
 			<div className="my-40 border-t">
 				<div className="w-full">
 					<Typography className="text-xl">Select your plan</Typography>
@@ -90,7 +134,7 @@ function SubscriptionForm() {
 					</Alert>
 				</div>
 				<Controller
-					name="plan"
+					name="planValue"
 					control={control}
 					render={({ field }) => (
 						<>
@@ -267,7 +311,7 @@ function SubscriptionForm() {
 				<Button
 					variant="contained"
 					color="secondary"
-					disabled={_.isEmpty(dirtyFields) || !isValid}
+					// disabled={_.isEmpty(dirtyFields) || !isValid}
 					type="submit"
 				>
 					Save

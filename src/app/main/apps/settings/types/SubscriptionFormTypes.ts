@@ -1,5 +1,5 @@
 type SubscriptionFormType = {
-	plan: string;
+	planValue: string;
 	companyName: string;
 	emailDomain: string;
 	website: string;

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactElement } from 'react';
 
 import Button from '@mui/material/Button';
 
@@ -10,7 +10,7 @@ interface InvitationsDialogProps {
 	onBack: () => void;
 }
 
-function UserInvitationDialog({ open, onShare, onCancel, onBack }): React.FC<InvitationsDialogProps> {
+function UserInvitationDialog({ open, onShare, onCancel, onBack }: InvitationsDialogProps): ReactElement {
 	if (!open) return null;
 
 	return (
