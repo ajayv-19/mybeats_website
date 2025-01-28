@@ -3,6 +3,7 @@ const {
   API_PREFIX,
   STRIPE_SECRET_KEY,
 } = require("../globals.const.js");
+const ProxyResponse = require("../lib/util.js");
 const StripeClient = require("stripe");
 const {
   Company,
@@ -52,7 +53,7 @@ class PaymentController {
     try {
       const event = req.body;
 
-      
+      console.log(event);
 
       // Handle the event
       switch (event.type) {
@@ -71,8 +72,7 @@ class PaymentController {
           console.log(`Unhandled event type ${event.type}`);
       }
 
-      res.json({received: true});
-
+      res.json({ received: true });
     } catch (error) {
       res.status(500).json({ error: "Unable to create subscription" });
     }
@@ -301,7 +301,10 @@ class PaymentController {
         });
       } else {
         // Cancel existing subscription on stripe
-        await this.MakeSubscribtionCancel({ body: { user_id } }, res);
+        await this.MakeSubscribtionCancel(
+          { body: { user_id } },
+          new ProxyResponse()
+        );
 
         subscription = hasSubscription;
         subscription.update({
