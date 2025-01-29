@@ -3,6 +3,7 @@ const {
   API_PREFIX,
   STRIPE_SECRET_KEY,
 } = require("../globals.const.js");
+const { ProxyResponse } = require("../lib/util.js");
 const StripeClient = require("stripe");
 const {
   Company,
@@ -30,11 +31,132 @@ const getCustomerDetails = async (email, payload) => {
 };
 class PaymentController {
   setupRoutes(router) {
-    router.post("/create-payment", this.CreatePayment);
-    router.get("/payment-success", this.PaymentSuccess);
-    router.get("/payment-cancel", this.PaymentCancel);
-    router.get("/payment-session", this.GetPaymentSubscribed);
+    router.post("/create-payment", (...arg) => this.CreatePayment(...arg));
+    router.get("/payment-success", (...arg) => this.PaymentSuccess(...arg));
+    router.get("/payment-cancel", (...arg) => this.PaymentCancel(...arg));
+    router.get("/payment-session", (...arg) =>
+      this.GetPaymentSubscribed(...arg)
+    );
+    router.post("/create-subscription", (...arg) =>
+      this.CreateSubscription(...arg)
+    );
+    router.post("/cancel-subscription", (...arg) =>
+      this.MakeSubscribtionCancel(...arg)
+    );
+    router.post("/create-payment-intent", (...arg) =>
+      this.FetchPaymentIntent(...arg)
+    );
+    router.post("/webhook", (...arg) => this.HandleStripeEvent(...arg));
   }
+
+  async HandleStripeEvent(req, res) {
+    try {
+      const event = req.body;
+
+      console.log(event);
+
+      // Handle the event
+      switch (event.type) {
+        case "payment_intent.succeeded":
+          const paymentIntent = event.data.object;
+          // Then define and call a method to handle the successful payment intent.
+          // handlePaymentIntentSucceeded(paymentIntent);
+          break;
+        case "payment_method.attached":
+          const paymentMethod = event.data.object;
+          // Then define and call a method to handle the successful attachment of a PaymentMethod.
+          // handlePaymentMethodAttached(paymentMethod);
+          break;
+        // ... handle other event types
+        default:
+          console.log(`Unhandled event type ${event.type}`);
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      res.status(500).json({ error: "Unable to create subscription" });
+    }
+  }
+
+  async CreateSubscription(req, res) {
+    try {
+      const stripe = StripeClient(STRIPE_SECRET_KEY);
+      const { currency_code = "USD", company_id, plan_id, user_id } = req.body;
+
+      if (!currency_code || !plan_id || !user_id) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      // Map product data
+      const products = [plan_id];
+
+      const plan = await Plans.findOne({ where: { id: plan_id } });
+
+      const user = await User.findOne({ where: { id: user_id } });
+
+      const company = await Company.findOne({ where: { id: company_id } });
+
+      const amount = plan.pricing * company.policyholder_count;
+      console.log(amount, typeof amount);
+
+      const customer = await getCustomerDetails(user.email, {
+        name: user.Customer_Name,
+        email: user.email,
+        phone: company.phone_number,
+      });
+
+      console.log(plan, user, company);
+
+      const subscription = await stripe.subscriptions.create({
+        customer: customer.id,
+        items: [
+          {
+            price: "price_1QlFc0DIv4SXGrBxcTOIm2TJ",
+            quantity: 5,
+          },
+        ],
+        metadata: {
+          user_id,
+          company_id,
+          plan_id,
+        },
+        payment_behavior: "default_incomplete",
+        payment_settings: { save_default_payment_method: "on_subscription" },
+        expand: ["latest_invoice.payment_intent"],
+        payment_method_types: ["card", "us_bank_account"],
+      });
+
+      const payment = await Payment.create({
+        user_id,
+        company_id,
+        plan_id,
+        vendor: "stripe",
+        status: "INITIATED",
+        payment_token: subscription.id,
+        transaction_payload: JSON.stringify(subscription),
+      });
+
+      await Subscriptions.create({
+        company_id,
+        user_id,
+        plan_id,
+        starts_at: datelib.now(),
+        ends_at: datelib.addDays(datelib.now(), plan.days),
+        isactive: true,
+        payment_id: payment.id,
+      });
+
+      res.status(200).json({
+        message: "Subscription created successfully",
+        subscription,
+        redirect_link: subscription.latest_invoice.payment_intent.client_secret,
+      });
+    } catch (error) {
+      console.error("Error creating subscription:", error);
+      res.status(500).json({ error: "Unable to create subscription" });
+    }
+  }
+
   async CreatePayment(req, res) {
     try {
       const stripe = StripeClient(STRIPE_SECRET_KEY);
@@ -62,7 +184,7 @@ class PaymentController {
         user_id,
         company_id,
         plan_id,
-        vendor: "strip",
+        vendor: "stripe",
         status: "INITIATING",
       });
 
@@ -159,12 +281,14 @@ class PaymentController {
       console.log("Payment success:", paymentRow);
 
       const plan = await Plans.findOne({ where: { id: plan_id } });
-      const starts_at = transaction_date;
-      const ends_at = datelib.addDays(transaction_date, plan.days);
+      let starts_at = transaction_date;
+      // console.log(plan, "plan");
+      let ends_at = datelib.addDays(transaction_date, plan.days);
       let subscription = null;
       const hasSubscription = await Subscriptions.findOne({
-        where: { user_id, company_id },
+        where: { company_id },
       });
+
       if (!hasSubscription) {
         subscription = await Subscriptions.create({
           company_id,
@@ -176,12 +300,19 @@ class PaymentController {
           payment_id,
         });
       } else {
+        // Cancel existing subscription on stripe
+        await this.MakeSubscribtionCancel(
+          { body: { user_id } },
+          new ProxyResponse()
+        );
+
         subscription = hasSubscription;
         subscription.update({
           isactive: true,
           starts_at,
           ends_at,
           plan_id,
+          payment_id,
         });
       }
 
@@ -224,6 +355,23 @@ class PaymentController {
       // Save request data as payer information
       console.log("Payment success:", paymentRow);
 
+      const {
+        user_id,
+        company_id,
+        plan_id,
+        transaction_payload,
+        id: payment_id,
+        transaction_date,
+      } = paymentRow;
+      const subscription = await Subscriptions.findOne({
+        where: { company_id },
+      });
+      subscription.update({
+        isactive: false,
+        plan_id,
+        payment_id,
+      });
+
       res.status(200).json({
         message: "Payment updated successfully",
         paymentRow,
@@ -255,6 +403,62 @@ class PaymentController {
     res.status(200).json({
       message: "Payment Session retrived successfully",
       session,
+    });
+  }
+
+  async MakeSubscribtionCancel(req, res) {
+    const { user_id } = req.body;
+    const user = await User.findOne({ where: { id: user_id } });
+    const company_id = user.company_id;
+    const company = await Company.findOne({ where: { id: company_id } });
+    const subscription_id = company.subscription_id;
+    const subscription = await Subscriptions.findOne({
+      where: { id: subscription_id },
+    });
+    const payment_id = subscription.payment_id;
+    const payment = await Payment.findOne({ where: { id: payment_id } });
+    const stripe = StripeClient(STRIPE_SECRET_KEY);
+    const session = await stripe.checkout.sessions.retrieve(
+      payment.transaction_id
+    );
+    const remote_subscription_id = session.subscription;
+    //const result = await stripe.subscriptions.del(remote_subscription_id);
+    console.log({ remote_subscription_id, subscription, session, payment });
+    try {
+      //const result = await stripe.subscriptions.del(remote_subscription_id);
+      const result = await stripe.subscriptions.update(remote_subscription_id, {
+        cancel_at_period_end: true,
+      });
+      console.log(result, "result");
+      res.status(200).json({
+        message: "Subscription cancelled successfully",
+        result,
+      });
+    } catch (error) {
+      console.log(error, "error");
+      res.status(400).json({
+        error: true,
+        message: "Unable to cancel subscription",
+      });
+    }
+  }
+
+  async FetchPaymentIntent(req, res) {
+    const { items } = req.body;
+    const stripe = StripeClient(STRIPE_SECRET_KEY);
+    // Create a PaymentIntent with the order amount and currency
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount: 30 * 100,
+      currency: "usd",
+      payment_method_types: ["card", "us_bank_account"],
+      // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
+      // automatic_payment_methods: {
+      //   enabled: true,
+      // },
+    });
+
+    res.send({
+      clientSecret: paymentIntent.client_secret,
     });
   }
 }

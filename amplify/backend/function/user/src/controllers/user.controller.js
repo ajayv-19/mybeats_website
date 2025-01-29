@@ -1,4 +1,5 @@
-const { User, Company } = require("../models");
+// const { is } = require("immutable");
+const { User, Company, Subscriptions } = require("../models");
 
 const UserController = {
   async getUserById(req, res) {
@@ -10,12 +11,24 @@ const UserController = {
           .status(404)
           .json({ success: false, error: "User not found" });
       }
-      const company = await Company.findOne({ where: { domain: user.domain } });
-      //const admin = await User.findOne({ where: { id: company.admin_id } });
-      // user.company = company;
-
-      //const userdata = { user, company, admin };
-      const userdata = { user, company };
+      let company = null;
+      if (user.company_id) {
+        company = await Company.findOne({ where: { id: user.company_id } });
+      } else {
+        company = await Company.findOne({ where: { domain: user.domain } });
+      }
+      const subscription = await Subscriptions.findOne({
+        where: { id: company.subscription_id },
+      });
+      if (subscription && subscription.isactive) {
+        const currentDate = new Date();
+        const expiryDate = new Date(subscription.expiry_date);
+        if (currentDate > expiryDate) {
+          subscription.isactive = false;
+          await subscription.update({ isactive: false });
+        }
+      }
+      const userdata = { user, company, isactive: subscription.isactive };
       res.json({ success: true, userdata });
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -99,16 +112,11 @@ const UserController = {
       }
       const domain = email.split("@")[1];
       let company_id;
-      const company = await Company.findOne({ where: { domain } });
-      if (company) {
-        company_id = company.id;
-      }
 
       const created_timestamp = new Date().toISOString();
 
       // Find the existing user by email
       const existingUser = await User.findOne({ where: { email } });
-
       // If the user exists, update only the fields that are not null
       if (existingUser) {
         const updatedUser = await existingUser.update({
@@ -126,15 +134,17 @@ const UserController = {
             removedByAdmin !== null
               ? removedByAdmin
               : existingUser.removedByAdmin,
-          domain: domain !== null ? domain : existingUser.domain,
-          ...(company_id && { company_id }),
         });
-
         return res.json({
           success: true,
           message: "User updated successfully",
           user: updatedUser,
         });
+      }
+
+      const company = await Company.findOne({ where: { domain } });
+      if (company) {
+        company_id = company.id;
       }
 
       // If the user does not exist, create a new user
@@ -151,7 +161,7 @@ const UserController = {
         is_varified: 1,
         is_invited: 0,
         invited_by: 0,
-        ...(comapany_id && { company_id }),
+        ...(company_id && { company_id }),
       });
 
       res.json({
@@ -169,3 +179,5 @@ const UserController = {
 };
 
 module.exports = UserController;
+
+// Bank, Apple pay, Card, G-pay.

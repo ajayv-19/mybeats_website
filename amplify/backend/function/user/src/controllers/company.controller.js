@@ -22,6 +22,13 @@ class CompanyController {
       });
     } else if (user) {
       user.update({ company_id: company.id });
+      // check we have a users with the same domain and update their company_id
+      const users = await User.findAll({ where: { domain: user.domain } });
+      if (users) {
+        users.forEach(async (user) => {
+          user.update({ company_id: company.id });
+        });
+      }
     } else {
       return res.status(400).json({
         message: "User not found",

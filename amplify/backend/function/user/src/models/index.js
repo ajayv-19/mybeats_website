@@ -97,6 +97,10 @@ const Plans = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    days: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   {
     sequelize,

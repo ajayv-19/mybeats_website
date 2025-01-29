@@ -31,7 +31,9 @@ function ProjectDashboardApp() {
   const isMobile = useThemeMediaQuery((theme) => theme.breakpoints.down("lg"));
 
   const [loader, setLoader] = useState(true);
+  const [qaModel, setQaModel] = useState(false);
   const [url, setUrl] = useState("");
+  const [qaUrl, setQaUrl] = useState("");
   const [companyName, setCompanyName] = useState(""); // State to store the company name
 
   useEffect(() => {
@@ -85,8 +87,12 @@ function ProjectDashboardApp() {
 
         const data1 = await quicksight.response;
         const data2 = await data1.body;
-        const data3 = (await data2.json()) as { embedUrl: string };
+        const data3 = (await data2.json()) as {
+          embedUrl: string;
+          generativeQnAEmbedUrl: string;
+        };
         setUrl(data3.embedUrl);
+        setQaUrl(data3.generativeQnAEmbedUrl);
 
         console.log(data3.embedUrl);
 
@@ -135,34 +141,23 @@ function ProjectDashboardApp() {
     <FusePageSimple
       content={
         <div className="flex flex-col w-full p-24">
+          <button type="button" onClick={() => setQaModel(true)}>
+            {" "}
+            Ask Q A{" "}
+          </button>
           <iframe width="100%" height="720" src={url}></iframe>
-          {/* <PageBreadcrumb className="mb-8" />
-                   <Typography className="text-4xl font-extrabold leading-none tracking-tight mb-4">
-                       All Activities
-                   </Typography>
-                   <Typography
-                       className="text-lg"
-                       color="text.secondary"
-                   >
-                       Application wide activities are listed here as individual items, starting with the most recent.
-                   </Typography>
-                   <Timeline
-                       className="py-48 px-0"
-                       position="right"
-                       sx={{
-                           '& .MuiTimelineItem-root:before': {
-                               display: 'none'
-                           }
-                       }}
-                   >
-                       {exampleActivitiesData.map((item, index) => (
-                           <ActivityTimelineItem
-                               last={exampleActivitiesData.length === index + 1}
-                               item={item}
-                               key={item.id}
-                           />
-                       ))}
-                   </Timeline> */}
+
+          <div
+            className={
+              "absolute top-5 left-5 rounded-md w-full h-full " +
+              (qaModel ? "" : "hidden")
+            }
+          >
+            <button type="button" onClick={() => setQaModel(false)}>
+              close
+            </button>
+            <iframe width="100%" height="720" src={qaUrl}></iframe>
+          </div>
         </div>
       }
       scroll={isMobile ? "normal" : "page"}
