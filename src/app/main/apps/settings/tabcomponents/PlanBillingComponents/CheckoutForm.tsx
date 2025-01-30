@@ -20,8 +20,6 @@ function CheckoutForm({ clientSecret }: CheckoutFormProps): ReactElement {
 		// Trigger form validation and wallet collection
 		const { error: submitError } = await elements.submit();
 
-		console.log('submit error', submitError);
-
 		const { error } = await stripe.confirmPayment({
 			// `Elements` instance that was used to create the Payment Element
 			elements,

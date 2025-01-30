@@ -12,19 +12,19 @@ import FuseSvgIcon from '@fuse/core/FuseSvgIcon';
 import TextField from '@mui/material/TextField';
 import InputAdornment from '@mui/material/InputAdornment';
 import Alert from '@mui/material/Alert';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import { useSelector } from 'react-redux';
 import { selectAccount } from 'src/app/features/account/accountSlice';
 import { fetchAuthSession } from '@aws-amplify/auth';
 import axios from 'axios';
 import SubscriptionFormType from '../../types/SubscriptionFormTypes';
-import { Elements } from '@stripe/react-stripe-js';
+
 import CheckoutForm from './CheckoutForm';
-import { loadStripe } from '@stripe/stripe-js';
 
 const stripePromise = loadStripe(
 	'pk_test_51QVNrHDIv4SXGrBxLk9llPOeoiczwAeRWCINxXbBNNw2Ecr1FTlk4ZasY3wHAZrjDcANw5bJN318FKvXtS2qpJEA00O6QyClPD'
 );
-
 
 const defaultValues: SubscriptionFormType = {
 	companyName: '',
@@ -73,7 +73,7 @@ function SubscriptionForm() {
 
 	const { company, user } = useSelector(selectAccount);
 
-	const [redirectUrl, setRedirectUrl] = useState(null);
+	const [clientSecret, setClientSecret] = useState(null);
 
 	useEffect(() => {
 		if (company) {
@@ -91,10 +91,11 @@ function SubscriptionForm() {
 		const authToken = session.tokens?.accessToken?.toString();
 
 		const requestData = {
-			currency_code: 'USD', // Replace with desired currency code if different
-			company_id: company.id, // Replace with actual company ID
-			plan_id: 1, // Replace with actual plan ID
-			user_id: user.id // Replace with actual user ID
+			currency_code: 'USD',
+			company_id: company.id,
+			plan_id: 1,
+			user_id: user.id,
+			price_id: 'price_1QlFc0DIv4SXGrBxcTOIm2TJ'
 		};
 
 		const response = await axios.post(
@@ -107,17 +108,19 @@ function SubscriptionForm() {
 			}
 		);
 
-		setRedirectUrl(response.data.redirect_link);
-
+		setClientSecret(response.data.clientSecret);
 	};
 
-	if (redirectUrl) {
+	if (clientSecret) {
 		return (
-			<Elements stripe={stripePromise} options={{clientSecret: redirectUrl}}>
-				<CheckoutForm clientSecret={redirectUrl} />
+			<Elements
+				stripe={stripePromise}
+				options={{ clientSecret: clientSecret }}
+			>
+				<CheckoutForm clientSecret={clientSecret} />
 			</Elements>
-		)
-	} 
+		);
+	}
 
 	return (
 		<form onSubmit={handleSubmit(onSubmit)}>

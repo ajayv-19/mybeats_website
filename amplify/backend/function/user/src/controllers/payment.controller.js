@@ -11,40 +11,147 @@ const {
   Plans,
   Payment,
   Subscriptions,
+  NewSubscriptions
 } = require("../models/index.js");
+
 const datelib = require("../lib/date.js");
+
 const getCustomerDetails = async (email, payload) => {
   const stripe = StripeClient(STRIPE_SECRET_KEY);
-  let customer = null;
-  const customers = await stripe.customers.list({
-    email: email,
-    limit: 1, // Only need the first match
-  });
-  const hasCustomer = !!customers.data.length;
-  if (!hasCustomer) {
+
+  try {
+    // Check if a customer with the given email already exists
+    const { data: existingCustomers } = await stripe.customers.list({
+      email,
+      limit: 1, // Fetch only the first matching customer
+    });
+
+    // If customer exists, return the first match
+    if (existingCustomers.length > 0) {
+      return existingCustomers[0];
+    }
+
+    // If no customer exists, create a new one
     const newCustomer = await stripe.customers.create(payload);
-    customer = newCustomer;
-  } else {
-    customer = customers.data[0];
+    return newCustomer;
+  } catch (error) {
+    console.error("Error fetching or creating Stripe customer:", error);
+    throw new Error("Unable to retrieve or create customer.");
   }
-  return customer;
 };
+const addSubscription = async (customer_subscription_created) => {
+  try {
+    // Extract relevant details from the event
+    const {
+      id: sub_id,
+      status,
+      current_period_start,
+      current_period_end,
+      plan,
+    } = customer_subscription_created;
+
+    // Using static metadata since metadata is missing in Stripe response
+    const metadata = {
+      company_id: 1, // Replace with actual static company ID
+      plan_id: 1, // Replace with actual static plan ID
+      user_id: 1, // Replace with actual static user ID (or keep NULL)
+    };
+
+    console.log("✅ Using static metadata:", metadata);
+
+    // Create a new row in the NewSubscriptions table
+    const newSubscription = await NewSubscriptions.create({
+      sub_id,
+      user_id: metadata.user_id || null, // If user_id exists, store it; otherwise, keep it NULL
+      company_id: metadata.company_id,
+      amount: plan.amount / 100, // Convert cents to dollars (Stripe sends amounts in cents)
+      bill_start: new Date(current_period_start * 1000), // Convert Unix timestamp to Date
+      bill_end: new Date(current_period_end * 1000), // Convert Unix timestamp to Date
+      status: status.toUpperCase(), // Normalize status
+    });
+
+    console.log("✅ Subscription created successfully:", newSubscription);
+    return { success: true, data: newSubscription };
+  } catch (error) {
+    console.error("❌ Error creating subscription:", error);
+    return { success: false, error: "Unable to create subscription" };
+  }
+};
+
+const updateSubscription = async (customer_subscription_updated) => {
+  // Extract relevant details
+  const {
+    id: subscription_id,
+    status,
+    current_period_start,
+    current_period_end,
+    metadata,
+    plan,
+    quantity,
+  } = customer_subscription_updated;
+
+  if (
+    !metadata ||
+    !metadata.user_id ||
+    !metadata.company_id ||
+    !metadata.plan_id
+  ) {
+    console.warn("Missing metadata in subscription update event.");
+    return res
+      .status(400)
+      .json({ error: "Missing metadata in subscription update event" });
+  }
+
+  // Update the existing subscription in the Subscription table
+  const updatedRows = await Subscriptions.update(
+    {
+      status: status.toUpperCase(),
+      start_date: new Date(current_period_start * 1000), // Convert Unix timestamp to Date
+      end_date: new Date(current_period_end * 1000), // Convert Unix timestamp to Date
+      price_id: plan.id, // Updated plan price ID
+      quantity,
+      updated_at: new Date(),
+    },
+    { where: { subscription_id } }
+  );
+
+  if (updatedRows[0] === 0) {
+    console.warn(`Subscription with ID ${subscription_id} not found.`);
+    return res.status(404).json({ error: "Subscription not found" });
+  }
+};
+
+const handleFailedInvoive = async (invoice_failed) => {
+  const { subscription: failed_subscription_id } = invoice_failed;
+
+  if (!failed_subscription_id) {
+    console.warn("No subscription ID found in failed payment event.");
+    return res.status(400).json({
+      error: "No subscription ID found in failed payment event",
+    });
+  }
+
+  // Mark the subscription as PAYMENT_FAILED
+  await Subscriptions.update(
+    { status: "PAYMENT_FAILED", updated_at: new Date() },
+    { where: { subscription_id: failed_subscription_id } }
+  );  
+};
+
+const pauseSubscription = async () => {};
+
+const removeAccessQ = async () => {};
+
 class PaymentController {
   setupRoutes(router) {
-    router.post("/create-payment", (...arg) => this.CreatePayment(...arg));
-    router.get("/payment-success", (...arg) => this.PaymentSuccess(...arg));
-    router.get("/payment-cancel", (...arg) => this.PaymentCancel(...arg));
-    router.get("/payment-session", (...arg) =>
-      this.GetPaymentSubscribed(...arg)
-    );
+    // router.post("/create-payment", (...arg) => this.CreatePayment(...arg));
+    // router.get("/payment-success", (...arg) => this.PaymentSuccess(...arg));
+    // router.get("/payment-cancel", (...arg) => this.PaymentCancel(...arg));
+    // router.get("/payment-session", (...arg) =>
+    //   this.GetPaymentSubscribed(...arg)
+    // );
     router.post("/create-subscription", (...arg) =>
       this.CreateSubscription(...arg)
-    );
-    router.post("/cancel-subscription", (...arg) =>
-      this.MakeSubscribtionCancel(...arg)
-    );
-    router.post("/create-payment-intent", (...arg) =>
-      this.FetchPaymentIntent(...arg)
     );
     router.post("/webhook", (...arg) => this.HandleStripeEvent(...arg));
   }
@@ -53,21 +160,35 @@ class PaymentController {
     try {
       const event = req.body;
 
-      console.log(event);
-
       // Handle the event
       switch (event.type) {
-        case "payment_intent.succeeded":
-          const paymentIntent = event.data.object;
-          // Then define and call a method to handle the successful payment intent.
-          // handlePaymentIntentSucceeded(paymentIntent);
+
+        // When a subscription is created for a customer for a customer
+        // Add a row to the subscription table with status active
+        // Update the payment row's status from active to succesfull
+        case "customer.subscription.created":
+          const customer_subscription_created = event.data.object;
+          await addSubscription(customer_subscription_created);
           break;
-        case "payment_method.attached":
-          const paymentMethod = event.data.object;
-          // Then define and call a method to handle the successful attachment of a PaymentMethod.
-          // handlePaymentMethodAttached(paymentMethod);
-          break;
-        // ... handle other event types
+
+          // When a subscription is updated
+        // case "customer.subscription.updated":
+        //   const customer_subscription_updated = event.data.object;
+        //   updateSubscription(customer_subscription_updated);
+        //   break;
+
+        // case "invoice.payment_succeeded":
+        //   const invoice_suceeded = event.data.object;
+        //   break;
+
+        // When a customer fails to pay for the subscription
+        // case "invoice.payment_failed":
+        //   const invoice_failed = event.data.object;
+        //   handleFailedInvoive(invoice_failed)
+        //   break;
+
+        // TODO: Update subscription (Prorated Charge) -> Change the number of policyholders (Change the price) -> Update the payment and the subscription in stripe
+
         default:
           console.log(`Unhandled event type ${event.type}`);
       }
@@ -78,41 +199,47 @@ class PaymentController {
     }
   }
 
+
+  // Update subscription
+  // TODO: Downgrade -> Calc new amount -> Calc new subscription -> Cancel previous sub -> Calc refund amount to the user
+  // TODO: Upgrade -> Same thing
+
+  // Create Subscription route
   async CreateSubscription(req, res) {
     try {
       const stripe = StripeClient(STRIPE_SECRET_KEY);
-      const { currency_code = "USD", company_id, plan_id, user_id } = req.body;
+      const {
+        currency_code = "USD",
+        company_id,
+        price_id,
+        plan_id,
+        user_id,
+      } = req.body;
 
-      if (!currency_code || !plan_id || !user_id) {
+      // Throw an error when the required parameters are not there
+      if (!currency_code || !price_id || !user_id || !plan_id) {
         return res.status(400).json({ error: "Missing required parameters" });
       }
 
-      // Map product data
-      const products = [plan_id];
-
-      const plan = await Plans.findOne({ where: { id: plan_id } });
-
+      // Get the user details
       const user = await User.findOne({ where: { id: user_id } });
 
+      // Get the company details
       const company = await Company.findOne({ where: { id: company_id } });
 
-      const amount = plan.pricing * company.policyholder_count;
-      console.log(amount, typeof amount);
-
+      // Get the customer detail
       const customer = await getCustomerDetails(user.email, {
         name: user.Customer_Name,
         email: user.email,
         phone: company.phone_number,
       });
 
-      console.log(plan, user, company);
-
       const subscription = await stripe.subscriptions.create({
         customer: customer.id,
         items: [
           {
-            price: "price_1QlFc0DIv4SXGrBxcTOIm2TJ",
-            quantity: 5,
+            price: price_id, // price id is related to the subscription plan
+            quantity: company.policyholder_count, // The company is going to subscribe for the policyholders that they have
           },
         ],
         metadata: {
@@ -121,35 +248,28 @@ class PaymentController {
           plan_id,
         },
         payment_behavior: "default_incomplete",
-        payment_settings: { save_default_payment_method: "on_subscription" },
+
+        payment_settings: {
+          save_default_payment_method: "on_subscription",
+          payment_method_types: ["card", "us_bank_account"],
+        },
         expand: ["latest_invoice.payment_intent"],
-        payment_method_types: ["card", "us_bank_account"],
       });
 
-      const payment = await Payment.create({
+      // Initiate payment
+      await Payment.create({
         user_id,
         company_id,
         plan_id,
         vendor: "stripe",
         status: "INITIATED",
-        payment_token: subscription.id,
+        subscription_id: subscription.id,
         transaction_payload: JSON.stringify(subscription),
       });
 
-      await Subscriptions.create({
-        company_id,
-        user_id,
-        plan_id,
-        starts_at: datelib.now(),
-        ends_at: datelib.addDays(datelib.now(), plan.days),
-        isactive: true,
-        payment_id: payment.id,
-      });
-
       res.status(200).json({
-        message: "Subscription created successfully",
-        subscription,
-        redirect_link: subscription.latest_invoice.payment_intent.client_secret,
+        message: "Subscription initiated successfully",
+        clientSecret: subscription.latest_invoice.payment_intent.client_secret,
       });
     } catch (error) {
       console.error("Error creating subscription:", error);
@@ -157,311 +277,334 @@ class PaymentController {
     }
   }
 
-  async CreatePayment(req, res) {
+  async CancelSubscription(req, res) {
     try {
       const stripe = StripeClient(STRIPE_SECRET_KEY);
-      console.log({ STRIPE_SECRET_KEY });
-      const { currency_code = "USD", company_id, plan_id, user_id } = req.body;
+      const { subscription_id, cancel_immediately } = req.body;
 
-      if (!currency_code || !plan_id || !user_id) {
-        return res.status(400).json({ error: "Missing required parameters" });
+      if (!subscription_id) {
+          return res.status(400).json({ error: "Missing subscription_id" });
       }
 
-      // Map product data
-      const products = [plan_id];
+      // Fetch existing subscription
+      const subscription = await stripe.subscriptions.retrieve(subscription_id);
 
-      const plan = await Plans.findOne({ where: { id: plan_id } });
-      console.log(plan, "plan");
+      if (!subscription) {
+          return res.status(404).json({ error: "Subscription not found" });
+      }
 
-      const user = await User.findOne({ where: { id: user_id } });
-
-      const company = await Company.findOne({ where: { id: company_id } });
-
-      const amount = plan.pricing * company.policyholder_count;
-      console.log(amount, typeof amount);
-
-      const payment = await Payment.create({
-        user_id,
-        company_id,
-        plan_id,
-        vendor: "stripe",
-        status: "INITIATING",
+      // Cancel the subscription (either immediately or at the end of the billing period)
+      const canceledSubscription = await stripe.subscriptions.update(subscription_id, {
+          cancel_at_period_end: !cancel_immediately, // If true, the user will have access till the end of their billing cycle
       });
 
-      const order_id = payment.id;
-      const customer = await getCustomerDetails(user.email, {
-        name: user.Customer_Name,
-        email: user.email,
-        phone: company.phone_number,
-      });
-
-      console.log({ customer });
-
-      // Create Checkout Session
-      const session = await stripe.checkout.sessions.create({
-        line_items: [
+      // Update subscription status in DB
+      await Subscriptions.update(
           {
-            price_data: {
-              currency: currency_code,
-              product_data: {
-                name: products.join(", "),
-                description: `Subscription for ${company.Company_Name}`,
-              },
-              unit_amount: amount * 100, // plan.amont;
-              recurring: {
-                interval: plan.interval,
-                interval_count: plan.interval_count,
-              },
-            },
-            quantity: 1,
+              status: cancel_immediately ? "CANCELED" : "PENDING_CANCELLATION",
+              updated_at: new Date(),
           },
-        ],
-        customer: customer.id,
-        //customer_email: user.email,
-        metadata: {
-          name: user.Customer_Name,
-          mobile_number: company.phone_number,
-          order_id: order_id,
-        },
-        mode: "subscription",
-        success_url: `${API_URL}${API_PREFIX}/payment-success?order_id=${order_id}&session_id={CHECKOUT_SESSION_ID}&vendor=stripepay`,
-        cancel_url: `${API_URL}${API_PREFIX}/payment-cancel?order_id=${order_id}&session_id={CHECKOUT_SESSION_ID}&vendor=stripepay`,
-      });
-
-      // Save payment record (Mock DB call, replace with your DB logic)
-      const paymentPayload = {
-        user_id,
-        company_id,
-        payment_token: session.id,
-        order_id,
-        amount,
-        currency: currency_code,
-        payload: session,
-      };
-
-      const paymentRow = await Payment.findOne({ where: { id: order_id } });
-      await paymentRow.update({
-        transaction_payload: JSON.stringify(paymentPayload),
-        status: "INITIATED",
-      });
-
-      console.log("Payment created:", paymentPayload);
+          { where: { subscription_id } }
+      );
 
       res.status(200).json({
-        payment: paymentPayload,
-        redirect_link: session.url,
+          message: cancel_immediately
+              ? "Subscription canceled immediately"
+              : "Subscription will be canceled at the end of the billing cycle",
+          canceledSubscription,
       });
-    } catch (error) {
-      console.error("Error creating payment:", error);
-      res.status(500).json({ error: "Unable to create payment session" });
-    }
+  } catch (error) {
+      console.error("Error canceling subscription:", error);
+      res.status(500).json({ error: "Unable to cancel subscription" });
+  }
   }
 
-  async PaymentSuccess(req, res) {
-    const { order_id, session_id, vendor } = req.query;
+  //   async CreatePayment(req, res) {
+  //     try {
+  //       const stripe = StripeClient(STRIPE_SECRET_KEY);
+  //       console.log({ STRIPE_SECRET_KEY });
+  //       const { currency_code = "USD", company_id, plan_id, user_id } = req.body;
 
-    const paymentRow = await Payment.findOne({ where: { id: order_id } });
+  //       if (!currency_code || !plan_id || !user_id) {
+  //         return res.status(400).json({ error: "Missing required parameters" });
+  //       }
 
-    if (paymentRow) {
-      paymentRow.update({
-        status: "SUCCESS",
-        transaction_id: session_id,
-        transaction_date: datelib.now(),
-      });
-      // Save request data as payer information
+  //       // Map product data
+  //       const products = [plan_id];
 
-      const {
-        user_id,
-        company_id,
-        plan_id,
-        transaction_payload,
-        id: payment_id,
-        transaction_date,
-      } = paymentRow;
-      console.log("Payment success:", paymentRow);
+  //       const plan = await Plans.findOne({ where: { id: plan_id } });
+  //       console.log(plan, "plan");
 
-      const plan = await Plans.findOne({ where: { id: plan_id } });
-      let starts_at = transaction_date;
-      // console.log(plan, "plan");
-      let ends_at = datelib.addDays(transaction_date, plan.days);
-      let subscription = null;
-      const hasSubscription = await Subscriptions.findOne({
-        where: { company_id },
-      });
+  //       const user = await User.findOne({ where: { id: user_id } });
 
-      if (!hasSubscription) {
-        subscription = await Subscriptions.create({
-          company_id,
-          user_id,
-          starts_at,
-          ends_at,
-          isactive: true,
-          plan_id,
-          payment_id,
-        });
-      } else {
-        // Cancel existing subscription on stripe
-        await this.MakeSubscribtionCancel(
-          { body: { user_id } },
-          new ProxyResponse()
-        );
+  //       const company = await Company.findOne({ where: { id: company_id } });
 
-        subscription = hasSubscription;
-        subscription.update({
-          isactive: true,
-          starts_at,
-          ends_at,
-          plan_id,
-          payment_id,
-        });
-      }
+  //       const amount = plan.pricing * company.policyholder_count;
+  //       console.log(amount, typeof amount);
 
-      if (subscription) {
-        const company = await Company.findOne({ where: { id: company_id } });
-        company.update({
-          subscription_id: subscription.id,
-          plan_id,
-          plan_type: plan.name,
-          last_renewal: starts_at,
-          expiry_date: ends_at,
-          //plan_id
-        });
-      }
+  //       const payment = await Payment.create({
+  //         user_id,
+  //         company_id,
+  //         plan_id,
+  //         vendor: "stripe",
+  //         status: "INITIATING",
+  //       });
 
-      res.status(200).json({
-        message: "Payment updated successfully",
-        payment: paymentRow,
-        subscription,
-      });
-    } else {
-      res.status(400).json({
-        error: true,
-        message: "Unable to update payment",
-      });
-    }
-  }
+  //       const order_id = payment.id;
+  //       const customer = await getCustomerDetails(user.email, {
+  //         name: user.Customer_Name,
+  //         email: user.email,
+  //         phone: company.phone_number,
+  //       });
 
-  async PaymentCancel(req, res) {
-    const { order_id, session_id, vendor } = req.query;
+  //       console.log({ customer });
 
-    const paymentRow = await Payment.findOne({ where: { id: order_id } });
+  //       // Create Checkout Session
+  //       const session = await stripe.checkout.sessions.create({
+  //         line_items: [
+  //           {
+  //             price_data: {
+  //               currency: currency_code,
+  //               product_data: {
+  //                 name: products.join(", "),
+  //                 description: `Subscription for ${company.Company_Name}`,
+  //               },
+  //               unit_amount: amount * 100, // plan.amont;
+  //               recurring: {
+  //                 interval: plan.interval,
+  //                 interval_count: plan.interval_count,
+  //               },
+  //             },
+  //             quantity: 1,
+  //           },
+  //         ],
+  //         customer: customer.id,
+  //         //customer_email: user.email,
+  //         metadata: {
+  //           name: user.Customer_Name,
+  //           mobile_number: company.phone_number,
+  //           order_id: order_id,
+  //         },
+  //         mode: "subscription",
+  //         success_url: `${API_URL}${API_PREFIX}/payment-success?order_id=${order_id}&session_id={CHECKOUT_SESSION_ID}&vendor=stripepay`,
+  //         cancel_url: `${API_URL}${API_PREFIX}/payment-cancel?order_id=${order_id}&session_id={CHECKOUT_SESSION_ID}&vendor=stripepay`,
+  //       });
 
-    if (paymentRow) {
-      paymentRow.update({
-        status: "FAILED",
-        transaction_id: session_id,
-        transaction_date: now(),
-      });
-      // Save request data as payer information
-      console.log("Payment success:", paymentRow);
+  //       // Save payment record (Mock DB call, replace with your DB logic)
+  //       const paymentPayload = {
+  //         user_id,
+  //         company_id,
+  //         payment_token: session.id,
+  //         order_id,
+  //         amount,
+  //         currency: currency_code,
+  //         payload: session,
+  //       };
 
-      const {
-        user_id,
-        company_id,
-        plan_id,
-        transaction_payload,
-        id: payment_id,
-        transaction_date,
-      } = paymentRow;
-      const subscription = await Subscriptions.findOne({
-        where: { company_id },
-      });
-      subscription.update({
-        isactive: false,
-        plan_id,
-        payment_id,
-      });
+  //       const paymentRow = await Payment.findOne({ where: { id: order_id } });
+  //       await paymentRow.update({
+  //         transaction_payload: JSON.stringify(paymentPayload),
+  //         status: "INITIATED",
+  //       });
 
-      res.status(200).json({
-        message: "Payment updated successfully",
-        paymentRow,
-      });
-    } else {
-      res.status(400).json({
-        error: true,
-        message: "Unable to update payment",
-      });
-    }
-  }
+  //       console.log("Payment created:", paymentPayload);
 
-  async GetPaymentSubscribed(req, res) {
-    const { user_id } = req.query;
-    const user = await User.findOne({ where: { id: user_id } });
-    const company_id = user.company_id;
-    const company = await Company.findOne({ where: { id: company_id } });
-    const subscription_id = company.subscription_id;
-    const subscription = await Subscriptions.findOne({
-      where: { id: subscription_id },
-    });
-    const payment_id = subscription.payment_id;
-    const payment = await Payment.findOne({ where: { id: payment_id } });
-    const stripe = StripeClient(STRIPE_SECRET_KEY);
-    const session = await stripe.checkout.sessions.retrieve(
-      payment.transaction_id
-    );
+  //       res.status(200).json({
+  //         payment: paymentPayload,
+  //         redirect_link: session.url,
+  //       });
+  //     } catch (error) {
+  //       console.error("Error creating payment:", error);
+  //       res.status(500).json({ error: "Unable to create payment session" });
+  //     }
+  //   }
 
-    res.status(200).json({
-      message: "Payment Session retrived successfully",
-      session,
-    });
-  }
+  //   async PaymentSuccess(req, res) {
+  //     const { order_id, session_id, vendor } = req.query;
 
-  async MakeSubscribtionCancel(req, res) {
-    const { user_id } = req.body;
-    const user = await User.findOne({ where: { id: user_id } });
-    const company_id = user.company_id;
-    const company = await Company.findOne({ where: { id: company_id } });
-    const subscription_id = company.subscription_id;
-    const subscription = await Subscriptions.findOne({
-      where: { id: subscription_id },
-    });
-    const payment_id = subscription.payment_id;
-    const payment = await Payment.findOne({ where: { id: payment_id } });
-    const stripe = StripeClient(STRIPE_SECRET_KEY);
-    const session = await stripe.checkout.sessions.retrieve(
-      payment.transaction_id
-    );
-    const remote_subscription_id = session.subscription;
-    //const result = await stripe.subscriptions.del(remote_subscription_id);
-    console.log({ remote_subscription_id, subscription, session, payment });
-    try {
-      //const result = await stripe.subscriptions.del(remote_subscription_id);
-      const result = await stripe.subscriptions.update(remote_subscription_id, {
-        cancel_at_period_end: true,
-      });
-      console.log(result, "result");
-      res.status(200).json({
-        message: "Subscription cancelled successfully",
-        result,
-      });
-    } catch (error) {
-      console.log(error, "error");
-      res.status(400).json({
-        error: true,
-        message: "Unable to cancel subscription",
-      });
-    }
-  }
+  //     const paymentRow = await Payment.findOne({ where: { id: order_id } });
 
-  async FetchPaymentIntent(req, res) {
-    const { items } = req.body;
-    const stripe = StripeClient(STRIPE_SECRET_KEY);
-    // Create a PaymentIntent with the order amount and currency
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount: 30 * 100,
-      currency: "usd",
-      payment_method_types: ["card", "us_bank_account"],
-      // In the latest version of the API, specifying the `automatic_payment_methods` parameter is optional because Stripe enables its functionality by default.
-      // automatic_payment_methods: {
-      //   enabled: true,
-      // },
-    });
+  //     if (paymentRow) {
+  //       paymentRow.update({
+  //         status: "SUCCESS",
+  //         transaction_id: session_id,
+  //         transaction_date: datelib.now(),
+  //       });
+  //       // Save request data as payer information
 
-    res.send({
-      clientSecret: paymentIntent.client_secret,
-    });
-  }
+  //       const {
+  //         user_id,
+  //         company_id,
+  //         plan_id,
+  //         transaction_payload,
+  //         id: payment_id,
+  //         transaction_date,
+  //       } = paymentRow;
+  //       console.log("Payment success:", paymentRow);
+
+  //       const plan = await Plans.findOne({ where: { id: plan_id } });
+  //       let starts_at = transaction_date;
+  //       // console.log(plan, "plan");
+  //       let ends_at = datelib.addDays(transaction_date, plan.days);
+  //       let subscription = null;
+  //       const hasSubscription = await Subscriptions.findOne({
+  //         where: { company_id },
+  //       });
+
+  //       if (!hasSubscription) {
+  //         subscription = await Subscriptions.create({
+  //           company_id,
+  //           user_id,
+  //           starts_at,
+  //           ends_at,
+  //           isactive: true,
+  //           plan_id,
+  //           payment_id,
+  //         });
+  //       } else {
+  //         // Cancel existing subscription on stripe
+  //         await this.MakeSubscribtionCancel(
+  //           { body: { user_id } },
+  //           new ProxyResponse()
+  //         );
+
+  //         subscription = hasSubscription;
+  //         subscription.update({
+  //           isactive: true,
+  //           starts_at,
+  //           ends_at,
+  //           plan_id,
+  //           payment_id,
+  //         });
+  //       }
+
+  //       if (subscription) {
+  //         const company = await Company.findOne({ where: { id: company_id } });
+  //         company.update({
+  //           subscription_id: subscription.id,
+  //           plan_id,
+  //           plan_type: plan.name,
+  //           last_renewal: starts_at,
+  //           expiry_date: ends_at,
+  //           //plan_id
+  //         });
+  //       }
+
+  //       res.status(200).json({
+  //         message: "Payment updated successfully",
+  //         payment: paymentRow,
+  //         subscription,
+  //       });
+  //     } else {
+  //       res.status(400).json({
+  //         error: true,
+  //         message: "Unable to update payment",
+  //       });
+  //     }
+  //   }
+
+  //   async PaymentCancel(req, res) {
+  //     const { order_id, session_id, vendor } = req.query;
+
+  //     const paymentRow = await Payment.findOne({ where: { id: order_id } });
+
+  //     if (paymentRow) {
+  //       paymentRow.update({
+  //         status: "FAILED",
+  //         transaction_id: session_id,
+  //         transaction_date: now(),
+  //       });
+  //       // Save request data as payer information
+  //       console.log("Payment success:", paymentRow);
+
+  //       const {
+  //         user_id,
+  //         company_id,
+  //         plan_id,
+  //         transaction_payload,
+  //         id: payment_id,
+  //         transaction_date,
+  //       } = paymentRow;
+  //       const subscription = await Subscriptions.findOne({
+  //         where: { company_id },
+  //       });
+  //       subscription.update({
+  //         isactive: false,
+  //         plan_id,
+  //         payment_id,
+  //       });
+
+  //       res.status(200).json({
+  //         message: "Payment updated successfully",
+  //         paymentRow,
+  //       });
+  //     } else {
+  //       res.status(400).json({
+  //         error: true,
+  //         message: "Unable to update payment",
+  //       });
+  //     }
+  //   }
+
+  //   async GetPaymentSubscribed(req, res) {
+  //     const { user_id } = req.query;
+  //     const user = await User.findOne({ where: { id: user_id } });
+  //     const company_id = user.company_id;
+  //     const company = await Company.findOne({ where: { id: company_id } });
+  //     const subscription_id = company.subscription_id;
+  //     const subscription = await Subscriptions.findOne({
+  //       where: { id: subscription_id },
+  //     });
+  //     const payment_id = subscription.payment_id;
+  //     const payment = await Payment.findOne({ where: { id: payment_id } });
+  //     const stripe = StripeClient(STRIPE_SECRET_KEY);
+  //     const session = await stripe.checkout.sessions.retrieve(
+  //       payment.transaction_id
+  //     );
+
+  //     res.status(200).json({
+  //       message: "Payment Session retrived successfully",
+  //       session,
+  //     });
+  //   }
+
+  //   async MakeSubscribtionCancel(req, res) {
+  //     const { user_id } = req.body;
+  //     const user = await User.findOne({ where: { id: user_id } });
+  //     const company_id = user.company_id;
+  //     const company = await Company.findOne({ where: { id: company_id } });
+  //     const subscription_id = company.subscription_id;
+  //     const subscription = await Subscriptions.findOne({
+  //       where: { id: subscription_id },
+  //     });
+  //     const payment_id = subscription.payment_id;
+  //     const payment = await Payment.findOne({ where: { id: payment_id } });
+  //     const stripe = StripeClient(STRIPE_SECRET_KEY);
+  //     const session = await stripe.checkout.sessions.retrieve(
+  //       payment.transaction_id
+  //     );
+  //     const remote_subscription_id = session.subscription;
+  //     //const result = await stripe.subscriptions.del(remote_subscription_id);
+  //     console.log({ remote_subscription_id, subscription, session, payment });
+  //     try {
+  //       //const result = await stripe.subscriptions.del(remote_subscription_id);
+  //       const result = await stripe.subscriptions.update(remote_subscription_id, {
+  //         cancel_at_period_end: true,
+  //       });
+  //       console.log(result, "result");
+  //       res.status(200).json({
+  //         message: "Subscription cancelled successfully",
+  //         result,
+  //       });
+  //     } catch (error) {
+  //       console.log(error, "error");
+  //       res.status(400).json({
+  //         error: true,
+  //         message: "Unable to cancel subscription",
+  //       });
+  //     }
+  //   }
+  // }
 }
-
 module.exports = new PaymentController();
 //Compare this snippet from amplify/backend/function/user/src/controllers/user.controller.js:
