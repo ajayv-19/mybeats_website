@@ -17,6 +17,7 @@ import { Amplify } from "aws-amplify";
 import useThemeMediaQuery from "@fuse/hooks/useThemeMediaQuery";
 import axios from "axios";
 import API from "@aws-amplify/api";
+import Close from "@mui/icons-material/Close";
 
 Amplify.configure(awsExports);
 
@@ -26,6 +27,17 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
     boxShadow: `inset 0 -1px 0 0px  ${theme.palette.divider}`,
   },
 }));
+
+// function ProjectDashboardAppHeader() {
+//   return (
+//     <>
+//       <div>
+//         <div>Home</div>
+//         <img></img>
+//       </div>
+//     </>
+//   );
+// }
 
 function ProjectDashboardApp() {
   const isMobile = useThemeMediaQuery((theme) => theme.breakpoints.down("lg"));
@@ -138,26 +150,41 @@ function ProjectDashboardApp() {
   }
 
   return (
-    <FusePageSimple
+    <Root
+      header={
+        <ProjectDashboardAppHeader
+          onFinnClick={() => setQaModel(true)}
+          content={
+            <>
+              <div
+                className={
+                  "absolute top-5 left-5 rounded-md w-full h-full z-10 " +
+                  (qaModel ? "" : "hidden")
+                }
+              >
+                <div className="relative flex">
+                  <button
+                    type="button"
+                    className="ml-auto"
+                    onClick={() => setQaModel(false)}
+                  >
+                    <Close />
+                  </button>
+                </div>
+                <iframe width="100%" height="720" src={qaUrl}></iframe>
+              </div>
+            </>
+          }
+        />
+      }
       content={
-        <div className="flex flex-col w-full p-24">
-          <button type="button" onClick={() => setQaModel(true)}>
-            {" "}
-            Ask Q A{" "}
-          </button>
-          <iframe width="100%" height="720" src={url}></iframe>
-
-          <div
-            className={
-              "absolute top-5 left-5 rounded-md w-full h-full " +
-              (qaModel ? "" : "hidden")
-            }
-          >
-            <button type="button" onClick={() => setQaModel(false)}>
-              close
-            </button>
-            <iframe width="100%" height="720" src={qaUrl}></iframe>
-          </div>
+        <div className="h-full w-full p-12 flex flex-col relative  ">
+          <iframe
+            className="w-full h-full grow border-none"
+            width="100%"
+            height={"100%"}
+            src={url}
+          ></iframe>
         </div>
       }
       scroll={isMobile ? "normal" : "page"}
