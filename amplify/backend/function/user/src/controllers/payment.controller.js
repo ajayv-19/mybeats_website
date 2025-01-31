@@ -78,64 +78,97 @@ const addSubscription = async (customer_subscription_created) => {
   }
 };
 
-const updateSubscription = async (customer_subscription_updated) => {
-  // Extract relevant details
-  const {
-    id: subscription_id,
-    status,
-    current_period_start,
-    current_period_end,
-    metadata,
-    plan,
-    quantity,
-  } = customer_subscription_updated;
+const handleSuccesfullInvoicePayment = async (invoice) => {
+  try {
+    const subscription_id = invoice.subscription;
 
-  if (
-    !metadata ||
-    !metadata.user_id ||
-    !metadata.company_id ||
-    !metadata.plan_id
-  ) {
-    console.warn("Missing metadata in subscription update event.");
-    return res
-      .status(400)
-      .json({ error: "Missing metadata in subscription update event" });
+    console.log("💰 Payment succeeded for subscription:", subscription_id);
+
+    // Find the subscription in our database
+    const subscription = await NewSubscriptions.findOne({ where: { sub_id: subscription_id } });
+
+    if (!subscription) {
+      console.error("Subscription not found in DB:", subscription_id);
+      return;
+    }
+
+    // Calculate new billing cycle
+    const newStartDate = new Date(); // Today
+    const newEndDate = new Date(newStartDate);
+    newEndDate.setMonth(newEndDate.getMonth() + 1); // Add 1 month
+
+    // Update subscription with new billing period
+    subscription.status = "ACTIVE";
+    subscription.bill_start = newStartDate;
+    subscription.bill_end = newEndDate;
+    await subscription.save();
+
+    console.log("✅ Billing cycle updated:", {
+      sub_id: subscription_id,
+      newStartDate,
+      newEndDate,
+    });
+  } catch (error) {
+    console.error("❌ Error updating successful payment:", error);
   }
+}
 
-  // Update the existing subscription in the Subscription table
-  const updatedRows = await Subscriptions.update(
-    {
-      status: status.toUpperCase(),
-      start_date: new Date(current_period_start * 1000), // Convert Unix timestamp to Date
-      end_date: new Date(current_period_end * 1000), // Convert Unix timestamp to Date
-      price_id: plan.id, // Updated plan price ID
-      quantity,
-      updated_at: new Date(),
-    },
-    { where: { subscription_id } }
-  );
+const handleSubscriptionUpdated = async (subscription) => {
+  try {
+    const stripe = StripeClient(STRIPE_SECRET_KEY);
+    console.log("🔄 Subscription updated in Stripe:", subscription.id);
 
-  if (updatedRows[0] === 0) {
-    console.warn(`Subscription with ID ${subscription_id} not found.`);
-    return res.status(404).json({ error: "Subscription not found" });
+    const existingSubscription = await NewSubscriptions.findOne({ where: { sub_id: subscription.id } });
+
+    if (!existingSubscription) {
+      console.error("⚠️ Subscription not found in DB:", subscription.id);
+      return;
+    }
+
+    // Extract subscription item details
+    const subscriptionItem = subscription.items.data[0];
+    const newQuantity = subscriptionItem.quantity;
+    const subscriptionItemId = subscriptionItem.id;
+
+    // Fetch subscription item from Stripe to get price details
+    const stripeItem = await stripe.subscriptionItems.retrieve(subscriptionItemId);
+    const newAmount = stripeItem.price.unit_amount / 100; // Convert cents to dollars
+
+    console.log("📊 Updating DB with new values:", { newQuantity, newAmount });
+
+    // Update database
+    existingSubscription.amount = newAmount;
+    existingSubscription.bill_end = new Date(subscription.current_period_end * 1000);
+    await existingSubscription.save();
+
+    console.log("✅ Subscription updated in database.");
+  } catch (error) {
+    console.error("❌ Error handling subscription update:", error);
   }
 };
 
-const handleFailedInvoive = async (invoice_failed) => {
-  const { subscription: failed_subscription_id } = invoice_failed;
+const handleFailedInvoive = async (invoice) => {
+  try {
+    const subscription_id = invoice.subscription;
 
-  if (!failed_subscription_id) {
-    console.warn("No subscription ID found in failed payment event.");
-    return res.status(400).json({
-      error: "No subscription ID found in failed payment event",
-    });
+    console.log("❌ Payment failed for subscription:", subscription_id);
+
+    // Find the subscription in our database
+    const subscription = await NewSubscriptions.findOne({ where: { sub_id: subscription_id } });
+
+    if (!subscription) {
+      console.error("Subscription not found in database:", subscription_id);
+      return;
+    }
+
+    // Update status to PAYMENT_FAILED
+    subscription.status = "PAYMENT_FAILED";
+    await subscription.save();
+
+    console.log("✅ Subscription updated to PAYMENT_FAILED:", subscription_id);
+  } catch (error) {
+    console.error("❌ Error handling failed payment:", error);
   }
-
-  // Mark the subscription as PAYMENT_FAILED
-  await Subscriptions.update(
-    { status: "PAYMENT_FAILED", updated_at: new Date() },
-    { where: { subscription_id: failed_subscription_id } }
-  );  
 };
 
 const pauseSubscription = async () => {};
@@ -171,21 +204,22 @@ class PaymentController {
           await addSubscription(customer_subscription_created);
           break;
 
-          // When a subscription is updated
-        // case "customer.subscription.updated":
-        //   const customer_subscription_updated = event.data.object;
-        //   updateSubscription(customer_subscription_updated);
-        //   break;
+        // When a subscription is updated
+        case "customer.subscription.updated":
+          const customer_subscription_updated = event.data.object;
+          await handleSubscriptionUpdated(customer_subscription_updated);
+          break;
 
-        // case "invoice.payment_succeeded":
-        //   const invoice_suceeded = event.data.object;
-        //   break;
+        case "invoice.payment_succeeded":
+          const invoice_suceeded = event.data.object;
+          await handleSuccesfullInvoicePayment(invoice_suceeded);
+          break;
 
         // When a customer fails to pay for the subscription
-        // case "invoice.payment_failed":
-        //   const invoice_failed = event.data.object;
-        //   handleFailedInvoive(invoice_failed)
-        //   break;
+        case "invoice.payment_failed":
+          const invoice_failed = event.data.object;
+          await handleFailedInvoive(invoice_failed)
+          break;
 
         // TODO: Update subscription (Prorated Charge) -> Change the number of policyholders (Change the price) -> Update the payment and the subscription in stripe
 
