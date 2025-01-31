@@ -135,15 +135,8 @@ export type DeleteTeamMemberSettingsApiArg = {
 export type UpdateTeamMemberSettingsApiResponse = unknown;
 export type UpdateTeamMemberSettingsApiArg = SettingsTeamMember[];
 export type SettingsAccount = {
-	name?: string;
-	username?: string;
-	title?: string;
-	company?: string;
-	about?: string;
+	Customer_Name?: string;
 	email?: string;
-	phone?: string;
-	country?: string;
-	language?: string;
 };
 export type SettingsNotifications = {
 	communication?: boolean;

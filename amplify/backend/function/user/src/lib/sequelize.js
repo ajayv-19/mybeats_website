@@ -15,7 +15,14 @@ const sequelize = new Sequelize(
         rejectUnauthorized: false, // Set to true if you want stricter SSL security checks
       },
     },
+    pool: {
+      max: 10, // Max 10 connections
+      min: 2, // Keep 2 connections open
+      acquire: 30000, // Wait before throwing error
+      idle: 10000, // Close idle connections after 10 seconds
+    },
   }
+  
 );
 
 module.exports = { sequelize, DataTypes };

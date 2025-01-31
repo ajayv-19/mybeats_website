@@ -32,6 +32,7 @@ module.exports = {
     "ignorePatterns": [
         "src/app/main/documentation/material-ui-components/components/**",
         "src/app/main/documentation/material-ui-components/pages/**",
+        "amplify/backend/function/**",
         "tailwind.config.js"
     ],
     "rules": {

@@ -1,6 +1,5 @@
 import { Authenticator } from '@aws-amplify/ui-react';
 import { Amplify } from 'aws-amplify';
-import awsAuthConfig from './awsAuthConfig';
 import awsExports from '../../../../../src2/aws-exports';
 
 type AWSAuthProviderProps = {
