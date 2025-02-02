@@ -10,6 +10,8 @@ import { darken } from "@mui/material/styles";
 import { selectUser } from "src/app/auth/user/store/userSlice";
 import { useAppSelector } from "app/store/hooks";
 import PageBreadcrumb from "app/shared-components/PageBreadcrumb";
+import { useSelector } from "react-redux";
+import { selectAccount } from "src/app/features/account/accountSlice";
 import { useGetProjectDashboardProjectsQuery } from "./ProjectDashboardApi";
 
 /**
@@ -22,9 +24,11 @@ function ProjectDashboardAppHeader({
   content: ReactNode;
   onFinnClick: () => void;
 }) {
+  // const { company, user } = useSelector(selectAccount);
   const { data: projects } = useGetProjectDashboardProjectsQuery();
 
   const user = useAppSelector(selectUser);
+  console.log({ user }, "31line");
 
   const [selectedProject, setSelectedProject] = useState<{
     id: number;
@@ -57,7 +61,7 @@ function ProjectDashboardAppHeader({
 
   return (
     <div className="flex flex-col w-full px-24 sm:px-32">
-      <div className="flex flex-col sm:flex-row flex-auto sm:items-center min-w-0 my-32 sm:my-48">
+      <div className="flex flex-col sm:flex-row flex-auto sm:items-center min-w-0 ">
         <div className="flex flex-auto items-start min-w-0">
           <Avatar
             sx={{
@@ -74,7 +78,7 @@ function ProjectDashboardAppHeader({
           <div className="flex flex-col min-w-0 mx-16">
             <PageBreadcrumb />
             <Typography className="text-2xl md:text-5xl font-semibold tracking-tight leading-7 md:leading-snug truncate">
-              {`Welcome back, ${user.data.displayName}!`}
+              {`Welcome back, ${user.data.displayName || user.data.email || "Guest"}!`}
             </Typography>
 
             <div className="flex items-center">
@@ -90,17 +94,25 @@ function ProjectDashboardAppHeader({
             </div>
           </div>
         </div>
-        <div className="flex items-center mt-24 sm:mt-0 sm:mx-8 space-x-8">
+        <div className="flex flex-col items-center mt-24 sm:mt-0 sm:mx-8 space-x-8 space-y-2">
+          <img
+            className="h-120 object-cover w-full object-[0px_10px] "
+            src="assets/images/pages/dashboard/finn.png"
+            alt="Profile Cover"
+          />
           <Button
-            className="whitespace-nowrap"
             variant="contained"
-            color="primary"
+            // onClick={handleButtonClick}
+            size="small"
+            color="secondary"
+            className="m-6 z-10 rounded p-0 text-md min-h-0 h-auto w-auto min-w-0 px-12 !mt-0 "
+            classes={{ startIcon: "mr-4" }}
             onClick={() => onFinnClick && onFinnClick()}
-            startIcon={
-              <FuseSvgIcon size={20}>heroicons-solid:envelope</FuseSvgIcon>
-            }
+            // startIcon={
+            //   <FuseSvgIcon size={20}>heroicons-solid:envelope</FuseSvgIcon>
+            // }
           >
-            FINN
+            Ask FINN
           </Button>
         </div>
       </div>

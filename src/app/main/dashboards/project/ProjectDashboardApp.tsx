@@ -165,13 +165,14 @@ function ProjectDashboardApp() {
                 <div className="relative flex">
                   <button
                     type="button"
-                    className="ml-auto"
+                    className="px-16 py-4 text-center absolute top-8 right-5 rounded bg-[#177199] text-white"
                     onClick={() => setQaModel(false)}
                   >
-                    <Close />
+                    <span>CLOSE</span>
+                    {/* <Close /> */}
                   </button>
                 </div>
-                <iframe width="100%" height="720" src={qaUrl}></iframe>
+                <iframe width="100%" height={"100%"} src={qaUrl}></iframe>
               </div>
             </>
           }
@@ -193,3 +194,5 @@ function ProjectDashboardApp() {
 }
 
 export default ProjectDashboardApp;
+
+//  <iframe width="100%" height="720" src={qaUrl}></iframe>
