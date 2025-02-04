@@ -132,7 +132,7 @@ const handleSubscriptionUpdated = async (subscription) => {
 
     // Fetch subscription item from Stripe to get price details
     const stripeItem = await stripe.subscriptionItems.retrieve(subscriptionItemId);
-    const newAmount = stripeItem.price.unit_amount / 100; // Convert cents to dollars
+    const newAmount = (stripeItem.price.unit_amount / 100) * newQuantity; // Convert cents to dollars
 
     console.log("📊 Updating DB with new values:", { newQuantity, newAmount });
 
