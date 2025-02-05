@@ -60,8 +60,8 @@ function ProjectDashboardAppHeader({
   }
 
   return (
-    <div className="flex flex-col w-full px-24 sm:px-32">
-      <div className="flex flex-col sm:flex-row flex-auto sm:items-center min-w-0 ">
+    <div className="flex flex-col w-full px-24 sm:px-32 ">
+      <div className="flex flex-col sm:flex-row flex-auto sm:items-center min-w-0 buttom-4 ">
         <div className="flex flex-auto items-start min-w-0">
           <Avatar
             sx={{
@@ -94,7 +94,7 @@ function ProjectDashboardAppHeader({
             </div>
           </div>
         </div>
-        <div className="flex flex-col items-center mt-24 sm:mt-0 sm:mx-8 space-x-8 space-y-2">
+        <div className="flex flex-col items-center mt-24 sm:mt-0 sm:mx-8 space-x-8 space-y-2 bottom-4">
           <img
             className="h-120 object-cover w-full object-[0px_10px] "
             src="assets/images/pages/dashboard/finn.png"
@@ -106,6 +106,7 @@ function ProjectDashboardAppHeader({
             size="small"
             color="secondary"
             className="m-6 z-10 rounded p-0 text-md min-h-0 h-auto w-auto min-w-0 px-12 !mt-0 "
+            // style={{ width: '200px' }}
             classes={{ startIcon: "mr-4" }}
             onClick={() => onFinnClick && onFinnClick()}
             // startIcon={

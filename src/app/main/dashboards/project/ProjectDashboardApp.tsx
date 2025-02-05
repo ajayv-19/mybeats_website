@@ -158,14 +158,15 @@ function ProjectDashboardApp() {
             <>
               <div
                 className={
-                  "absolute top-5 left-5 rounded-md w-full h-full z-10 " +
+                  "absolute top-5 left-10 rounded-md w-full h-full z-10 " +
                   (qaModel ? "" : "hidden")
                 }
               >
                 <div className="relative flex">
                   <button
                     type="button"
-                    className="px-16 py-4 text-center absolute top-8 right-5 rounded bg-[#177199] text-white"
+                    className="px-16 py-4 text-center absolute top-8 right-16 rounded bg-[#177199] text-white"
+                    style={{ width: '110px' }}
                     onClick={() => setQaModel(false)}
                   >
                     <span>CLOSE</span>
