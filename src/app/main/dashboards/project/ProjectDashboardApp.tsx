@@ -17,6 +17,7 @@ import { Amplify } from "aws-amplify";
 import useThemeMediaQuery from "@fuse/hooks/useThemeMediaQuery";
 import axios from "axios";
 import API from "@aws-amplify/api";
+import Close from "@mui/icons-material/Close";
 
 Amplify.configure(awsExports);
 
@@ -27,11 +28,24 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
   },
 }));
 
+// function ProjectDashboardAppHeader() {
+//   return (
+//     <>
+//       <div>
+//         <div>Home</div>
+//         <img></img>
+//       </div>
+//     </>
+//   );
+// }
+
 function ProjectDashboardApp() {
   const isMobile = useThemeMediaQuery((theme) => theme.breakpoints.down("lg"));
 
   const [loader, setLoader] = useState(true);
+  const [qaModel, setQaModel] = useState(false);
   const [url, setUrl] = useState("");
+  const [qaUrl, setQaUrl] = useState("");
   const [companyName, setCompanyName] = useState(""); // State to store the company name
 
   useEffect(() => {
@@ -85,8 +99,12 @@ function ProjectDashboardApp() {
 
         const data1 = await quicksight.response;
         const data2 = await data1.body;
-        const data3 = (await data2.json()) as { embedUrl: string };
+        const data3 = (await data2.json()) as {
+          embedUrl: string;
+          generativeQnAEmbedUrl: string;
+        };
         setUrl(data3.embedUrl);
+        setQaUrl(data3.generativeQnAEmbedUrl);
 
         console.log(data3.embedUrl);
 
@@ -132,37 +150,43 @@ function ProjectDashboardApp() {
   }
 
   return (
-    <FusePageSimple
+    <Root
+      header={
+        <ProjectDashboardAppHeader
+          onFinnClick={() => setQaModel(true)}
+          content={
+            <>
+              <div
+                className={
+                  "absolute top-5 left-10 rounded-md w-full h-full z-10 " +
+                  (qaModel ? "" : "hidden")
+                }
+              >
+                <div className="relative flex">
+                  <button
+                    type="button"
+                    className="px-16 py-4 text-center absolute top-8 right-16 rounded bg-[#177199] text-white"
+                    style={{ width: '110px' }}
+                    onClick={() => setQaModel(false)}
+                  >
+                    <span>CLOSE</span>
+                    {/* <Close /> */}
+                  </button>
+                </div>
+                <iframe width="100%" height={"100%"} src={qaUrl}></iframe>
+              </div>
+            </>
+          }
+        />
+      }
       content={
-        <div className="flex flex-col w-full p-24">
-          <iframe width="100%" height="720" src={url}></iframe>
-          {/* <PageBreadcrumb className="mb-8" />
-                   <Typography className="text-4xl font-extrabold leading-none tracking-tight mb-4">
-                       All Activities
-                   </Typography>
-                   <Typography
-                       className="text-lg"
-                       color="text.secondary"
-                   >
-                       Application wide activities are listed here as individual items, starting with the most recent.
-                   </Typography>
-                   <Timeline
-                       className="py-48 px-0"
-                       position="right"
-                       sx={{
-                           '& .MuiTimelineItem-root:before': {
-                               display: 'none'
-                           }
-                       }}
-                   >
-                       {exampleActivitiesData.map((item, index) => (
-                           <ActivityTimelineItem
-                               last={exampleActivitiesData.length === index + 1}
-                               item={item}
-                               key={item.id}
-                           />
-                       ))}
-                   </Timeline> */}
+        <div className="h-full w-full p-12 flex flex-col relative  ">
+          <iframe
+            className="w-full h-full grow border-none"
+            width="100%"
+            height={"100%"}
+            src={url}
+          ></iframe>
         </div>
       }
       scroll={isMobile ? "normal" : "page"}
@@ -171,3 +195,5 @@ function ProjectDashboardApp() {
 }
 
 export default ProjectDashboardApp;
+
+//  <iframe width="100%" height="720" src={qaUrl}></iframe>
