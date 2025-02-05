@@ -3,9 +3,15 @@ const bodyParser = require("body-parser");
 const { API_PREFIX } = require("./globals.const");
 const {
   awsServerlessExpressMiddleware,
+  validateScheduleToken,
   conditionalAuthMiddleware,
 } = require("./middlewares");
-const { UserController, PaymentController } = require("./controllers");
+const {
+  UserController,
+  PaymentController,
+  CompanyController,
+  ScheduleController,
+} = require("./controllers");
 const upload = require("./config/multer");
 // Declare a new express app
 const app = express();
@@ -38,10 +44,10 @@ router.post(
 );
 
 router.get("/canShowBilling", UserController.canShowBilling);
-router.post("/create-payment", PaymentController.CreatePayment);
-router.get("/payment-success", PaymentController.PaymentSuccess);
-router.get("/payment-cancel", PaymentController.PaymentCancel);
-router.get("/payment-session", PaymentController.GetPaymentSubscribed);
+
+PaymentController.setupRoutes(router);
+CompanyController.setupRoutes(router);
+ScheduleController.setupRoutes(router);
 // Use router for specific path
 app.use(API_PREFIX, router);
 

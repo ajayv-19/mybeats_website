@@ -3,7 +3,15 @@ const {
   RegisterUserCommand,
   GetDashboardEmbedUrlCommand,
   ListUsersCommand,
+  UpdateTopicPermissionsCommand,
+  GenerateEmbedUrlForRegisteredUserCommand,
 } = require("@aws-sdk/client-quicksight");
+
+// quicksightClient = new AWS.Service({
+//   apiConfig: require("./quicksight-2018-04-01.min.json"),
+//   region: "us-east-1",
+// });
+
 const {
   STSClient,
   AssumeRoleWithWebIdentityCommand,
@@ -19,12 +27,10 @@ var express = require("express");
 var bodyParser = require("body-parser");
 var awsServerlessExpressMiddleware = require("aws-serverless-express/middleware");
 
-// declare a new express app
 var app = express();
 app.use(bodyParser.json());
 app.use(awsServerlessExpressMiddleware.eventContext());
 
-// Enable CORS for all methods
 app.use(function (req, res, next) {
   res.header("Access-Control-Allow-Origin", "*");
   res.header(
@@ -34,7 +40,6 @@ app.use(function (req, res, next) {
   next();
 });
 
-// PostgreSQL client configuration connection
 const client = new Client({
   connectionString:
     "postgres://u7de1gksepndnt:pc9cf448765b86e4e33da258b19cb59a9c52c61efcea2fa686a2cd24170ef2bd0@c3gtj1dt5vh48j.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/d4cndihsitnn9n",
@@ -45,48 +50,43 @@ const client = new Client({
 
 client.connect();
 
-// Function to extract domain from email
 function getDomainFromEmail(email) {
-  const domain = email.split("@")[1];
-  return domain;
+  console.log(`Extracting domain from email: ${email}`);
+  return email.split("@")[1];
 }
 
 app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
   const { email, jwtToken, payloadSub } = req.query;
 
-  console.log("req query ");
-  console.log(req.query);
-  console.log("payloadSub ");
-  console.log(payloadSub);
+  console.log("Received request with the following query parameters:");
+  console.log(
+    `Email: ${email}, JWT Token: ${jwtToken}, PayloadSub: ${payloadSub}`
+  );
 
   const roleArn =
     "arn:aws:iam::185329004895:role/amplify-amplifyquicksightdas-dev-dd445-authRole";
   const region = "us-east-1";
   const sessionName = payloadSub;
-
-  console.log("Received JWT Token:", jwtToken);
-  console.log("Received payloadSub (sessionName):", sessionName);
-  console.log("Received email:", email);
+  const topicId = "mKV8habamEDfLN80sBbVuqTpkVm1QV3M"; // Replace with your Topic ID
+  const dashboardId = "147334e5-b3cb-4c6b-ab90-dde2ff305707";
 
   const cognitoClient = new CognitoIdentityClient({ region });
   const stsClient = new STSClient({ region });
   const quickSightClient = new QuickSightClient({ region });
 
   try {
-    // Step 1: Get Cognito Identity ID
-    const getIdParams = {
-      IdentityPoolId: "us-east-1:3bed750a-a8a0-4866-b823-8f474cea8e6f",
-      Logins: {
-        "cognito-idp.us-east-1.amazonaws.com/us-east-1_O4uSMgJop": jwtToken,
-      },
-    };
-
-    console.log("Calling GetIdCommand with params:", getIdParams);
-
-    const idResponse = await cognitoClient.send(new GetIdCommand(getIdParams));
+    console.log("Step 1: Fetching Cognito Identity ID...");
+    const idResponse = await cognitoClient.send(
+      new GetIdCommand({
+        IdentityPoolId: "us-east-1:3bed750a-a8a0-4866-b823-8f474cea8e6f",
+        Logins: {
+          "cognito-idp.us-east-1.amazonaws.com/us-east-1_O4uSMgJop": jwtToken,
+        },
+      })
+    );
     console.log("Cognito Identity ID response:", idResponse);
 
-    // Step 2: Get OpenID Token
+    console.log("Step 2: Fetching OpenID Token...");
     const openIdTokenResponse = await cognitoClient.send(
       new GetOpenIdTokenCommand({
         IdentityId: idResponse.IdentityId,
@@ -95,23 +95,15 @@ app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
         },
       })
     );
-
     console.log("OpenID Token response:", openIdTokenResponse);
 
-    // Step 3: Assume Role with Web Identity
-    const stsParams = {
-      RoleSessionName: sessionName,
-      WebIdentityToken: openIdTokenResponse.Token,
-      RoleArn: roleArn,
-    };
-
-    console.log(
-      "Calling AssumeRoleWithWebIdentityCommand with params:",
-      stsParams
-    );
-
+    console.log("Step 3: Assuming IAM Role...");
     const stsResponse = await stsClient.send(
-      new AssumeRoleWithWebIdentityCommand(stsParams)
+      new AssumeRoleWithWebIdentityCommand({
+        RoleSessionName: sessionName,
+        WebIdentityToken: openIdTokenResponse.Token,
+        RoleArn: roleArn,
+      })
     );
     console.log("STS Assume Role response:", stsResponse);
 
@@ -124,156 +116,133 @@ app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
       },
     });
 
-    // Step 4: Register User in QuickSight
+    console.log("Step 4: Registering user in QuickSight...");
     const registerUserParams = {
       AwsAccountId: "185329004895",
       Email: email,
       IdentityType: "IAM",
-      Namespace: "default", // Ensure you're using the correct namespace
+      Namespace: "default",
       UserRole: "READER",
       IamArn: roleArn,
       SessionName: sessionName,
     };
 
-    console.log("Calling RegisterUserCommand with params:", registerUserParams);
-
     try {
       await quickSightClientWithCreds.send(
         new RegisterUserCommand(registerUserParams)
       );
-      console.log("User registered successfully");
+      console.log("User registered successfully.");
     } catch (err) {
       if (err.name === "ResourceExistsException") {
-        console.log("User already exists");
+        console.log("User already exists in QuickSight.");
       } else {
-        console.log("Error registering user:", err);
+        console.error("Error registering user:", err);
         throw err;
       }
     }
 
-    // Step 5: List Users to Get Generated UserName for the Email
+    console.log("Step 5: Listing users in QuickSight...");
     const listUsersParams = {
       AwsAccountId: "185329004895",
       Namespace: "default",
     };
 
-    console.log("Calling ListUsersCommand with params:", listUsersParams);
-
     let userName;
-    try {
-      const usersListResponse = await quickSightClientWithCreds.send(
-        new ListUsersCommand(listUsersParams)
-      );
-      const users = usersListResponse.UserList;
-
-      // Find the user by email in the list
-      const registeredUser = users.find((user) => user.Email === email);
-      if (registeredUser) {
-        userName = registeredUser.UserName;
-        console.log("Retrieved UserName:", userName);
-      } else {
-        console.error(
-          `User with email ${email} not found in QuickSight user list`
-        );
-      }
-    } catch (err) {
-      console.error("Error listing users in QuickSight:", err);
+    const usersListResponse = await quickSightClientWithCreds.send(
+      new ListUsersCommand(listUsersParams)
+    );
+    const users = usersListResponse.UserList;
+    const registeredUser = users.find((user) => user.Email === email);
+    if (registeredUser) {
+      userName = registeredUser.UserName;
+      console.log(`Found user: ${userName}`);
+    } else {
+      console.error("User not found in QuickSight.");
     }
 
-    // Step 6: Save UserName to PostgreSQL (public.RLS table)
     if (userName) {
-      const queryText =
-        'INSERT INTO "public"."RLS"("email", "username", "role_id", "Company_Name") VALUES($1, $2, $3, $4) ON CONFLICT ("email") DO UPDATE SET "username" = EXCLUDED."username", "role_id" = EXCLUDED."role_id", "Company_Name" = EXCLUDED."Company_Name";';
+      console.log("Step 6: Fetching domain and updating PostgreSQL...");
       const domain = getDomainFromEmail(email);
-      let company;
+      const companyQuery =
+        'SELECT company FROM "public"."Domain_companies" WHERE domain = $1';
+      const selectResult = await client.query(companyQuery, [domain]);
+      const company = selectResult.rows.length
+        ? selectResult.rows[0].company
+        : null;
 
-      try {
-        // Fetch company from PostgreSQL based on domain
-        const selectQuery =
-          'SELECT company FROM "public"."Domain_companies" WHERE domain = $1';
-        const selectResult = await client.query(selectQuery, [domain]);
+      console.log(`Company associated with domain (${domain}): ${company}`);
 
-        if (selectResult.rows.length > 0) {
-          company = selectResult.rows[0].company;
-          console.log(`Fetched company: ${company}`);
-        } else {
-          console.error(`No company found for domain: ${domain}`);
-          company = null;
-        }
-      } catch (dbError) {
-        console.error("Error interacting with PostgreSQL database:", dbError);
-        company = null;
-      }
-
-      const values = [email, userName, 2, company];
-
-      try {
-        await client.query(queryText, values);
-
-        // Step 7: Add data to Row_level_security table
-        const rlsInsertQuery =
-          'INSERT INTO "public"."Row_level_security"("Company Name", "username") VALUES($1, $2) ON CONFLICT ("username") DO NOTHING;';
-        const rlsValues = [company, userName];
-        try {
-          await client.query(rlsInsertQuery, rlsValues);
-          console.log("User information saved to Row_level_security table");
-        } catch (dbError) {
-          console.error(
-            "Error saving user to Row_level_security table:",
-            dbError
-          );
-        }
-      } catch (dbError) {
-        console.error("Error saving user to PostgreSQL database:", dbError);
-        res.status(500).json({
-          error: "Error saving user to PostgreSQL database",
-          details: dbError.message,
-        });
-      }
+      const rlsQuery =
+        'INSERT INTO "public"."Row_level_security"("Company Name", "username") VALUES($1, $2) ON CONFLICT ("username") DO NOTHING;';
+      await client.query(rlsQuery, [company, userName]);
     }
 
-    // Step 7: Get Dashboard Embed URL
-    const getDashboardParams = {
+    console.log("Step 7: Granting access to QuickSight topic...");
+    const topicPermissionParams = {
       AwsAccountId: "185329004895",
-      DashboardId: "147334e5-b3cb-4c6b-ab90-dde2ff305707",
-      IdentityType: "IAM",
-      ResetDisabled: true,
-      SessionLifetimeInMinutes: 100,
-      UndoRedoDisabled: false,
+      TopicId: topicId,
+      GrantPermissions: [
+        {
+          Principal: `arn:aws:quicksight:${region}:${roleArn.split(":")[4]}:user/default/${userName}`,
+          Actions: ["quicksight:DescribeTopic"],
+        },
+      ],
     };
 
-    console.log(
-      "Calling GetDashboardEmbedUrlCommand with params:",
-      getDashboardParams
+    await quickSightClientWithCreds.send(
+      new UpdateTopicPermissionsCommand(topicPermissionParams)
+    );
+    console.log("Topic permissions granted successfully.");
+
+    console.log("Step 8: Generating dashboard embed URL...");
+    const userArn = `arn:aws:quicksight:${region}:185329004895:user/default/${userName}`;
+
+    const dashboardParams = {
+      AwsAccountId: "185329004895",
+      ExperienceConfiguration: {
+        Dashboard: {
+          InitialDashboardId: dashboardId,
+        },
+      },
+      UserArn: userArn,
+      SessionLifetimeInMinutes: 100,
+    };
+
+    const dashboardResponse = await quickSightClientWithCreds.send(
+      new GenerateEmbedUrlForRegisteredUserCommand(dashboardParams)
     );
 
-    try {
-      const dashboardResponse = await quickSightClientWithCreds.send(
-        new GetDashboardEmbedUrlCommand(getDashboardParams)
-      );
-      console.log("Dashboard Embed URL response:", dashboardResponse);
-      res.status(200).json({ embedUrl: dashboardResponse.EmbedUrl });
-    } catch (err) {
-      console.error("Error fetching dashboard embed URL:", err);
-      if (err.name === "AccessDeniedException") {
-        console.log("The user does not have access to this dashboard.");
-      } else if (err.name === "QuickSightDashboardNotFoundException") {
-        console.log("The dashboard ID does not exist or is incorrect.");
-      }
-      res.status(500).json({
-        error: "Error fetching dashboard embed URL",
-        details: err.message,
-      });
-    }
+    console.log("Dashboard Embed URL:", dashboardResponse.EmbedUrl);
+    console.log("Step 6: Generating embed URL for Generative Q&A...");
+    const generativeQnAParams = {
+      AwsAccountId: "185329004895",
+      ExperienceConfiguration: {
+        GenerativeQnA: {
+          InitialTopicId: topicId,
+        },
+      },
+      UserArn: userArn,
+      SessionLifetimeInMinutes: 100,
+    };
+
+    const generativeQnAResponse = await quickSightClientWithCreds.send(
+      new GenerateEmbedUrlForRegisteredUserCommand(generativeQnAParams)
+    );
+
+    console.log("Generative Q&A Embed URL:", generativeQnAResponse.EmbedUrl);
+
+    res.status(200).json({
+      embedUrl: dashboardResponse.EmbedUrl,
+      generativeQnAEmbedUrl: generativeQnAResponse.EmbedUrl,
+    });
   } catch (err) {
-    console.error("Error:", err);
-    res.json({ err });
+    console.error("Error occurred:", err);
+    res.status(500).json({ error: err.message });
   }
 });
 
-// Start the server
 app.listen(3000, function () {
-  console.log("App started");
+  console.log("App started on port 3000");
 });
 
 module.exports = app;

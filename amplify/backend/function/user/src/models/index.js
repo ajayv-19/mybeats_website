@@ -13,6 +13,7 @@ sequelize
 const User = sequelize.define(
   "User",
   {
+    id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     username: { type: DataTypes.STRING, allowNull: true },
     Company_Name: { type: DataTypes.STRING, allowNull: true },
     email: { type: DataTypes.STRING, allowNull: false },
@@ -93,6 +94,10 @@ const Plans = sequelize.define(
       allowNull: true,
     },
     interval_count: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    days: {
       type: DataTypes.INTEGER,
       allowNull: true,
     },
@@ -179,6 +184,8 @@ const Payment = sequelize.define(
   }
 );
 
+
+
 const Subscriptions = sequelize.define(
   "Subscriptions",
   {
@@ -224,6 +231,54 @@ const Subscriptions = sequelize.define(
   }
 );
 
+
+const NewSubscriptions = sequelize.define(
+  "NewSubscriptions",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    sub_id: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true, // Ensures each Stripe subscription ID is unique
+    },
+    user_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true, // Can be NULL if it's a company-wide subscription
+    },
+    company_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true, // Can be NULL if it's a user-specific subscription
+    },
+    amount: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: false, // Subscription amount is required
+    },
+    bill_start: {
+      type: DataTypes.DATE,
+      allowNull: false, // Start date is required
+    },
+    bill_end: {
+      type: DataTypes.DATE,
+      allowNull: false, // End date is required
+    },
+    status: {
+      type: DataTypes.ENUM("ACTIVE", "INACTIVE", "CANCELED", "PENDING_CANCELLATION", "PAYMENT_FAILED"),
+      allowNull: false,
+      defaultValue: "ACTIVE",
+    },
+  },
+  {
+    sequelize,
+    modelName: "NewSubscriptions",
+    tableName: "New_Subscriptions", // Updated table name
+    timestamps: false, // Set to true if your table includes createdAt/updatedAt fields
+  }
+);
+
 module.exports = {
   User,
   Company,
@@ -231,5 +286,6 @@ module.exports = {
   Role,
   Payment,
   Subscriptions,
+  NewSubscriptions,
   sequelize,
 };

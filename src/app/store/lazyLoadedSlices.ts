@@ -3,6 +3,7 @@ import { fuseSettingsSlice } from '@fuse/core/FuseSettings/fuseSettingsSlice';
 import { i18nSlice } from 'app/store/i18nSlice';
 import apiService from './apiService';
 import { userSlice } from '../auth/user/store/userSlice';
+import { accountSlice } from '../features/account/accountSlice';
 
 // eslint-disable-next-line
 // @ts-ignore
@@ -15,6 +16,7 @@ export const rootReducer = combineSlices(
 	 * Static slices
 	 */
 	userSlice,
+	accountSlice,
 	fuseSettingsSlice,
 	i18nSlice,
 	/**

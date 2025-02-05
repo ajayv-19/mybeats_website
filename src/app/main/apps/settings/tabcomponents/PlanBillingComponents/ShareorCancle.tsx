@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { ReactElement } from 'react';
 
 import Button from '@mui/material/Button';
 
@@ -10,7 +10,7 @@ interface InvitationsDialogProps {
 	onBack: () => void;
 }
 
-function UserInvitationDialog({ open, onClose, onShare, onCancel, onBack }) {
+function UserInvitationDialog({ open, onShare, onCancel, onBack }: InvitationsDialogProps): ReactElement {
 	if (!open) return null;
 
 	return (
@@ -40,7 +40,6 @@ function UserInvitationDialog({ open, onClose, onShare, onCancel, onBack }) {
 				<div className="flex flex-1 justify-end my-16 lg:my-0">
 					<Button
 						variant="contained"
-						// onClick={handleDashbaordClick}
 						onClick={onShare}
 						size="small"
 						color="secondary"
@@ -52,7 +51,6 @@ function UserInvitationDialog({ open, onClose, onShare, onCancel, onBack }) {
 
 					<Button
 						variant="contained"
-						// onClick={handleButtonClick}
 						onClick={onCancel}
 						size="small"
 						color="secondary"
@@ -63,22 +61,8 @@ function UserInvitationDialog({ open, onClose, onShare, onCancel, onBack }) {
 					</Button>
 				</div>
 			</div>
-
-			{/* <div className="dialog-actions">
-        <Button onClick={onNo} color="primary" style={{ fontSize: "16px" }}>
-          No
-        </Button>
-        <Button
-          onClick={onYes}
-          color="primary"
-          autoFocus
-          style={{ fontSize: "16px" }}
-        >
-          Yes
-        </Button>
-      </div> */}
 		</div>
 	);
-};
+}
 
 export default UserInvitationDialog;
