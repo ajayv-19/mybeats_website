@@ -4,6 +4,7 @@ import { FuseRouteItemType } from '@fuse/utils/FuseUtils';
 
 const SettingsApp = lazy(() => import('./SettingsApp'));
 const AccountTab = lazy(() => import('./tabs/AccountTab'));
+const CompanyTab = lazy(() => import('./tabs/CompanyTab'));
 const SecurityTab = lazy(() => import('./tabs/SecurityTab'));
 const PlanBillingTab = lazy(() => import('./tabs/PlanBillingTab'));
 const NotificationsTab = lazy(() => import('./tabs/NotificationsTab'));
@@ -19,6 +20,10 @@ const SettingsAppRoute: FuseRouteItemType = {
 		{
 			path: 'account',
 			element: <AccountTab />
+		},
+		{
+			path: 'company',
+			element: <CompanyTab />
 		},
 		{
 			path: 'security',
