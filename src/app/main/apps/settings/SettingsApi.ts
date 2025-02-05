@@ -138,6 +138,12 @@ export type SettingsAccount = {
 	Customer_Name?: string;
 	email?: string;
 };
+export type SettingsCompany = {
+	companyName: string;
+	phone: number;
+	website: string;
+	emailDomain: string;
+}
 export type SettingsNotifications = {
 	communication?: boolean;
 	security?: boolean;
