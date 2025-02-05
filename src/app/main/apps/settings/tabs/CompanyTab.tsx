@@ -37,7 +37,7 @@ function CompanyTab() {
 	const { isValid, dirtyFields, errors } = formState;
 
 	const onSubmit = (formData: FormType) => {
-		console.log('form data', formData);
+    
 	};
 
 	return (

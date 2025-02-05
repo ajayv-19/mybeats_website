@@ -160,13 +160,8 @@ export type SettingsSecurity = {
 	askPasswordChange?: boolean;
 };
 export type SettingsPlanBilling = {
-	plan?: string;
-	cardHolder?: string;
-	cardNumber?: string;
-	cardExpiration?: string;
-	cardCVC?: string;
-	country?: string;
-	zip?: string;
+	plan: string;
+	numberOfUsers: number;
 };
 export type SettingsTeamMember = {
 	avatar?: string;
