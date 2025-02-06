@@ -109,6 +109,12 @@ function PlanBillingTab() {
 		}
 	};
 
+	if (!company) return (
+		<div>
+			<p>First, register your company</p>
+		</div>
+	)
+
 	if (isLoading)
 		return (
 			<div>

@@ -36,15 +36,18 @@ const Company = sequelize.define(
   "Company",
   {
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
-    Company_Name: { type: DataTypes.TEXT, allowNull: true },
-    domain: { type: DataTypes.STRING, allowNull: true },
+    Company_Name: { type: DataTypes.TEXT, allowNull: false },
+    address: { type: DataTypes.STRING, allowNull: true },
+    domain: { type: DataTypes.STRING, allowNull: false  },
     plan_type: { type: DataTypes.TEXT, allowNull: true },
     // admin_id: {
     //   type: DataTypes.TEXT,
     //   allowNull: true,
     // },
+
     subscription_id: { type: DataTypes.INTEGER, allowNull: true },
     plan_id: { type: DataTypes.INTEGER, allowNull: true },
+    primary_user_id: { type: DataTypes.INTEGER, allowNull: false  },
     purchased_date: { type: DataTypes.DATE, allowNull: true },
     last_renewal: { type: DataTypes.DATE, allowNull: true },
     expiry_date: { type: DataTypes.DATE, allowNull: true },

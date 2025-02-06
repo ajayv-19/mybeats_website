@@ -53,7 +53,9 @@ function CompanyTab() {
 		}
 	}, [company, reset]); // Trigger reset whenever `company` data changes
 
-	const onSubmit = (formData: FormType) => {};
+	const onSubmit = (formData: FormType) => {
+		console.log("form data", formData);
+	};
 
 	return (
 		<div className="w-full max-w-3xl">

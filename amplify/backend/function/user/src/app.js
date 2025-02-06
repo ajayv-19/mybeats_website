@@ -36,6 +36,7 @@ const router = express.Router();
 router.get("/checkusers", UserController.checkUserById);
 router.get("/users", UserController.getUserById);
 router.put("/updateUser", UserController.updateUser);
+router.post("/updaterole", UserController.updateUserRole);
 // router.post("/addOrUpdateUserDetails", UserController.addOrUpdateUserDetails);
 router.post(
   "/addOrUpdateUserDetails",
