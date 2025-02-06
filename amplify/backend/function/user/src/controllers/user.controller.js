@@ -6,8 +6,8 @@ const UserController = {
     try {
       const payload = req.query;
       const user = await User.findOne({ where: payload });
-      console.log(payload,"payload");
-      console.log(user,"user")
+      console.log(payload, "payload");
+      console.log(user, "user");
 
       if (!user) {
         return res
@@ -20,19 +20,19 @@ const UserController = {
       } else {
         company = await Company.findOne({ where: { domain: user.domain } });
       }
-      console.log(company,"company")
-      let subscription = null;  
+      console.log(company, "company");
+      let subscription = null;
       if (company) {
         subscription = await Subscriptions.findOne({
           where: { id: company.subscription_id },
         });
       }
-      console.log(subscription,"subscription")
+      console.log(subscription, "subscription");
       // subscription = await Subscriptions.findOne({
       //   where: { id: company.subscription_id },
       // });
       let isactive = null;
-      if (subscription){
+      if (subscription) {
         if (subscription.isactive) {
           isactive = true;
           const currentDate = new Date();
@@ -43,12 +43,9 @@ const UserController = {
             isactive = subscription.isactive;
           }
         }
-
-      }
-      else{
+      } else {
         isactive = false;
       }
-      
 
       const userdata = { user, company, isactive };
       res.json({ success: true, userdata });
@@ -173,7 +170,7 @@ const UserController = {
       const newUser = await User.create({
         email,
         username,
-        role,
+        role_id,
         Customer_Name,
         usertype,
         created_timestamp,
@@ -196,6 +193,52 @@ const UserController = {
       res
         .status(500)
         .json({ success: false, error: "Failed to update user details" });
+    }
+  },
+
+  async updateUserRole(req, res) {
+    const { email, role } = req.body;
+
+    // Determine role_id based on the role
+    let role_id;
+    if (role === "READER") {
+      role_id = 2;
+    } else if (role === "ADMIN") {
+      role_id = 1;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid role provided",
+      });
+    }
+
+    try {
+      // Find the user by email
+      const user = await User.findOne({ where: { email } });
+
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          message: "User not found",
+        });
+      }
+
+      // Update the user's role_id
+      user.role_id = role_id;
+      await user.save();
+
+      return res.json({
+        success: true,
+        message: "User role updated successfully",
+        user,
+      });
+    } catch (error) {
+      console.error("Error updating user role:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update user role",
+        error: error.message,
+      });
     }
   },
 };
