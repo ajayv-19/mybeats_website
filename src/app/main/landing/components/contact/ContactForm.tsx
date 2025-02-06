@@ -23,7 +23,7 @@ function ContactForm() {
       );
       console.log("response", response);
       // eslint-disable-next-line no-alert
-      alert("Your message has been sent succesfully!");
+      alert("We will get back to you soon!");
     } catch (error) {
       console.error(error);
     }

@@ -6,14 +6,12 @@ import { uploadData } from "@aws-amplify/storage";
 import { addOrUpdateUser } from "src/app/main/apps/settings/apis/Accountapis";
 import { fetchAuthSession } from "@aws-amplify/auth";
 import axios from "axios";
-import { CompanyFormInput } from "src/app/main/apps/settings/types/CompanyTypes.types";
 
 type UserDetails = {
   id?: number;
-  Customer_Name?: string;
-  email?: string;
+  Customer_Name: string;
+  email: string;
   image?: string;
-  role_id?: number;
 };
 
 type CompanyDetails = {
@@ -21,11 +19,7 @@ type CompanyDetails = {
   Company_Name: string;
   domain: string;
   phone_number: number;
-  website?: string;
-  is_subscribed?: boolean;
   plan_type: string;
-  address: string;
-  policyholder_count: number;
 };
 
 type AccountState = {
@@ -34,7 +28,6 @@ type AccountState = {
   loading: boolean;
   error: string;
   success: boolean;
-  isactive: boolean;
 };
 
 /**
@@ -46,7 +39,6 @@ const initialState: AccountState = {
   loading: false,
   error: null,
   success: false,
-  isactive: null,
 };
 
 /**
@@ -65,112 +57,40 @@ export const submitAccountDetails = createAsyncThunk(
       defaultEmail: string;
     },
     { rejectWithValue }
-  ) =>
-    async (
-      {
-        formData,
-        profileImageLink,
-        defaultEmail,
-      }: {
-        formData: UserDetails;
-        profileImageLink: File | null;
-        defaultEmail: string;
-      },
-      { rejectWithValue }
-    ) => {
-      try {
-        let linkFromS3 = "";
-
-        // Upload the image to S3 if a profile image link exists
-        if (profileImageLink) {
-          const sanitizedEmail = defaultEmail.replace(/[.@]/g, ""); // Sanitize email
-          const fileExtension = profileImageLink.name.substring(
-            profileImageLink.name.lastIndexOf(".")
-          );
-          const fileName = `profiles/${sanitizedEmail}${fileExtension}`;
-
-          // Upload the image to S3 if a profile image link exists
-          if (profileImageLink) {
-            const sanitizedEmail = defaultEmail.replace(/[.@]/g, ""); // Sanitize email
-            const fileExtension = profileImageLink.name.substring(
-              profileImageLink.name.lastIndexOf(".")
-            );
-            const fileName = `profiles/${sanitizedEmail}${fileExtension}`;
-
-            // Upload image
-            // TODO: uploadData is deprecated, have to change this method.
-            const result = await uploadData({
-              key: fileName,
-              data: profileImageLink,
-            }).result;
-
-            linkFromS3 = `https://insurance-dashboard-imagesdd445-dev.s3.us-east-1.amazonaws.com/public/${result.key}`;
-            formData = { ...formData, image: linkFromS3 };
-          }
-
-          linkFromS3 = `https://insurance-dashboard-imagesdd445-dev.s3.us-east-1.amazonaws.com/public/${result.key}`;
-          formData = { ...formData, image: linkFromS3 };
-        }
-
-        // Submit the account details to the API
-        const response = await addOrUpdateUser(formData);
-
-        if (response.status === 200) {
-          return response.data.userdata as UserDetails;
-        }
-
-        return rejectWithValue("Failed to submit account details");
-      } catch (error) {
-        console.error("Failed to update account settings:", error);
-        return rejectWithValue(error.message || "Unknown error");
-      }
-    }
-);
-
-/**
- * Thunk to submit company details
- */
-export const submitCompanyDetails = createAsyncThunk(
-  "account/submitCompany",
-  async (
-    { formData }: { formData: CompanyFormInput },
-    { getState, dispatch, rejectWithValue }
   ) => {
     try {
-      const state = getState() as RootState; // Ensure correct typing
-      const user_id = state.account.user?.id; // Adjust based on your Redux state structure
+      let linkFromS3 = "";
 
-      const authToken = (
-        await fetchAuthSession()
-      ).tokens?.accessToken?.toString();
-      const data = await fetchAuthSession();
-      const { email } = data.tokens.idToken.payload;
+      // Upload the image to S3 if a profile image link exists
+      if (profileImageLink) {
+        const sanitizedEmail = defaultEmail.replace(/[.@]/g, ""); // Sanitize email
+        const fileExtension = profileImageLink.name.substring(
+          profileImageLink.name.lastIndexOf(".")
+        );
+        const fileName = `profiles/${sanitizedEmail}${fileExtension}`;
 
-      const requestData = {
-        name: formData.companyName,
-        phone_number: formData.phoneNumber,
-        email,
-        user_id,
-        policyholder_count: formData.policyholderCount,
-      };
+        // Upload image
+        // TODO: uploadData is deprecated, have to change this method.
+        const result = await uploadData({
+          key: fileName,
+          data: profileImageLink,
+        }).result;
 
-      const response = await axios.post(
-        `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/company`,
-        requestData, // ✅ Corrected request body
-        {
-          headers: {
-            Authorization: authToken,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+        linkFromS3 = `https://insurance-dashboard-imagesdd445-dev.s3.us-east-1.amazonaws.com/public/${result.key}`;
+        formData = { ...formData, image: linkFromS3 };
+      }
 
-      dispatch(fetchAccountDetails());
+      // Submit the account details to the API
+      const response = await addOrUpdateUser(formData);
 
-      return response.data;
+      if (response.status === 200) {
+        return response.data.userdata as UserDetails;
+      }
+
+      return rejectWithValue("Failed to submit account details");
     } catch (error) {
-      console.error("error", error);
-      return rejectWithValue(error.response?.data?.message || "Unknown error");
+      console.error("Failed to update account settings:", error);
+      return rejectWithValue(error.message || "Unknown error");
     }
   }
 );
@@ -201,7 +121,6 @@ export const fetchAccountDetails = createAsyncThunk(
       );
 
       if (response.status === 200) {
-        console.log("response user", response.data.userdata);
         return response.data.userdata;
       }
 
