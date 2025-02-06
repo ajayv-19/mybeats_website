@@ -25,7 +25,7 @@ function Logo() {
 		<Root className="flex items-center space-x-8">
 			<img
 				className="logo-icon h-32 w-32"
-				src="assets/images/logo/logo.svg"
+				src="assets/images/logo/firebase.svg"
 				alt="logo"
 			/>
 			<div className="logo-text flex space-x-8 items-center">
@@ -37,13 +37,13 @@ function Logo() {
 						color: '#82d7f7'
 					}}
 				>
-					<img
+					{/* <img
 						className="react-badge"
 						src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9Ii0xMS41IC0xMC4yMzE3NCAyMyAyMC40NjM0OCI+CiAgPHRpdGxlPlJlYWN0IExvZ288L3RpdGxlPgogIDxjaXJjbGUgY3g9IjAiIGN5PSIwIiByPSIyLjA1IiBmaWxsPSIjNjFkYWZiIi8+CiAgPGcgc3Ryb2tlPSIjNjFkYWZiIiBzdHJva2Utd2lkdGg9IjEiIGZpbGw9Im5vbmUiPgogICAgPGVsbGlwc2Ugcng9IjExIiByeT0iNC4yIi8+CiAgICA8ZWxsaXBzZSByeD0iMTEiIHJ5PSI0LjIiIHRyYW5zZm9ybT0icm90YXRlKDYwKSIvPgogICAgPGVsbGlwc2Ugcng9IjExIiByeT0iNC4yIiB0cmFuc2Zvcm09InJvdGF0ZSgxMjApIi8+CiAgPC9nPgo8L3N2Zz4K"
 						alt="react"
 						width="16"
-					/>
-					<span className="react-text text-md font-semibold">React</span>
+					/> */}
+					{/* <span className="react-text text-md font-semibold">React</span> */}
 				</Box>
 			</div>
 		</Root>

@@ -6,6 +6,9 @@ const UserController = {
     try {
       const payload = req.query;
       const user = await User.findOne({ where: payload });
+      console.log(payload,"payload");
+      console.log(user,"user")
+
       if (!user) {
         return res
           .status(404)
@@ -17,18 +20,37 @@ const UserController = {
       } else {
         company = await Company.findOne({ where: { domain: user.domain } });
       }
-      const subscription = await Subscriptions.findOne({
-        where: { id: company.subscription_id },
-      });
-      if (subscription && subscription.isactive) {
-        const currentDate = new Date();
-        const expiryDate = new Date(subscription.expiry_date);
-        if (currentDate > expiryDate) {
-          subscription.isactive = false;
-          await subscription.update({ isactive: false });
-        }
+      console.log(company,"company")
+      let subscription = null;  
+      if (company) {
+        subscription = await Subscriptions.findOne({
+          where: { id: company.subscription_id },
+        });
       }
-      const userdata = { user, company, isactive: subscription.isactive };
+      console.log(subscription,"subscription")
+      // subscription = await Subscriptions.findOne({
+      //   where: { id: company.subscription_id },
+      // });
+      let isactive = null;
+      if (subscription){
+        if (subscription.isactive) {
+          isactive = true;
+          const currentDate = new Date();
+          const expiryDate = new Date(subscription.expiry_date);
+          if (currentDate > expiryDate) {
+            subscription.isactive = false;
+            await subscription.update({ isactive: false });
+            isactive = subscription.isactive;
+          }
+        }
+
+      }
+      else{
+        isactive = false;
+      }
+      
+
+      const userdata = { user, company, isactive };
       res.json({ success: true, userdata });
     } catch (error) {
       console.error("Error fetching user:", error);
