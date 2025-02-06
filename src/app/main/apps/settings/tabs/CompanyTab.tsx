@@ -7,9 +7,10 @@ import _ from 'lodash';
 
 import { Button, Divider, InputAdornment } from '@mui/material';
 import { useSelector } from 'react-redux';
-import { selectAccount } from 'src/app/features/account/accountSlice';
+import { selectAccount, submitCompanyDetails } from 'src/app/features/account/accountSlice';
 import { useEffect } from 'react';
 import { SettingsCompany } from '../SettingsApi';
+import { useDispatch } from 'react-redux';
 
 type FormType = SettingsCompany;
 
@@ -17,7 +18,7 @@ const defaultValues: FormType = {
 	companyName: null,
 	phone: null,
 	website: null,
-	emailDomain: null
+	policyholderCount: null
 };
 
 /**
@@ -25,13 +26,15 @@ const defaultValues: FormType = {
  */
 const schema = z.object({
 	companyName: z.string().min(1, 'Company Name is required'),
-	phone: z.number().min(1, 'Phone number is required'),
+	phone: z.string().min(1, 'Phone number is required'),
 	website: z.string().url('Invalid website URL').optional(),
-	emailDomain: z.string().email('Invalid email domain').optional()
+	policyholderCount: z.number().min(1, 'Enter the amount of policyholders')
 });
 
 function CompanyTab() {
 	const { company } = useSelector(selectAccount);
+
+	const dispatch = useDispatch();
 
 	const { control, reset, handleSubmit, formState, setValue } = useForm<FormType>({
 		defaultValues,
@@ -47,15 +50,19 @@ function CompanyTab() {
 			reset({
 				companyName: company.Company_Name,
 				phone: company.phone_number,
-				website: '',
-				emailDomain: company.domain
+				website: company.website ?? '',
+				policyholderCount: company.policyholder_count
 			});
 		}
 	}, [company, reset]); // Trigger reset whenever `company` data changes
 
 	const onSubmit = (formData: FormType) => {
-		console.log("form data", formData);
+		dispatch(submitCompanyDetails({formData}));
 	};
+
+	console.log("redux company", company)
+
+	console.log('errors', errors, isValid);
 
 	return (
 		<div className="w-full max-w-3xl">
@@ -145,14 +152,15 @@ function CompanyTab() {
 						<Controller
 							control={control}
 							disabled={!!company}
-							name="emailDomain"
+							name="policyholderCount"
 							render={({ field }) => (
 								<TextField
 									{...field}
-									label="Email Domain"
-									placeholder="Email Name"
-									id="email-domain"
+									label="Policy Holder Count"
+									placeholder="Number of policyholders"
+									id="policyholder-amount"
 									variant="outlined"
+									type="number"
 									required
 									fullWidth
 									InputProps={{
@@ -162,6 +170,9 @@ function CompanyTab() {
 											</InputAdornment>
 										)
 									}}
+									onChange={(e) =>
+										field.onChange(e.target.value === '' ? '' : Number(e.target.value))
+									} // Ensure numeric conversion
 								/>
 							)}
 						/>

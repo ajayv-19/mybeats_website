@@ -142,7 +142,7 @@ export type SettingsCompany = {
 	companyName: string;
 	phone: number;
 	website: string;
-	emailDomain: string;
+	policyholderCount: number;
 }
 export type SettingsNotifications = {
 	communication?: boolean;

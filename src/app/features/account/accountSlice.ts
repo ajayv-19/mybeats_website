@@ -20,6 +20,8 @@ type CompanyDetails = {
 	domain: string;
 	phone_number: number;
 	plan_type: string;
+	address: string;
+	policyholderCount: number;
 };
 
 type AccountState = {
@@ -64,7 +66,7 @@ export const submitAccountDetails = createAsyncThunk(
 				const fileName = `profiles/${sanitizedEmail}${fileExtension}`;
 
 				// Upload image
-				// TODO: uploadData is deprecated, have to change this method. 
+				// TODO: uploadData is deprecated, have to change this method.
 				const result = await uploadData({
 					key: fileName,
 					data: profileImageLink
@@ -85,6 +87,50 @@ export const submitAccountDetails = createAsyncThunk(
 		} catch (error) {
 			console.error('Failed to update account settings:', error);
 			return rejectWithValue(error.message || 'Unknown error');
+		}
+	}
+);
+
+/**
+ * Thunk to submit company details
+ */
+export const submitCompanyDetails = createAsyncThunk(
+	'account/submitCompany',
+	async ({ formData }: { formData: CompanyDetails }, { getState, dispatch, rejectWithValue }) => {
+		try {
+			const state = getState() as RootState; // Ensure correct typing
+			const user_id = state.account.user?.id; // Adjust based on your Redux state structure
+
+			const authToken = (await fetchAuthSession()).tokens?.accessToken?.toString();
+			const data = await fetchAuthSession();
+			const { email } = data.tokens.idToken.payload;
+
+			const requestData = {
+				name: formData.companyName,
+				phone_number: formData.phone,
+				address: formData.address || '',
+				email,
+				user_id,
+				policyholder_count: formData.policyholderCount
+			};
+
+			const response = await axios.post(
+				`https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/company`,
+				requestData, // ✅ Corrected request body
+				{
+					headers: {
+						Authorization: authToken,
+						'Content-Type': 'application/json'
+					}
+				}
+			);
+
+			dispatch(fetchAccountDetails());
+
+			return response.data;
+		} catch (error) {
+			console.error('error', error);
+			return rejectWithValue(error.response?.data?.message || 'Unknown error');
 		}
 	}
 );
