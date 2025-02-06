@@ -4,7 +4,16 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Alert, Button, Divider, InputAdornment, Paper, TextField, Typography } from '@mui/material';
 import FuseSvgIcon from '@fuse/core/FuseSvgIcon';
 import _ from 'lodash';
+import { fetchAuthSession } from '@aws-amplify/auth';
+import { useSelector } from 'react-redux';
+import { selectAccount } from 'src/app/features/account/accountSlice';
+import axios from 'axios';
+import { useState } from 'react';
+import FuseLoading from '@fuse/core/FuseLoading';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 import { SettingsPlanBilling } from '../SettingsApi';
+import CheckoutForm from '../tabcomponents/PlanBillingComponents/CheckoutForm';
 
 type FormType = SettingsPlanBilling;
 
@@ -36,14 +45,24 @@ const PLANS: Array<PlanType> = [
 	}
 ];
 
+interface SubscriptionResponse {
+	clientSecret: string;
+}
+
 const defaultValues: FormType = {
 	plan: null,
 	numberOfUsers: null
 };
 
+const stripePromise = loadStripe(
+	'pk_test_51QVNrHDIv4SXGrBxLk9llPOeoiczwAeRWCINxXbBNNw2Ecr1FTlk4ZasY3wHAZrjDcANw5bJN318FKvXtS2qpJEA00O6QyClPD'
+);
+
 function PlanBillingTab() {
+	const { user, company } = useSelector(selectAccount);
+
 	const schema = z.object({
-		plan: z.enum(['basic', 'team', 'enterprise']),
+		plan: z.enum(['basic', 'team', 'enterprise'])
 	});
 
 	const { control, reset, handleSubmit, formState } = useForm<FormType>({
@@ -54,7 +73,60 @@ function PlanBillingTab() {
 
 	const { isValid, dirtyFields, errors } = formState;
 
-	const onSubmit = (formState: FormType) => {};
+	const [clientSecret, setIsClientSecret] = useState('');
+	const [isLoading, setIsLoading] = useState(false);
+
+	const onSubmit = async (formState: FormType) => {
+		try {
+			setIsLoading(true);
+			const session = await fetchAuthSession();
+			const authToken = session.tokens?.accessToken?.toString();
+
+			const requestData = {
+				currency_code: 'USD',
+				company_id: company.id,
+				plan_id: 1,
+				user_id: user.id,
+				price_id: 'price_1QlFc0DIv4SXGrBxcTOIm2TJ'
+			};
+
+			const response = await axios.post<SubscriptionResponse>(
+				'https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/create-subscription',
+				requestData,
+				{
+					headers: {
+						Authorization: authToken
+					}
+				}
+			);
+
+			const { clientSecret } = response.data;
+
+			setIsClientSecret(clientSecret);
+			setIsLoading(false);
+		} catch (error) {
+			console.error('Error while fetching client secret', error);
+		}
+	};
+
+	if (isLoading)
+		return (
+			<div>
+				<FuseLoading />
+			</div>
+		);
+
+	if (clientSecret)
+		return (
+			<div>
+				<Elements
+					stripe={stripePromise}
+					options={{ clientSecret }}
+				>
+					<CheckoutForm clientSecret={clientSecret} />
+				</Elements>
+			</div>
+		);
 
 	return (
 		<div>
