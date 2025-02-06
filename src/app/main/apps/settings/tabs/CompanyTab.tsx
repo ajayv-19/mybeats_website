@@ -6,6 +6,9 @@ import FuseSvgIcon from '@fuse/core/FuseSvgIcon';
 import _ from 'lodash';
 
 import { Button, Divider, InputAdornment } from '@mui/material';
+import { useSelector } from 'react-redux';
+import { selectAccount } from 'src/app/features/account/accountSlice';
+import { useEffect } from 'react';
 import { SettingsCompany } from '../SettingsApi';
 
 type FormType = SettingsCompany;
@@ -22,12 +25,14 @@ const defaultValues: FormType = {
  */
 const schema = z.object({
 	companyName: z.string().min(1, 'Company Name is required'),
-	phone: z.string().min(1, 'Phone number is required'),
+	phone: z.number().min(1, 'Phone number is required'),
 	website: z.string().url('Invalid website URL').optional(),
 	emailDomain: z.string().email('Invalid email domain').optional()
 });
 
 function CompanyTab() {
+	const { company } = useSelector(selectAccount);
+
 	const { control, reset, handleSubmit, formState, setValue } = useForm<FormType>({
 		defaultValues,
 		mode: 'all',
@@ -36,9 +41,19 @@ function CompanyTab() {
 
 	const { isValid, dirtyFields, errors } = formState;
 
-	const onSubmit = (formData: FormType) => {
-    
-	};
+	useEffect(() => {
+		if (company) {
+			// Set form values based on company data
+			reset({
+				companyName: company.Company_Name,
+				phone: company.phone_number,
+				website: '',
+				emailDomain: company.domain
+			});
+		}
+	}, [company, reset]); // Trigger reset whenever `company` data changes
+
+	const onSubmit = (formData: FormType) => {};
 
 	return (
 		<div className="w-full max-w-3xl">
@@ -46,6 +61,7 @@ function CompanyTab() {
 				<div className="mt-32 grid w-full gap-24 sm:grid-cols-4">
 					<div className="sm:col-span-2">
 						<Controller
+							disabled={!!company}
 							control={control}
 							name="companyName"
 							render={({ field }) => (
@@ -72,6 +88,7 @@ function CompanyTab() {
 					<div className="sm:col-span-2">
 						<Controller
 							control={control}
+							disabled={!!company}
 							name="phone"
 							render={({ field }) => (
 								<TextField
@@ -99,6 +116,7 @@ function CompanyTab() {
 					<div className="sm:col-span-2">
 						<Controller
 							control={control}
+							disabled={!!company}
 							name="website"
 							render={({ field }) => (
 								<TextField
@@ -124,6 +142,7 @@ function CompanyTab() {
 					<div className="sm:col-span-2">
 						<Controller
 							control={control}
+							disabled={!!company}
 							name="emailDomain"
 							render={({ field }) => (
 								<TextField
