@@ -1,23 +1,26 @@
 import { z } from 'zod';
 import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Alert, Button, Divider, InputAdornment, Paper, TextField, Typography } from '@mui/material';
+import { Alert, Button, Divider, Paper, Typography } from '@mui/material';
 import FuseSvgIcon from '@fuse/core/FuseSvgIcon';
 import _ from 'lodash';
 import { fetchAuthSession } from '@aws-amplify/auth';
 import { useSelector } from 'react-redux';
 import { selectAccount } from 'src/app/features/account/accountSlice';
 import axios from 'axios';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import FuseLoading from '@fuse/core/FuseLoading';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
 import { SettingsPlanBilling } from '../SettingsApi';
 import CheckoutForm from '../tabcomponents/PlanBillingComponents/CheckoutForm';
+import { useDispatch } from 'react-redux';
+import { fetchCompanySubscription, selectSubscription } from 'src/app/features/company/companySlice';
 
 type FormType = SettingsPlanBilling;
 
 type PlanType = {
+	id: number;
 	value: string;
 	label: string;
 	details: string;
@@ -26,22 +29,25 @@ type PlanType = {
 
 const PLANS: Array<PlanType> = [
 	{
-		value: 'basic',
-		label: 'Basic',
+		id: 1,
+		value: 'free',
+		label: 'Free',
 		details: 'Starter plan for individuals.',
-		price: 9
+		price: 0
 	},
 	{
-		value: 'team',
-		label: 'Team',
+		id: 2,
+		value: 'silver',
+		label: 'Silver',
 		details: 'Collaborate up to 10 people.',
-		price: 29
+		price: 0.99
 	},
 	{
-		value: 'enterprise',
-		label: 'Enterprise',
+		id: 3,
+		value: 'gold',
+		label: 'Gold',
 		details: 'For bigger businesses.',
-		price: 99
+		price: 1.99
 	}
 ];
 
@@ -50,8 +56,7 @@ interface SubscriptionResponse {
 }
 
 const defaultValues: FormType = {
-	plan: null,
-	numberOfUsers: null
+	plan: null
 };
 
 const stripePromise = loadStripe(
@@ -60,9 +65,11 @@ const stripePromise = loadStripe(
 
 function PlanBillingTab() {
 	const { user, company } = useSelector(selectAccount);
+	const subscription = useSelector(selectSubscription);
+	const dispatch = useDispatch();
 
 	const schema = z.object({
-		plan: z.enum(['basic', 'team', 'enterprise'])
+		plan: z.number() // ✅ Store `plan_id` (number) instead of `value` (string)
 	});
 
 	const { control, reset, handleSubmit, formState } = useForm<FormType>({
@@ -85,9 +92,8 @@ function PlanBillingTab() {
 			const requestData = {
 				currency_code: 'USD',
 				company_id: company.id,
-				plan_id: 1,
-				user_id: user.id,
-				price_id: 'price_1QlFc0DIv4SXGrBxcTOIm2TJ'
+				plan_id: formState.plan,
+				user_id: user.id
 			};
 
 			const response = await axios.post<SubscriptionResponse>(
@@ -105,15 +111,23 @@ function PlanBillingTab() {
 			setIsClientSecret(clientSecret);
 			setIsLoading(false);
 		} catch (error) {
+			setIsLoading(false);
 			console.error('Error while fetching client secret', error);
 		}
 	};
 
-	if (!company) return (
-		<div>
-			<p>First, register your company</p>
-		</div>
-	)
+	useEffect(() => {		
+		dispatch(fetchCompanySubscription());
+	}, [])
+
+	console.log("subscription", subscription);
+
+	if (!company)
+		return (
+			<div>
+				<p>First, register your company</p>
+			</div>
+		);
 
 	if (isLoading)
 		return (
@@ -157,10 +171,10 @@ function PlanBillingTab() {
 											}
 										}}
 										className="flex flex-1 cursor-pointer flex-col items-start justify-start rounded-md p-24 border-3 border-transparent relative"
-										onClick={() => field.onChange(plan.value)}
-										key={plan.value}
+										onClick={() => field.onChange(plan.id)} // ✅ Store `plan.id` instead of `plan.value`
+										key={plan.id} // ✅ Key should also be based on `id`
 									>
-										{field.value === plan.value && (
+										{field.value === plan.id && ( // ✅ Compare using `plan.id`
 											<FuseSvgIcon
 												className="absolute right-0 top-0 mr-12 mt-12"
 												size={24}
@@ -191,34 +205,6 @@ function PlanBillingTab() {
 							</>
 						)}
 					/>
-				</div>
-
-				<div className="mt-32 grid w-full gap-24 sm:grid-cols-4">
-					<div className="sm:col-span-2">
-						<Controller
-							control={control}
-							name="numberOfUsers"
-							render={({ field }) => (
-								<TextField
-									{...field}
-									label="Number of Users"
-									placeholder="Enter the number of policyholders"
-									id="number-of-users"
-									variant="outlined"
-									type="number"
-									required
-									fullWidth
-									InputProps={{
-										startAdornment: (
-											<InputAdornment position="start">
-												<FuseSvgIcon size={20}>heroicons-solid:user-circle</FuseSvgIcon>
-											</InputAdornment>
-										)
-									}}
-								/>
-							)}
-						/>
-					</div>
 				</div>
 
 				<Divider className="mb-40 mt-44 border-t" />

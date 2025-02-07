@@ -161,7 +161,6 @@ export type SettingsSecurity = {
 };
 export type SettingsPlanBilling = {
 	plan: string;
-	numberOfUsers: number;
 };
 export type SettingsTeamMember = {
 	avatar?: string;
