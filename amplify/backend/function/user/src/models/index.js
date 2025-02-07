@@ -38,7 +38,7 @@ const Company = sequelize.define(
     id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     Company_Name: { type: DataTypes.TEXT, allowNull: false },
     address: { type: DataTypes.STRING, allowNull: true },
-    domain: { type: DataTypes.STRING, allowNull: false  },
+    domain: { type: DataTypes.STRING, allowNull: false },
     plan_type: { type: DataTypes.TEXT, allowNull: true },
     // admin_id: {
     //   type: DataTypes.TEXT,
@@ -47,7 +47,7 @@ const Company = sequelize.define(
 
     subscription_id: { type: DataTypes.INTEGER, allowNull: true },
     plan_id: { type: DataTypes.INTEGER, allowNull: true },
-    primary_user_id: { type: DataTypes.INTEGER, allowNull: false  },
+    primary_user_id: { type: DataTypes.INTEGER, allowNull: false },
     purchased_date: { type: DataTypes.DATE, allowNull: true },
     last_renewal: { type: DataTypes.DATE, allowNull: true },
     expiry_date: { type: DataTypes.DATE, allowNull: true },
@@ -102,6 +102,10 @@ const Plans = sequelize.define(
     },
     days: {
       type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    price_id: {
+      type: DataTypes.STRING,
       allowNull: true,
     },
   },
@@ -187,8 +191,6 @@ const Payment = sequelize.define(
   }
 );
 
-
-
 const Subscriptions = sequelize.define(
   "Subscriptions",
   {
@@ -234,7 +236,6 @@ const Subscriptions = sequelize.define(
   }
 );
 
-
 const NewSubscriptions = sequelize.define(
   "NewSubscriptions",
   {
@@ -269,7 +270,13 @@ const NewSubscriptions = sequelize.define(
       allowNull: false, // End date is required
     },
     status: {
-      type: DataTypes.ENUM("ACTIVE", "INACTIVE", "CANCELED", "PENDING_CANCELLATION", "PAYMENT_FAILED"),
+      type: DataTypes.ENUM(
+        "ACTIVE",
+        "INACTIVE",
+        "CANCELED",
+        "PENDING_CANCELLATION",
+        "PAYMENT_FAILED"
+      ),
       allowNull: false,
       defaultValue: "ACTIVE",
     },

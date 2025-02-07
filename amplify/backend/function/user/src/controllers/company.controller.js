@@ -1,9 +1,13 @@
-const { Company, User } = require("../models");
+const { Company, User, NewSubscriptions } = require("../models");
 class CompanyController {
   setupRoutes(app) {
     app.get("/company/:user_id", this.getCompany);
     app.post("/company", this.createCompany);
     app.put("/company", this.updateCompany);
+    app.get(
+      "/company/:company_id/subscription",
+      this.getCompanySubscriptionDetails
+    );
   }
   async createCompany(req, res) {
     const { name, address, phone_number, email, user_id, policyholder_count } =
@@ -89,6 +93,32 @@ class CompanyController {
     res.status(200).json({
       company,
     });
+  }
+
+  async getCompanySubscriptionDetails(req, res) {
+    const { company_id } = req.params;
+
+    try {
+      const subscription = await NewSubscriptions.findOne({
+        where: { company_id },
+      });
+
+      if (!subscription) {
+        return res.status(404).json({
+          message: "Subscription not found",
+        });
+      }
+
+      res.status(200).json({
+        subscription,
+      });
+    } catch (error) {
+      console.error("Error fetching subscription details:", error);
+      res.status(500).json({
+        message: "Failed to fetch subscription details",
+        error: error.message,
+      });
+    }
   }
 }
 

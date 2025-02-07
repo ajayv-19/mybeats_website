@@ -11,7 +11,7 @@ const {
   Plans,
   Payment,
   Subscriptions,
-  NewSubscriptions
+  NewSubscriptions,
 } = require("../models/index.js");
 
 const datelib = require("../lib/date.js");
@@ -85,7 +85,9 @@ const handleSuccesfullInvoicePayment = async (invoice) => {
     console.log("💰 Payment succeeded for subscription:", subscription_id);
 
     // Find the subscription in our database
-    const subscription = await NewSubscriptions.findOne({ where: { sub_id: subscription_id } });
+    const subscription = await NewSubscriptions.findOne({
+      where: { sub_id: subscription_id },
+    });
 
     if (!subscription) {
       console.error("Subscription not found in DB:", subscription_id);
@@ -111,14 +113,16 @@ const handleSuccesfullInvoicePayment = async (invoice) => {
   } catch (error) {
     console.error("❌ Error updating successful payment:", error);
   }
-}
+};
 
 const handleSubscriptionUpdated = async (subscription) => {
   try {
     const stripe = StripeClient(STRIPE_SECRET_KEY);
     console.log("🔄 Subscription updated in Stripe:", subscription.id);
 
-    const existingSubscription = await NewSubscriptions.findOne({ where: { sub_id: subscription.id } });
+    const existingSubscription = await NewSubscriptions.findOne({
+      where: { sub_id: subscription.id },
+    });
 
     if (!existingSubscription) {
       console.error("⚠️ Subscription not found in DB:", subscription.id);
@@ -131,14 +135,17 @@ const handleSubscriptionUpdated = async (subscription) => {
     const subscriptionItemId = subscriptionItem.id;
 
     // Fetch subscription item from Stripe to get price details
-    const stripeItem = await stripe.subscriptionItems.retrieve(subscriptionItemId);
+    const stripeItem =
+      await stripe.subscriptionItems.retrieve(subscriptionItemId);
     const newAmount = (stripeItem.price.unit_amount / 100) * newQuantity; // Convert cents to dollars
 
     console.log("📊 Updating DB with new values:", { newQuantity, newAmount });
 
     // Update database
     existingSubscription.amount = newAmount;
-    existingSubscription.bill_end = new Date(subscription.current_period_end * 1000);
+    existingSubscription.bill_end = new Date(
+      subscription.current_period_end * 1000
+    );
     await existingSubscription.save();
 
     console.log("✅ Subscription updated in database.");
@@ -154,7 +161,9 @@ const handleFailedInvoive = async (invoice) => {
     console.log("❌ Payment failed for subscription:", subscription_id);
 
     // Find the subscription in our database
-    const subscription = await NewSubscriptions.findOne({ where: { sub_id: subscription_id } });
+    const subscription = await NewSubscriptions.findOne({
+      where: { sub_id: subscription_id },
+    });
 
     if (!subscription) {
       console.error("Subscription not found in database:", subscription_id);
@@ -195,7 +204,6 @@ class PaymentController {
 
       // Handle the event
       switch (event.type) {
-
         // When a subscription is created for a customer for a customer
         // Add a row to the subscription table with status active
         // Update the payment row's status from active to succesfull
@@ -218,7 +226,7 @@ class PaymentController {
         // When a customer fails to pay for the subscription
         case "invoice.payment_failed":
           const invoice_failed = event.data.object;
-          await handleFailedInvoive(invoice_failed)
+          await handleFailedInvoive(invoice_failed);
           break;
 
         // TODO: Update subscription (Prorated Charge) -> Change the number of policyholders (Change the price) -> Update the payment and the subscription in stripe
@@ -233,7 +241,6 @@ class PaymentController {
     }
   }
 
-
   // Update subscription
   // TODO: Downgrade -> Calc new amount -> Calc new subscription -> Cancel previous sub -> Calc refund amount to the user
   // TODO: Upgrade -> Same thing
@@ -245,18 +252,23 @@ class PaymentController {
       const {
         currency_code = "USD",
         company_id,
-        price_id,
+
         plan_id,
         user_id,
       } = req.body;
 
       // Throw an error when the required parameters are not there
-      if (!currency_code || !price_id || !user_id || !plan_id) {
+      if (!currency_code || !user_id || !plan_id) {
         return res.status(400).json({ error: "Missing required parameters" });
       }
 
       // Get the user details
       const user = await User.findOne({ where: { id: user_id } });
+      const plan = await Plans.findOne({ where: { id: plan_id } });
+      if (!user || !plan) {
+        return res.status(400).json({ error: "Invalid user or plan" });
+      }
+      const price_id = plan.price_id;
 
       // Get the company details
       const company = await Company.findOne({ where: { id: company_id } });
@@ -317,40 +329,43 @@ class PaymentController {
       const { subscription_id, cancel_immediately } = req.body;
 
       if (!subscription_id) {
-          return res.status(400).json({ error: "Missing subscription_id" });
+        return res.status(400).json({ error: "Missing subscription_id" });
       }
 
       // Fetch existing subscription
       const subscription = await stripe.subscriptions.retrieve(subscription_id);
 
       if (!subscription) {
-          return res.status(404).json({ error: "Subscription not found" });
+        return res.status(404).json({ error: "Subscription not found" });
       }
 
       // Cancel the subscription (either immediately or at the end of the billing period)
-      const canceledSubscription = await stripe.subscriptions.update(subscription_id, {
+      const canceledSubscription = await stripe.subscriptions.update(
+        subscription_id,
+        {
           cancel_at_period_end: !cancel_immediately, // If true, the user will have access till the end of their billing cycle
-      });
+        }
+      );
 
       // Update subscription status in DB
       await Subscriptions.update(
-          {
-              status: cancel_immediately ? "CANCELED" : "PENDING_CANCELLATION",
-              updated_at: new Date(),
-          },
-          { where: { subscription_id } }
+        {
+          status: cancel_immediately ? "CANCELED" : "PENDING_CANCELLATION",
+          updated_at: new Date(),
+        },
+        { where: { subscription_id } }
       );
 
       res.status(200).json({
-          message: cancel_immediately
-              ? "Subscription canceled immediately"
-              : "Subscription will be canceled at the end of the billing cycle",
-          canceledSubscription,
+        message: cancel_immediately
+          ? "Subscription canceled immediately"
+          : "Subscription will be canceled at the end of the billing cycle",
+        canceledSubscription,
       });
-  } catch (error) {
+    } catch (error) {
       console.error("Error canceling subscription:", error);
       res.status(500).json({ error: "Unable to cancel subscription" });
-  }
+    }
   }
 
   //   async CreatePayment(req, res) {
