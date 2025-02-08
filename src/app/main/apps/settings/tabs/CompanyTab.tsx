@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -8,10 +8,7 @@ import TextField from "@mui/material/TextField";
 import { Button, Divider, InputAdornment } from "@mui/material";
 import FuseSvgIcon from "@fuse/core/FuseSvgIcon";
 import { selectAccount } from "src/app/features/account/accountSlice";
-import {
-  selectLocalCompanyData,
-  setCompanyDataLocally,
-} from "src/app/features/company/companySlice";
+import { setCompanyDataLocally } from "src/app/features/company/companySlice";
 import AuthorityForm from "../tabcomponents/AuthorityForm";
 import { CompanyFormInput } from "../types/CompanyTypes.types";
 
