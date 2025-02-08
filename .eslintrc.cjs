@@ -39,6 +39,9 @@ module.exports = {
         "prettier/prettier": [
             "warn",
             {
+                "usePrettierrc": false
+            },
+            {
                 "endOfLine": "auto",
                 "arrowParens": "always",
                 "bracketSpacing": true,
