@@ -1,5 +1,5 @@
 import _ from "lodash";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,20 +7,21 @@ import { z } from "zod";
 import TextField from "@mui/material/TextField";
 import { Button, Divider, InputAdornment } from "@mui/material";
 import FuseSvgIcon from "@fuse/core/FuseSvgIcon";
+import { selectAccount } from "src/app/features/account/accountSlice";
 import {
-  selectAccount,
-  submitCompanyDetails,
-} from "src/app/features/account/accountSlice";
-import { SettingsCompany } from "../SettingsApi";
+  selectLocalCompanyData,
+  setCompanyDataLocally,
+} from "src/app/features/company/companySlice";
 import AuthorityForm from "../tabcomponents/AuthorityForm";
+import { CompanyFormInput } from "../types/CompanyTypes.types";
 
 // Get the form type of the settings company
-type FormType = SettingsCompany;
+type FormType = CompanyFormInput;
 
 // Default values for the company
 const defaultValues: FormType = {
   companyName: null,
-  phone: null,
+  phoneNumber: null,
   website: null,
   policyholderCount: null,
 };
@@ -30,9 +31,14 @@ const defaultValues: FormType = {
  */
 const schema = z.object({
   companyName: z.string().min(1, "Company Name is required"), //  Company name is required
-  phone: z.string().min(1, "Phone number is required"), // Phone number is required
+  phoneNumber: z
+    .string()
+    .min(1, "Phone number is required") // Phone number is required
+    .regex(/^\d{10}$/, "Phone number must be exactly 10 digits"), // Ensure phone number is exactly 10 digits
   website: z.string().url("Invalid website URL").optional(), //  Website should be in the format of the url
-  policyholderCount: z.number().min(1, "Enter the amount of policyholders"), // Policy holder count is required
+  policyholderCount: z.coerce
+    .number()
+    .min(1, "Enter the amount of policyholders"), // Policy Holder count should be greater than 1
 });
 
 function CompanyTab() {
@@ -49,28 +55,39 @@ function CompanyTab() {
 
   const { isValid, dirtyFields, errors } = formState; // unpack the form state
 
-  useEffect(() => {
-    if (company) {
-      // When there is company information in the redux
-      // set the default values for the company form
-      reset({
-        companyName: company.Company_Name ?? null,
-        phone: company.phone_number ?? null,
-        website: company.website ?? null,
-        policyholderCount: company.policyholder_count ?? null,
-      });
-    }
-  }, [company, reset]); // Trigger reset whenever `company` data changes
+  // STATES
+  // const [userIsAuthorized, setUserIsAuthorized] = useState(!!company);
+  const [userIsAuthorized, setUserIsAuthorized] = useState(false);
+
+  // useEffect(() => {
+  //   if (company) {
+  //     // When there is company information in the redux
+  //     // set the default values for the company form
+  //     reset({
+  //       // companyName: company.Company_Name ?? null,
+  //       // phone: company.phone_number ?? null,
+  //       // website: company.website ?? null,
+  //       // policyholderCount: company.policyholder_count ?? null,
+  //     });
+  //   }
+  // }, [company, reset]); // Trigger reset whenever `company` data changes
 
   /**
    * Handling submission of the company form
    * @param formData
    */
   const onSubmit = (formData: FormType) => {
-    dispatch(submitCompanyDetails({ formData }));
+    dispatch(setCompanyDataLocally(formData));
   };
 
-  if (true) return <AuthorityForm />;
+  // If user is not authorized to see the company form
+  // Show them the Authority Form
+  if (!userIsAuthorized)
+    return (
+      <AuthorityForm
+        authorizeUser={(isAuthorized) => setUserIsAuthorized(isAuthorized)}
+      />
+    );
 
   return (
     <div className="w-full max-w-3xl">
@@ -79,7 +96,7 @@ function CompanyTab() {
           {/* Company Name */}
           <div className="sm:col-span-2">
             <Controller
-              disabled={!!company}
+              // disabled={!!company}
               control={control}
               name="companyName"
               render={({ field }) => (
@@ -89,6 +106,7 @@ function CompanyTab() {
                   placeholder="Company Name"
                   id="company-name"
                   variant="outlined"
+                  error={!!errors.companyName}
                   required
                   fullWidth
                   InputProps={{
@@ -109,8 +127,8 @@ function CompanyTab() {
           <div className="sm:col-span-2">
             <Controller
               control={control}
-              disabled={!!company}
-              name="phone"
+              // disabled={!!company}
+              name="phoneNumber"
               render={({ field }) => (
                 <TextField
                   {...field}
@@ -118,6 +136,8 @@ function CompanyTab() {
                   placeholder="Phone"
                   id="phone"
                   variant="outlined"
+                  type="number"
+                  error={!!errors.phoneNumber}
                   required
                   fullWidth
                   InputProps={{
@@ -140,7 +160,7 @@ function CompanyTab() {
           <div className="sm:col-span-2">
             <Controller
               control={control}
-              disabled={!!company}
+              // disabled={!!company}
               name="website"
               render={({ field }) => (
                 <TextField
@@ -149,6 +169,7 @@ function CompanyTab() {
                   placeholder="Website"
                   id="website"
                   variant="outlined"
+                  error={!!errors.website}
                   required
                   fullWidth
                   InputProps={{
@@ -169,16 +190,17 @@ function CompanyTab() {
           <div className="sm:col-span-2">
             <Controller
               control={control}
-              disabled={!!company}
+              // disabled={!!company}
               name="policyholderCount"
               render={({ field }) => (
                 <TextField
                   {...field}
                   label="Policy Holder Count"
                   placeholder="Number of policyholders"
-                  id="policyholder-amount"
+                  id="policyholder-count"
                   variant="outlined"
                   type="number"
+                  error={!!errors.policyholderCount}
                   required
                   fullWidth
                   InputProps={{
@@ -190,11 +212,6 @@ function CompanyTab() {
                       </InputAdornment>
                     ),
                   }}
-                  onChange={(e) =>
-                    field.onChange(
-                      e.target.value === "" ? "" : Number(e.target.value)
-                    )
-                  }
                 />
               )}
             />
