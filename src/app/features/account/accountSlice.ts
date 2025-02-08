@@ -6,6 +6,7 @@ import { uploadData } from "@aws-amplify/storage";
 import { addOrUpdateUser } from "src/app/main/apps/settings/apis/Accountapis";
 import { fetchAuthSession } from "@aws-amplify/auth";
 import axios from "axios";
+import { stat } from "fs";
 
 type UserDetails = {
   id?: number;
@@ -102,13 +103,14 @@ export const submitAccountDetails = createAsyncThunk(
  */
 export const submitCompanyDetails = createAsyncThunk(
   "account/submitCompany",
-  async (
-    { formData }: { formData: CompanyDetails },
-    { getState, dispatch, rejectWithValue }
-  ) => {
+  async (_, { getState, dispatch, rejectWithValue }) => {
     try {
       const state = getState() as RootState; // Ensure correct typing
-      const user_id = state.account.user?.id; // Adjust based on your Redux state structure
+      const user_id = state.account.user?.id; // Adjust based on your Redux state structure 
+      const localCompanyData = state.company.localCompanyData;
+      console.log("local company data", localCompanyData);
+
+      return;
 
       const authToken = (
         await fetchAuthSession()

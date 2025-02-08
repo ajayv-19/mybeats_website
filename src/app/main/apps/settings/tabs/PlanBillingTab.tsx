@@ -4,7 +4,7 @@ import { z } from "zod";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Button, Divider, Paper, Typography } from "@mui/material";
-import { useDispatch, useSelector } from "react-redux";
+import { useSelector } from "react-redux";
 import { fetchAuthSession } from "@aws-amplify/auth";
 import { selectAccount } from "src/app/features/account/accountSlice";
 import FuseSvgIcon from "@fuse/core/FuseSvgIcon";
@@ -15,6 +15,9 @@ import { loadStripe } from "@stripe/stripe-js";
 import { SettingsPlanBilling } from "../SettingsApi";
 import CheckoutForm from "../tabcomponents/PlanBillingComponents/CheckoutForm";
 import { PlanType } from "../types/PlanTypes.types";
+import { useDispatch } from "react-redux";
+import { initiateSubscription } from "src/app/features/payment/paymentSlice";
+import { AppDispatch } from "app/store/store";
 
 type FormType = SettingsPlanBilling;
 
@@ -51,59 +54,62 @@ const defaultValues: FormType = {
 };
 
 const stripePromise = loadStripe(
-  "pk_test_51QVNrHDIv4SXGrBxLk9llPOeoiczwAeRWCINxXbBNNw2Ecr1FTlk4ZasY3wHAZrjDcANw5bJN318FKvXtS2qpJEA00O6QyClPD",
+  "pk_test_51QVNrHDIv4SXGrBxLk9llPOeoiczwAeRWCINxXbBNNw2Ecr1FTlk4ZasY3wHAZrjDcANw5bJN318FKvXtS2qpJEA00O6QyClPD"
 );
 
 function PlanBillingTab() {
+  const dispatch = useDispatch<AppDispatch>();
+
   const { user, company } = useSelector(selectAccount);
-  const dispatch = useDispatch();
 
   const schema = z.object({
     plan: z.number(), // ✅ Store `plan_id` (number) instead of `value` (string)
   });
 
-  const { control, reset, handleSubmit, formState } = useForm<FormType>({
+  const { control, handleSubmit, formState } = useForm<FormType>({
     defaultValues,
     mode: "all",
     resolver: zodResolver(schema),
   });
 
-  const { isValid, dirtyFields, errors } = formState;
+  const { isValid, dirtyFields } = formState;
 
   const [clientSecret, setIsClientSecret] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
   const onSubmit = async (formState: FormType) => {
-    try {
-      setIsLoading(true);
-      const session = await fetchAuthSession();
-      const authToken = session.tokens?.accessToken?.toString();
+    dispatch(initiateSubscription());
 
-      const requestData = {
-        currency_code: "USD",
-        company_id: company.id,
-        plan_id: formState.plan,
-        user_id: user.id,
-      };
+    // try {
+    //   setIsLoading(true);
+    //   const session = await fetchAuthSession();
+    //   const authToken = session.tokens?.accessToken?.toString();
 
-      const response = await axios.post<SubscriptionResponse>(
-        "https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/create-subscription",
-        requestData,
-        {
-          headers: {
-            Authorization: authToken,
-          },
-        },
-      );
+    //   const requestData = {
+    //     currency_code: "USD",
+    //     company_id: company.id,
+    //     plan_id: formState.plan,
+    //     user_id: user.id,
+    //   };
 
-      const { clientSecret } = response.data;
+    //   const response = await axios.post<SubscriptionResponse>(
+    //     "https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/create-subscription",
+    //     requestData,
+    //     {
+    //       headers: {
+    //         Authorization: authToken,
+    //       },
+    //     },
+    //   );
 
-      setIsClientSecret(clientSecret);
-      setIsLoading(false);
-    } catch (error) {
-      setIsLoading(false);
-      console.error("Error while fetching client secret", error);
-    }
+    //   const { clientSecret } = response.data;
+
+    //   setIsClientSecret(clientSecret);
+    //   setIsLoading(false);
+    // } catch (error) {
+    //   setIsLoading(false);
+    //   console.error("Error while fetching client secret", error);
+    // }
   };
 
   if (isLoading)
@@ -149,7 +155,7 @@ function PlanBillingTab() {
                     onClick={() => field.onChange(plan.id)} // ✅ Store `plan.id` instead of `plan.value`
                     key={plan.id} // ✅ Key should also be based on `id`
                   >
-                    {field.value === plan.id && ( // ✅ Compare using `plan.id`
+                    {Number(field.value) === plan.id && ( // ✅ Compare using `plan.id`
                       <FuseSvgIcon
                         className="absolute right-0 top-0 mr-12 mt-12"
                         size={24}

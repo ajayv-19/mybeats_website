@@ -1,5 +1,6 @@
 import _ from "lodash";
 import { useState } from "react";
+import { useNavigate } from "react-router";
 import { useSelector, useDispatch } from "react-redux";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,6 +8,7 @@ import { z } from "zod";
 import TextField from "@mui/material/TextField";
 import { Button, Divider, InputAdornment } from "@mui/material";
 import FuseSvgIcon from "@fuse/core/FuseSvgIcon";
+import { AppDispatch } from "app/store/store";
 import { selectAccount } from "src/app/features/account/accountSlice";
 import { setCompanyDataLocally } from "src/app/features/company/companySlice";
 import AuthorityForm from "../tabcomponents/AuthorityForm";
@@ -39,7 +41,8 @@ const schema = z.object({
 });
 
 function CompanyTab() {
-  const dispatch = useDispatch(); // declare dispatch
+  const dispatch = useDispatch<AppDispatch>(); // declare dispatch
+  const navigate = useNavigate();
 
   const { company } = useSelector(selectAccount); // get company from the account
 
@@ -75,6 +78,7 @@ function CompanyTab() {
    */
   const onSubmit = (formData: FormType) => {
     dispatch(setCompanyDataLocally(formData));
+    navigate("/apps/settings/plan-billing");
   };
 
   // If user is not authorized to see the company form

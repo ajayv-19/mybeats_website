@@ -5,6 +5,7 @@ import apiService from "./apiService";
 import { userSlice } from "../auth/user/store/userSlice";
 import { accountSlice } from "../features/account/accountSlice";
 import { companySlice } from "../features/company/companySlice";
+import { paymentSlice } from "../features/payment/paymentSlice";
 
 // eslint-disable-next-line
 // @ts-ignore
@@ -19,6 +20,7 @@ export const rootReducer = combineSlices(
   userSlice,
   accountSlice,
   companySlice,
+  paymentSlice,
   fuseSettingsSlice,
   i18nSlice,
   /**

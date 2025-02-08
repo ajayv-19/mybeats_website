@@ -5,6 +5,8 @@ import {
   useStripe,
 } from "@stripe/react-stripe-js";
 import { ReactElement } from "react";
+import { useDispatch } from "react-redux";
+import { submitCompanyDetails } from "src/app/features/account/accountSlice";
 
 interface CheckoutFormProps {
   clientSecret: string;
@@ -13,6 +15,7 @@ interface CheckoutFormProps {
 function CheckoutForm({ clientSecret }: CheckoutFormProps): ReactElement {
   const stripe = useStripe();
   const elements = useElements();
+  const dispatch = useDispatch();
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -34,6 +37,9 @@ function CheckoutForm({ clientSecret }: CheckoutFormProps): ReactElement {
         return_url: `${window.location.origin}/apps/settings/account`,
       },
     });
+
+    // dispatch(submitCompanyDetails());
+    // dispatch();
 
     if (error) {
       console.error("Something went wrong when paying", error);

@@ -248,11 +248,12 @@ class PaymentController {
   // Create Subscription route
   async CreateSubscription(req, res) {
     try {
-      const stripe = StripeClient(STRIPE_SECRET_KEY);
+      
+      const stripe = StripeClient(STRIPE_SECRET_KEY); // initiate stripe
+      
       const {
         currency_code = "USD",
         company_id,
-
         plan_id,
         user_id,
       } = req.body;
