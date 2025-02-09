@@ -80,7 +80,6 @@ function CompanyTab() {
    */
   const onSubmit = (formData: FormType) => {
     dispatch(submitCompanyDetails({ formData }));
-    navigate("/apps/settings/plan-billing");
   };
 
   // If user is not authorized to see the company form
@@ -105,10 +104,7 @@ function CompanyTab() {
               render={({ field }) => (
                 <TextField
                   {...field}
-                  disabled={
-                    !company?.is_subscribed ||
-                    (company?.is_subscribed && user.role_id !== 1)
-                  }
+                  disabled={company?.is_subscribed}
                   label="Company Name"
                   placeholder="Company Name"
                   id="company-name"
