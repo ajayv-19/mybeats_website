@@ -48,22 +48,35 @@ const addSubscription = async (customer_subscription_created) => {
       current_period_start,
       current_period_end,
       plan,
+      metadata, // ✅ Extract metadata dynamically from Stripe event
     } = customer_subscription_created;
 
+    // Ensure metadata exists before using it
+    const company_id = metadata?.company_id
+      ? Number(metadata.company_id)
+      : null;
+    const plan_id = metadata?.plan_id ? Number(metadata.plan_id) : null;
+    const user_id = metadata?.user_id ? Number(metadata.user_id) : null;
+
+    const company = await Company.findByPk(company_id);
+    company.update({ is_subscribed: true });
+    const user = await User.findByPk(user_id);
+    user.update({ role_id: 1 });
+
     // Using static metadata since metadata is missing in Stripe response
-    const metadata = {
-      company_id: 1, // Replace with actual static company ID
-      plan_id: 1, // Replace with actual static plan ID
-      user_id: 1, // Replace with actual static user ID (or keep NULL)
-    };
+    // const metadata = {
+    //   company_id: 1, // Replace with actual static company ID
+    //   plan_id: 1, // Replace with actual static plan ID
+    //   user_id: 1, // Replace with actual static user ID (or keep NULL)
+    // };
 
     console.log("✅ Using static metadata:", metadata);
 
     // Create a new row in the NewSubscriptions table
     const newSubscription = await NewSubscriptions.create({
       sub_id,
-      user_id: metadata.user_id || null, // If user_id exists, store it; otherwise, keep it NULL
-      company_id: metadata.company_id,
+      user_id, //: metadata.user_id || null, // If user_id exists, store it; otherwise, keep it NULL
+      company_id, //: metadata.company_id,
       amount: plan.amount / 100, // Convert cents to dollars (Stripe sends amounts in cents)
       bill_start: new Date(current_period_start * 1000), // Convert Unix timestamp to Date
       bill_end: new Date(current_period_end * 1000), // Convert Unix timestamp to Date
@@ -207,7 +220,7 @@ class PaymentController {
         // When a subscription is created for a customer for a customer
         // Add a row to the subscription table with status active
         // Update the payment row's status from active to succesfull
-        case "customer.subscription.created":
+        case "customer.subscription.created": //get company subscrited true
           const customer_subscription_created = event.data.object;
           await addSubscription(customer_subscription_created);
           break;
@@ -224,7 +237,7 @@ class PaymentController {
           break;
 
         // When a customer fails to pay for the subscription
-        case "invoice.payment_failed":
+        case "invoice.payment_failed": //get company subscrited false
           const invoice_failed = event.data.object;
           await handleFailedInvoive(invoice_failed);
           break;
@@ -248,12 +261,11 @@ class PaymentController {
   // Create Subscription route
   async CreateSubscription(req, res) {
     try {
-      
-      const stripe = StripeClient(STRIPE_SECRET_KEY); // initiate stripe
-      
+      const stripe = StripeClient(STRIPE_SECRET_KEY);
       const {
         currency_code = "USD",
         company_id,
+
         plan_id,
         user_id,
       } = req.body;

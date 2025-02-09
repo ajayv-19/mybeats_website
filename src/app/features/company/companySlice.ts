@@ -47,7 +47,7 @@ export const fetchCompanySubscription = createAsyncThunk(
 
       if (response.status === 200) {
         console.log("response", response.data);
-        return response.data.subscription; // ✅ Return subscription data
+        // return response.data.subscription; // ✅ Return subscription data
       }
 
       return rejectWithValue("Failed to fetch subscription details");

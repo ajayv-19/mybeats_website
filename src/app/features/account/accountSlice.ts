@@ -6,7 +6,7 @@ import { uploadData } from "@aws-amplify/storage";
 import { addOrUpdateUser } from "src/app/main/apps/settings/apis/Accountapis";
 import { fetchAuthSession } from "@aws-amplify/auth";
 import axios from "axios";
-import { stat } from "fs";
+import { CompanyFormInput } from "src/app/main/apps/settings/types/CompanyTypes.types";
 
 type UserDetails = {
   id?: number;
@@ -22,7 +22,7 @@ type CompanyDetails = {
   phone_number: number;
   plan_type: string;
   address: string;
-  policyholderCount: number;
+  policyholder_count: number;
 };
 
 type AccountState = {
@@ -31,6 +31,7 @@ type AccountState = {
   loading: boolean;
   error: string;
   success: boolean;
+  isactive: boolean;
 };
 
 /**
@@ -42,6 +43,7 @@ const initialState: AccountState = {
   loading: false,
   error: null,
   success: false,
+  isactive: null,
 };
 
 /**
@@ -103,14 +105,13 @@ export const submitAccountDetails = createAsyncThunk(
  */
 export const submitCompanyDetails = createAsyncThunk(
   "account/submitCompany",
-  async (_, { getState, dispatch, rejectWithValue }) => {
+  async (
+    { formData }: { formData: CompanyFormInput },
+    { getState, dispatch, rejectWithValue }
+  ) => {
     try {
       const state = getState() as RootState; // Ensure correct typing
-      const user_id = state.account.user?.id; // Adjust based on your Redux state structure 
-      const localCompanyData = state.company.localCompanyData;
-      console.log("local company data", localCompanyData);
-
-      return;
+      const user_id = state.account.user?.id; // Adjust based on your Redux state structure
 
       const authToken = (
         await fetchAuthSession()
@@ -120,8 +121,7 @@ export const submitCompanyDetails = createAsyncThunk(
 
       const requestData = {
         name: formData.companyName,
-        phone_number: formData.phone,
-        address: formData.address || "",
+        phone_number: formData.phoneNumber,
         email,
         user_id,
         policyholder_count: formData.policyholderCount,
@@ -174,6 +174,7 @@ export const fetchAccountDetails = createAsyncThunk(
       );
 
       if (response.status === 200) {
+        console.log("response user", response.data.userdata);
         return response.data.userdata;
       }
 

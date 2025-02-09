@@ -9,7 +9,8 @@ function AuthorityForm({ authorizeUser }: AuthorityFormProps) {
   return (
     <div className="flex flex-col gap-32">
       <Typography>
-        Do you have the authority to register your company ?
+        Do you have the authority to register your insurance company and
+        purchase the subscription plan?
       </Typography>
 
       <div className="flex gap-10">

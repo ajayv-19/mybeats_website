@@ -1,6 +1,5 @@
 import _ from "lodash";
-import { useState } from "react";
-import { useNavigate } from "react-router";
+import { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,10 +8,14 @@ import TextField from "@mui/material/TextField";
 import { Button, Divider, InputAdornment } from "@mui/material";
 import FuseSvgIcon from "@fuse/core/FuseSvgIcon";
 import { AppDispatch } from "app/store/store";
-import { selectAccount } from "src/app/features/account/accountSlice";
+import {
+  selectAccount,
+  submitCompanyDetails,
+} from "src/app/features/account/accountSlice";
 import { setCompanyDataLocally } from "src/app/features/company/companySlice";
 import AuthorityForm from "../tabcomponents/AuthorityForm";
 import { CompanyFormInput } from "../types/CompanyTypes.types";
+import { useNavigate } from "react-router";
 
 // Get the form type of the settings company
 type FormType = CompanyFormInput;
@@ -44,7 +47,7 @@ function CompanyTab() {
   const dispatch = useDispatch<AppDispatch>(); // declare dispatch
   const navigate = useNavigate();
 
-  const { company } = useSelector(selectAccount); // get company from the account
+  const { company, user } = useSelector(selectAccount); // get company from the account
 
   // Use Form for the company information form
   const { control, reset, handleSubmit, formState } = useForm<FormType>({
@@ -56,28 +59,27 @@ function CompanyTab() {
   const { isValid, dirtyFields, errors } = formState; // unpack the form state
 
   // STATES
-  // const [userIsAuthorized, setUserIsAuthorized] = useState(!!company);
-  const [userIsAuthorized, setUserIsAuthorized] = useState(false);
+  const [userIsAuthorized, setUserIsAuthorized] = useState(!!company);
 
-  // useEffect(() => {
-  //   if (company) {
-  //     // When there is company information in the redux
-  //     // set the default values for the company form
-  //     reset({
-  //       // companyName: company.Company_Name ?? null,
-  //       // phone: company.phone_number ?? null,
-  //       // website: company.website ?? null,
-  //       // policyholderCount: company.policyholder_count ?? null,
-  //     });
-  //   }
-  // }, [company, reset]); // Trigger reset whenever `company` data changes
+  useEffect(() => {
+    if (company) {
+      // When there is company information in the redux
+      // set the default values for the company form
+      reset({
+        companyName: company.Company_Name ?? null,
+        phoneNumber: company.phone_number ?? null,
+        website: company.website ?? null,
+        policyholderCount: company.policyholder_count ?? null,
+      });
+    }
+  }, [company, reset]); // Trigger reset whenever `company` data changes
 
   /**
    * Handling submission of the company form
    * @param formData
    */
   const onSubmit = (formData: FormType) => {
-    dispatch(setCompanyDataLocally(formData));
+    dispatch(submitCompanyDetails({ formData }));
     navigate("/apps/settings/plan-billing");
   };
 
@@ -103,6 +105,10 @@ function CompanyTab() {
               render={({ field }) => (
                 <TextField
                   {...field}
+                  disabled={
+                    !company?.is_subscribed ||
+                    (company?.is_subscribed && user.role_id !== 1)
+                  }
                   label="Company Name"
                   placeholder="Company Name"
                   id="company-name"
@@ -133,6 +139,10 @@ function CompanyTab() {
               render={({ field }) => (
                 <TextField
                   {...field}
+                  disabled={
+                    !company?.is_subscribed ||
+                    (company?.is_subscribed && user.role_id !== 1)
+                  }
                   label="Phone Number"
                   placeholder="Phone"
                   id="phone"
@@ -161,7 +171,10 @@ function CompanyTab() {
           <div className="sm:col-span-2">
             <Controller
               control={control}
-              // disabled={!!company}
+              disabled={
+                !company?.is_subscribed ||
+                (company?.is_subscribed && user.role_id !== 1)
+              }
               name="website"
               render={({ field }) => (
                 <TextField
@@ -191,7 +204,10 @@ function CompanyTab() {
           <div className="sm:col-span-2">
             <Controller
               control={control}
-              // disabled={!!company}
+              disabled={
+                !company?.is_subscribed ||
+                (company?.is_subscribed && user.role_id !== 1)
+              }
               name="policyholderCount"
               render={({ field }) => (
                 <TextField
@@ -230,7 +246,7 @@ function CompanyTab() {
             type="submit"
             disabled={_.isEmpty(dirtyFields) || !isValid}
           >
-            Save
+            {user.role_id === 1 ? "Update" : "Next"}
           </Button>
         </div>
       </form>

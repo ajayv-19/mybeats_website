@@ -55,6 +55,11 @@ const Company = sequelize.define(
     number_of_users_accepted: { type: DataTypes.INTEGER, allowNull: true },
     phone_number: { type: DataTypes.STRING, allowNull: true },
     policyholder_count: { type: DataTypes.INTEGER, allowNull: true },
+    is_subscribed: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     sequelize,
@@ -194,39 +199,14 @@ const Payment = sequelize.define(
 const Subscriptions = sequelize.define(
   "Subscriptions",
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
-    company_id: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    user_id: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    starts_at: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    ends_at: {
-      type: DataTypes.DATE,
-      allowNull: true,
-    },
-    isactive: {
-      type: DataTypes.BOOLEAN,
-      allowNull: true,
-    },
-    plan_id: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    payment_id: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
+    id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
+    company_id: { type: DataTypes.INTEGER, allowNull: true },
+    user_id: { type: DataTypes.INTEGER, allowNull: true },
+    starts_at: { type: DataTypes.DATE, allowNull: true },
+    ends_at: { type: DataTypes.DATE, allowNull: true },
+    isactive: { type: DataTypes.BOOLEAN, allowNull: true },
+    plan_id: { type: DataTypes.INTEGER, allowNull: true },
+    payment_id: { type: DataTypes.INTEGER, allowNull: true },
   },
   {
     sequelize,
@@ -239,11 +219,7 @@ const Subscriptions = sequelize.define(
 const NewSubscriptions = sequelize.define(
   "NewSubscriptions",
   {
-    id: {
-      type: DataTypes.INTEGER,
-      autoIncrement: true,
-      primaryKey: true,
-    },
+    id: { type: DataTypes.INTEGER, autoIncrement: true, primaryKey: true },
     sub_id: {
       type: DataTypes.STRING,
       allowNull: false,

@@ -1,5 +1,5 @@
 // const { is } = require("immutable");
-const { User, Company, Subscriptions } = require("../models");
+const { User, Company, Subscriptions, NewSubscriptions } = require("../models");
 
 const UserController = {
   async getUserById(req, res) {
@@ -21,26 +21,53 @@ const UserController = {
         company = await Company.findOne({ where: { domain: user.domain } });
       }
       console.log(company, "company");
+
       let subscription = null;
+
+      // if (company) {
+      //   subscription = await Subscriptions.findOne({
+      //     where: { id: company.subscription_id },
+      //   });
+      // }
+      // console.log(subscription, "subscription");
+      // // subscription = await Subscriptions.findOne({
+      // //   where: { id: company.subscription_id },
+      // // });
+      // let isactive = null;
+      // if (subscription) {
+      //   if (subscription.isactive) {
+      //     isactive = true;
+      //     const currentDate = new Date();
+      //     const expiryDate = new Date(subscription.expiry_date);
+      //     if (currentDate > expiryDate) {
+      //       subscription.isactive = false;
+      //       await subscription.update({ isactive: false });
+      //       isactive = subscription.isactive;
+      //     }
+      //   }
+      // } else {
+      //   isactive = false;
+      // }
+
       if (company) {
-        subscription = await Subscriptions.findOne({
+        subscription = await NewSubscriptions.findOne({
           where: { id: company.subscription_id },
         });
       }
       console.log(subscription, "subscription");
-      // subscription = await Subscriptions.findOne({
-      //   where: { id: company.subscription_id },
-      // });
+
       let isactive = null;
       if (subscription) {
-        if (subscription.isactive) {
+        if (subscription.status == "ACTIVE") {
           isactive = true;
           const currentDate = new Date();
-          const expiryDate = new Date(subscription.expiry_date);
+          const expiryDate = new Date(subscription.bill_end);
+          console.log(currentDate, "currentDate");
+          console.log(expiryDate, "expiryDate");
           if (currentDate > expiryDate) {
-            subscription.isactive = false;
-            await subscription.update({ isactive: false });
-            isactive = subscription.isactive;
+            subscription.status = "INACTIVE";
+            await subscription.update({ status: "INACTIVE" });
+            isactive = false;
           }
         }
       } else {

@@ -4,20 +4,18 @@ import { z } from "zod";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Alert, Button, Divider, Paper, Typography } from "@mui/material";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { fetchAuthSession } from "@aws-amplify/auth";
 import { selectAccount } from "src/app/features/account/accountSlice";
 import FuseSvgIcon from "@fuse/core/FuseSvgIcon";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import FuseLoading from "@fuse/core/FuseLoading";
 import { Elements } from "@stripe/react-stripe-js";
 import { loadStripe } from "@stripe/stripe-js";
 import { SettingsPlanBilling } from "../SettingsApi";
 import CheckoutForm from "../tabcomponents/PlanBillingComponents/CheckoutForm";
 import { PlanType } from "../types/PlanTypes.types";
-import { useDispatch } from "react-redux";
-import { initiateSubscription } from "src/app/features/payment/paymentSlice";
-import { AppDispatch } from "app/store/store";
+import { fetchCompanySubscription } from "src/app/features/company/companySlice";
 
 type FormType = SettingsPlanBilling;
 
@@ -40,7 +38,10 @@ const PLANS: Array<PlanType> = [
     id: 3,
     value: "gold",
     label: "Gold",
-    details: "Monthly Plan for Large Companies",
+    details: `Monthly Plan for Large Companies
+    - apsindpasind\n
+    - asjdnaosjdnoaisind\n
+    `,
     price: 1.99,
   },
 ];
@@ -78,39 +79,41 @@ function PlanBillingTab() {
   const [isLoading, setIsLoading] = useState(false);
 
   const onSubmit = async (formState: FormType) => {
-    dispatch(initiateSubscription());
+    try {
+      setIsLoading(true);
+      const session = await fetchAuthSession();
+      const authToken = session.tokens?.accessToken?.toString();
 
-    // try {
-    //   setIsLoading(true);
-    //   const session = await fetchAuthSession();
-    //   const authToken = session.tokens?.accessToken?.toString();
+      const requestData = {
+        currency_code: "USD",
+        company_id: company.id,
+        plan_id: formState.plan,
+        user_id: user.id,
+      };
 
-    //   const requestData = {
-    //     currency_code: "USD",
-    //     company_id: company.id,
-    //     plan_id: formState.plan,
-    //     user_id: user.id,
-    //   };
+      const response = await axios.post<SubscriptionResponse>(
+        `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/${create-subscription}`,
+        requestData,
+        {
+          headers: {
+            Authorization: authToken,
+          },
+        }
+      );
 
-    //   const response = await axios.post<SubscriptionResponse>(
-    //     "https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/create-subscription",
-    //     requestData,
-    //     {
-    //       headers: {
-    //         Authorization: authToken,
-    //       },
-    //     },
-    //   );
+      const { clientSecret } = response.data;
 
-    //   const { clientSecret } = response.data;
-
-    //   setIsClientSecret(clientSecret);
-    //   setIsLoading(false);
-    // } catch (error) {
-    //   setIsLoading(false);
-    //   console.error("Error while fetching client secret", error);
-    // }
+      setIsClientSecret(clientSecret);
+      setIsLoading(false);
+    } catch (error) {
+      setIsLoading(false);
+      console.error("Error while fetching client secret", error);
+    }
   };
+
+  useEffect(() => {
+    dispatch(fetchCompanySubscription());
+  }, []);
 
   if (isLoading)
     return (
@@ -199,7 +202,7 @@ function PlanBillingTab() {
             type="submit"
             disabled={_.isEmpty(dirtyFields) || !isValid}
           >
-            Save
+            {user.role_id === 1 ? "Update" : "Save"}
           </Button>
         </div>
       </form>
