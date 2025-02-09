@@ -19,6 +19,7 @@ import {
   fetchCompanySubscription,
   selectCompanySubscription,
 } from "src/app/features/company/companySlice";
+import { useNavigate } from "react-router";
 
 type FormType = SettingsPlanBilling;
 
@@ -63,6 +64,7 @@ const stripePromise = loadStripe(
 
 function PlanBillingTab() {
   const dispatch = useDispatch<AppDispatch>();
+  const navigate = useNavigate();
 
   const { user, company } = useSelector(selectAccount);
   const subscription = useSelector(selectCompanySubscription);
@@ -95,8 +97,10 @@ function PlanBillingTab() {
         user_id: user.id,
       };
 
+      console.log("request data", requestData);
+
       const response = await axios.post<SubscriptionResponse>(
-        `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/create-subscription`,
+        `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/${subscription ? "update-subscription" : "create-subscription"}`,
         requestData,
         {
           headers: {
@@ -104,6 +108,10 @@ function PlanBillingTab() {
           },
         }
       );
+
+      if (subscription) {
+        navigate("/apps/settings/account");
+      }
 
       const { clientSecret } = response.data;
 
@@ -216,7 +224,7 @@ function PlanBillingTab() {
             type="submit"
             disabled={_.isEmpty(dirtyFields) || !isValid}
           >
-            {user.role_id === 1 ? "Update" : "Save"}
+            {user?.role_id === 1 ? "Update" : "Save"}
           </Button>
         </div>
       </form>

@@ -26,6 +26,8 @@ const getCustomerDetails = async (email, payload) => {
       limit: 1, // Fetch only the first matching customer
     });
 
+    console.log("existing customers", existingCustomers[0]);
+
     // If customer exists, return the first match
     if (existingCustomers.length > 0) {
       return existingCustomers[0];
@@ -120,6 +122,45 @@ const handleSuccesfullInvoicePayment = async (invoice) => {
   }
 };
 
+// const handleSubscriptionUpdated = async (subscription) => {
+//   try {
+//     const stripe = StripeClient(STRIPE_SECRET_KEY);
+//     console.log("🔄 Subscription updated in Stripe:", subscription.id);
+
+//     const existingSubscription = await NewSubscriptions.findOne({
+//       where: { sub_id: subscription.id },
+//     });
+
+//     if (!existingSubscription) {
+//       console.error("⚠️ Subscription not found in DB:", subscription.id);
+//       return;
+//     }
+
+//     // Extract subscription item details
+//     const subscriptionItem = subscription.items.data[0];
+//     const newQuantity = subscriptionItem.quantity;
+//     const subscriptionItemId = subscriptionItem.id;
+
+//     // Fetch subscription item from Stripe to get price details
+//     const stripeItem =
+//       await stripe.subscriptionItems.retrieve(subscriptionItemId);
+//     const newAmount = (stripeItem.price.unit_amount / 100) * newQuantity; // Convert cents to dollars
+
+//     console.log("📊 Updating DB with new values:", { newQuantity, newAmount });
+
+//     // Update database
+//     existingSubscription.amount = newAmount;
+//     existingSubscription.bill_end = new Date(
+//       subscription.current_period_end * 1000
+//     );
+//     await existingSubscription.save();
+
+//     console.log("✅ Subscription updated in database.");
+//   } catch (error) {
+//     console.error("❌ Error handling subscription update:", error);
+//   }
+// };
+
 const handleSubscriptionUpdated = async (subscription) => {
   try {
     const stripe = StripeClient(STRIPE_SECRET_KEY);
@@ -144,18 +185,27 @@ const handleSubscriptionUpdated = async (subscription) => {
       await stripe.subscriptionItems.retrieve(subscriptionItemId);
     const newAmount = (stripeItem.price.unit_amount / 100) * newQuantity; // Convert cents to dollars
 
-    console.log("📊 Updating DB with new values:", { newQuantity, newAmount });
+    // Get plan_id from subscription metadata
+    const plan_id = subscription.metadata.plan_id;
 
-    // Update database
-    existingSubscription.amount = newAmount;
-    existingSubscription.bill_end = new Date(
-      subscription.current_period_end * 1000
-    );
-    await existingSubscription.save();
+    console.log("📊 Updating DB with new values:", {
+      newQuantity,
+      newAmount,
+      plan_id,
+    });
 
-    console.log("✅ Subscription updated in database.");
+    // Update database with all values including plan_id
+    await existingSubscription.update({
+      amount: newAmount,
+      bill_end: new Date(subscription.current_period_end * 1000),
+      plan_id: plan_id,
+    });
+
+    console.log("✅ Subscription updated in database with new plan.");
   } catch (error) {
     console.error("❌ Error handling subscription update:", error);
+    // You might want to add additional error handling here
+    throw error; // Re-throw if you want to handle it in the calling function
   }
 };
 
@@ -200,6 +250,10 @@ class PaymentController {
     router.post("/create-subscription", (...arg) =>
       this.CreateSubscription(...arg)
     );
+    router.post("/update-subscription", (...arg) =>
+      this.UpdateSubscription(...arg)
+    );
+
     router.post("/webhook", (...arg) => this.HandleStripeEvent(...arg));
   }
 
@@ -249,6 +303,103 @@ class PaymentController {
   // Update subscription
   // TODO: Downgrade -> Calc new amount -> Calc new subscription -> Cancel previous sub -> Calc refund amount to the user
   // TODO: Upgrade -> Same thing
+
+  async UpdateSubscription(req, res) {
+    try {
+      const stripe = StripeClient(STRIPE_SECRET_KEY);
+      const { company_id, plan_id, user_id } = req.body;
+
+      // Validate required parameters
+      if (!user_id || !plan_id || !company_id) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      // Get the user, plan and company details
+      const [user, plan, company] = await Promise.all([
+        User.findOne({ where: { id: user_id } }),
+        Plans.findOne({ where: { id: plan_id } }),
+        Company.findOne({ where: { id: company_id } }),
+      ]);
+
+      if (!user || !plan || !company) {
+        return res
+          .status(400)
+          .json({ error: "Invalid user, plan, or company" });
+      }
+
+      const customer = await getCustomerDetails(user.email);
+
+      // Find existing subscription in Stripe
+      const existingSubscriptions = await stripe.subscriptions.list({
+        limit: 1,
+        customer: customer.id,
+        status: "active",
+      });
+
+      if (existingSubscriptions.data.length === 0) {
+        return res.status(404).json({ error: "No active subscription found" });
+      }
+
+      const currentSubscription = existingSubscriptions.data[0];
+
+      // Create a new subscription item with the new price
+      const subscriptionUpdateParams = {
+        proration_behavior: "always_invoice", // or 'create_prorations' based on your billing model
+        items: [
+          {
+            id: currentSubscription.items.data[0].id,
+            price: plan.price_id,
+            quantity: company.policyholder_count,
+          },
+        ],
+        metadata: {
+          user_id,
+          company_id,
+          plan_id,
+          updated_at: new Date().toISOString(),
+        },
+        payment_settings: {
+          save_default_payment_method: "on_subscription",
+          payment_method_types: ["card", "us_bank_account"],
+        },
+      };
+
+      // If the plan is changing, we need to handle the proration
+      if (currentSubscription.items.data[0].price.id !== plan.price_id) {
+        // Optional: Add any specific proration handling here
+        subscriptionUpdateParams.proration_date = Math.floor(Date.now() / 1000);
+      }
+
+      // Update the subscription
+      const updatedSubscription = await stripe.subscriptions.update(
+        currentSubscription.id,
+        subscriptionUpdateParams
+      );
+
+      // If you need to create a new payment intent for the updated subscription
+      let paymentIntent = null;
+      if (updatedSubscription.latest_invoice?.payment_intent) {
+        paymentIntent = await stripe.paymentIntents.retrieve(
+          updatedSubscription.latest_invoice.payment_intent
+        );
+      }
+
+      // Update local database records if needed
+      // Add your database update logic here
+
+      res.status(200).json({
+        message: "Subscription updated successfully",
+        subscription: updatedSubscription,
+        clientSecret: paymentIntent?.client_secret,
+      });
+    } catch (error) {
+      console.error("Error updating subscription:", error);
+      res.status(500).json({
+        error: "Unable to update subscription",
+        details: error.message,
+      });
+    }
+  }
 
   // Create Subscription route
   async CreateSubscription(req, res) {
@@ -305,17 +456,6 @@ class PaymentController {
           payment_method_types: ["card", "us_bank_account"],
         },
         expand: ["latest_invoice.payment_intent"],
-      });
-
-      // Initiate payment
-      await Payment.create({
-        user_id,
-        company_id,
-        plan_id,
-        vendor: "stripe",
-        status: "INITIATED",
-        subscription_id: subscription.id,
-        transaction_payload: JSON.stringify(subscription),
       });
 
       res.status(200).json({
