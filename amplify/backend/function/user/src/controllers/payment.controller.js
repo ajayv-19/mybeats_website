@@ -253,6 +253,9 @@ class PaymentController {
     router.post("/update-subscription", (...arg) =>
       this.UpdateSubscription(...arg)
     );
+    router.post("/cancel-subscription", (...arg) =>
+      this.CancelSubscription(...arg)
+    );
 
     router.post("/webhook", (...arg) => this.HandleStripeEvent(...arg));
   }
@@ -471,41 +474,45 @@ class PaymentController {
   async CancelSubscription(req, res) {
     try {
       const stripe = StripeClient(STRIPE_SECRET_KEY);
-      const { subscription_id, cancel_immediately } = req.body;
+      const { user_id } = req.body;
 
-      if (!subscription_id) {
-        return res.status(400).json({ error: "Missing subscription_id" });
+      // Validate required input
+      if (!user_id) {
+        return res.status(400).json({ error: "Missing required parameters" });
       }
 
-      // Fetch existing subscription
-      const subscription = await stripe.subscriptions.retrieve(subscription_id);
-
-      if (!subscription) {
-        return res.status(404).json({ error: "Subscription not found" });
+      // Fetch user details
+      const user = await User.findOne({ where: { id: user_id } });
+      if (!user) {
+        return res.status(400).json({ error: "Invalid user" });
       }
 
-      // Cancel the subscription (either immediately or at the end of the billing period)
+      // Find the active subscription in your database
+      const activeSubscription = await NewSubscriptions.findOne({
+        where: { user_id, status: "ACTIVE" },
+      });
+
+      if (!activeSubscription) {
+        return res.status(404).json({ error: "No active subscription found" });
+      }
+
+      // Cancel the subscription in Stripe
       const canceledSubscription = await stripe.subscriptions.update(
-        subscription_id,
+        activeSubscription.sub_id,
         {
-          cancel_at_period_end: !cancel_immediately, // If true, the user will have access till the end of their billing cycle
+          cancel_at_period_end: true,
         }
       );
 
-      // Update subscription status in DB
-      await Subscriptions.update(
-        {
-          status: cancel_immediately ? "CANCELED" : "PENDING_CANCELLATION",
-          updated_at: new Date(),
-        },
-        { where: { subscription_id } }
+      // Update the subscription status in the database
+      await NewSubscriptions.update(
+        { status: "CANCELED", plan_id: -1 },
+        { where: { id: activeSubscription.id } }
       );
 
       res.status(200).json({
-        message: cancel_immediately
-          ? "Subscription canceled immediately"
-          : "Subscription will be canceled at the end of the billing cycle",
-        canceledSubscription,
+        message: "Subscription canceled successfully",
+        subscription: canceledSubscription,
       });
     } catch (error) {
       console.error("Error canceling subscription:", error);

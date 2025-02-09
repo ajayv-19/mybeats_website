@@ -4,4 +4,5 @@ export type PlanType = {
   label: string;
   details: string;
   price: number;
+  bulletPoints: Array<string>;
 };

@@ -20,6 +20,7 @@ import {
   selectCompanySubscription,
 } from "src/app/features/company/companySlice";
 import { useNavigate } from "react-router";
+import { Check } from "@mui/icons-material";
 
 type FormType = SettingsPlanBilling;
 
@@ -30,23 +31,41 @@ const PLANS: Array<PlanType> = [
     label: "Free",
     details: "Monthly Starter Plan",
     price: 0,
+    bulletPoints: [
+      "Maximum 100 policyholders",
+      "Valid for three months",
+      "Access to basic features",
+      "Dashboard tutorials",
+    ],
   },
   {
     id: 2,
     value: "silver",
     label: "Silver",
-    details: "Monthly Plan for Small to Mid-sized Companies",
+    details: "Monthly Plan for Mid-sized Companies",
     price: 0.99,
+    bulletPoints: [
+      "Access to advanced features",
+      "Historical data trends",
+      "Report generation",
+      "Free training for dashboard",
+      "Customer Support Via Email",
+    ],
   },
   {
     id: 3,
     value: "gold",
     label: "Gold",
-    details: `Monthly Plan for Large Companies
-    - apsindpasind\n
-    - asjdnaosjdnoaisind\n
-    `,
+    details: "Monthly Plan for Large Companies",
     price: 1.99,
+    bulletPoints: [
+      "Integration of FINN",
+      "Access to advanced features",
+      "Historical data trends",
+      "Advanced reporting",
+      "Periodic free training for dashboard",
+      "Dedicated representative for support",
+    ],
   },
 ];
 
@@ -123,6 +142,28 @@ function PlanBillingTab() {
     }
   };
 
+  const cancelSubscription = async () => {
+    try {
+      const session = await fetchAuthSession();
+      const authToken = session.tokens?.accessToken?.toString();
+      const response = await axios.post(
+        "https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/cancel-subscription",
+        {
+          user_id: user?.id,
+        },
+        {
+          headers: {
+            Authorization: authToken,
+          },
+        }
+      );
+
+      dispatch(fetchCompanySubscription());
+    } catch (error) {
+      console.error("Error while cancelling", error);
+    }
+  };
+
   useEffect(() => {
     if (subscription?.plan_id) {
       reset({
@@ -195,7 +236,7 @@ function PlanBillingTab() {
                     <Typography className="mt-4" color="text.secondary">
                       {plan.details}
                     </Typography>
-                    <div className="flex-auto" />
+                    {/* <div className="flex-auto" /> */}
                     <div className="flex items-end mt-8 text-lg">
                       <Typography>
                         {plan.price.toLocaleString("en-US", {
@@ -208,6 +249,15 @@ function PlanBillingTab() {
                         / policyholder
                       </Typography>
                     </div>
+
+                    <div className="mt-32">
+                      {plan.bulletPoints.map((point) => (
+                        <div className="flex gap-4">
+                          <Check />
+                          <Typography>{point}</Typography>
+                        </div>
+                      ))}
+                    </div>
                   </Paper>
                 ))}
               </>
@@ -217,7 +267,14 @@ function PlanBillingTab() {
 
         <Divider className="mb-40 mt-44 border-t" />
         <div className="flex items-center justify-end space-x-8">
-          <Button variant="outlined">Cancel</Button>
+          <Button
+            variant="contained"
+            onClick={cancelSubscription}
+            color="error"
+            disabled={user?.role_id !== 1}
+          >
+            Cancel
+          </Button>
           <Button
             variant="contained"
             color="secondary"
