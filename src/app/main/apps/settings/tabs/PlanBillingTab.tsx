@@ -116,9 +116,7 @@ function PlanBillingTab() {
   };
 
   useEffect(() => {
-    console.log("Current subscription:", subscription);
     if (subscription?.plan_id) {
-      console.log("Setting plan to:", subscription.plan_id);
       reset({
         plan: subscription.plan_id,
       });
