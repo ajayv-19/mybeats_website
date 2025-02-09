@@ -198,12 +198,6 @@ function PlanBillingTab() {
     <div>
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="mt-32 grid w-full gap-16 sm:grid-cols-3">
-          <div className="sm:col-span-3">
-            <Alert severity="info">
-              Changing the plan will take effect immediately. You will be
-              charged for the rest of the current month.
-            </Alert>
-          </div>
           <Controller
             name="plan"
             control={control}

@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import { useNavigate } from "react-router";
 import Showcase from "./components/showcase/Showcase";
 import Navbar from "./components/navbar/Navbar";
 import Features from "./components/features/Features";
@@ -10,9 +11,9 @@ import Footer from "./components/footer/Footer";
 import VideoShowcase from "./components/videoShowcase/VideoShowcase";
 import Finn from "./components/finn/Finn";
 import Login from "./components/login/Login";
-import { useNavigate } from "react-router";
 
-const LandingPage = () => {
+
+function LandingPage() {
   const showcaseRef = useRef<HTMLDivElement | null>(null);
   const featuresRef = useRef<HTMLDivElement | null>(null);
   const detailedRef = useRef<HTMLDivElement | null>(null);
@@ -35,9 +36,7 @@ const LandingPage = () => {
   };
 
   const openModal = () => {
-    // setShowLogin(true);
     navigate("/sign-in");
-    window.location.reload();
   };
 
   return (
@@ -101,6 +100,6 @@ const LandingPage = () => {
       />
     </div>
   );
-};
+}
 
 export default LandingPage;

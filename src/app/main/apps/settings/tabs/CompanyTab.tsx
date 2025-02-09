@@ -80,6 +80,7 @@ function CompanyTab() {
    */
   const onSubmit = (formData: FormType) => {
     dispatch(submitCompanyDetails({ formData }));
+    navigate("/apps/settings/plan-billing");
   };
 
   // If user is not authorized to see the company form
@@ -135,10 +136,10 @@ function CompanyTab() {
               render={({ field }) => (
                 <TextField
                   {...field}
-                  disabled={
-                    !company?.is_subscribed ||
-                    (company?.is_subscribed && user.role_id !== 1)
-                  }
+                  // disabled={
+                  //   !company?.is_subscribed ||
+                  //   (company?.is_subscribed && user.role_id !== 1)
+                  // }
                   label="Phone Number"
                   placeholder="Phone"
                   id="phone"
@@ -167,10 +168,10 @@ function CompanyTab() {
           <div className="sm:col-span-2">
             <Controller
               control={control}
-              disabled={
-                !company?.is_subscribed ||
-                (company?.is_subscribed && user.role_id !== 1)
-              }
+              // disabled={
+              //   !company?.is_subscribed ||
+              //   (company?.is_subscribed && user.role_id !== 1)
+              // }
               name="website"
               render={({ field }) => (
                 <TextField
@@ -200,10 +201,10 @@ function CompanyTab() {
           <div className="sm:col-span-2">
             <Controller
               control={control}
-              disabled={
-                !company?.is_subscribed ||
-                (company?.is_subscribed && user.role_id !== 1)
-              }
+              // disabled={
+              //   !company?.is_subscribed ||
+              //   (company?.is_subscribed && user.role_id !== 1)
+              // }
               name="policyholderCount"
               render={({ field }) => (
                 <TextField
