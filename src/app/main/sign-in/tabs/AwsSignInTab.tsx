@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { signIn } from 'aws-amplify/auth';
 import AwsAuthenticator from '../../../auth/services/aws/components/AWSAuthenticator';
+import { useDispatch } from 'react-redux';
+import { fetchAccountDetails } from 'src/app/features/account/accountSlice';
 
 function AwsSignInTab() {
 	const [searchParams] = useSearchParams();
@@ -9,6 +11,8 @@ function AwsSignInTab() {
 	const isDemo = searchParams.get('demo') === 'true';
 	const demoEmail = isDemo ? 'ajayvdurga911999@gmail.com' : '';
 	const demoPassword = isDemo ? 'Aj19!@#$' : '';
+
+	const dispatch = useDispatch();
 
 	useEffect(() => {
 		const attemptDemoLogin = async () => {

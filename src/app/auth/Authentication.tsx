@@ -10,6 +10,7 @@ import UserModel from './user/models/UserModel';
 import { User } from './user';
 import useJwtAuth from './services/jwt/useJwtAuth';
 import useFirebaseAuth from './services/firebase/useFirebaseAuth';
+import { fetchAccountDetails } from '../features/account/accountSlice';
 
 type AuthenticationProps = {
 	children: React.ReactNode;
@@ -104,6 +105,7 @@ function Authentication(props: AuthenticationProps) {
 			setAuthProvider(provider);
 			setIsLoading(false);
 		});
+		dispatch(fetchAccountDetails());
 	}, []);
 
 	/**

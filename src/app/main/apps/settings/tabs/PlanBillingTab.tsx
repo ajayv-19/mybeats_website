@@ -1,196 +1,213 @@
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
+import _ from "lodash";
+import axios from "axios";
+import { z } from "zod";
+import { Controller, useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Alert, Button, Divider, Paper, Typography } from "@mui/material";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchAuthSession } from "@aws-amplify/auth";
+import { selectAccount } from "src/app/features/account/accountSlice";
+import FuseSvgIcon from "@fuse/core/FuseSvgIcon";
+import { useEffect, useState } from "react";
+import FuseLoading from "@fuse/core/FuseLoading";
+import { Elements } from "@stripe/react-stripe-js";
+import { loadStripe } from "@stripe/stripe-js";
+import { SettingsPlanBilling } from "../SettingsApi";
+import CheckoutForm from "../tabcomponents/PlanBillingComponents/CheckoutForm";
+import { PlanType } from "../types/PlanTypes.types";
+import { fetchCompanySubscription } from "src/app/features/company/companySlice";
 
-import { useEffect, useState } from 'react';
-import { fetchProfileData } from 'src/app/backendServices/ProfileServices';
-import { useNavigate } from 'react-router';
-import { loadStripe } from '@stripe/stripe-js';
-import axios from 'axios';
-import { fetchAuthSession } from '@aws-amplify/auth';
-import CompanyRegisterDialog from '../tabcomponents/plancomponts/RegisterCompanyPopUp';
-import UserInvitationDialog from '../tabcomponents/plancomponts/ShareorCancle';
-import SubscriptionForm from '../tabcomponents/PlanBillingComponents/SubscriptionForm';
+type FormType = SettingsPlanBilling;
 
-type FormType = {
-	plan?: string;
-	cardHolder?: string;
-	cardNumber?: string;
-	cardExpiration?: string;
-	cardCVC?: string;
-	country?: string;
-	zip?: string;
-	Company_Name: string;
-	domain: string;
-	website: string;
-	phone: number;
-};
-
-const plans = [
-	{
-		value: 'basic',
-		label: 'Basic',
-		details: 'Starter plan for individuals.',
-		price: 9
-	},
-	{
-		value: 'team',
-		label: 'Team',
-		details: 'Collaborate up to 10 people.',
-		price: 29
-	},
-	{
-		value: 'enterprise',
-		label: 'Enterprise',
-		details: 'For bigger businesses.',
-		price: 99
-	}
+const PLANS: Array<PlanType> = [
+  {
+    id: 1,
+    value: "free",
+    label: "Free",
+    details: "Monthly Starter Plan",
+    price: 0,
+  },
+  {
+    id: 2,
+    value: "silver",
+    label: "Silver",
+    details: "Monthly Plan for Small to Mid-sized Companies",
+    price: 0.99,
+  },
+  {
+    id: 3,
+    value: "gold",
+    label: "Gold",
+    details: `Monthly Plan for Large Companies
+    - apsindpasind\n
+    - asjdnaosjdnoaisind\n
+    `,
+    price: 1.99,
+  },
 ];
 
+interface SubscriptionResponse {
+  clientSecret: string;
+}
+
 const defaultValues: FormType = {
-	plan: 'team',
-	cardHolder: '',
-	cardNumber: '',
-	cardExpiration: '',
-	cardCVC: '',
-	country: '',
-	zip: '',
-
-	Company_Name: '',
-
-	domain: '',
-	website: '',
-	phone: 0
+  plan: null,
 };
 
-/**
- * Form Validation Schema
- */
-const schema = z.object({
-	plan: z.enum(['basic', 'team', 'enterprise']),
-	cardHolder: z.string(),
-	cardNumber: z.string(),
-	cardExpiration: z.string(),
-	cardCVC: z.string(),
-	country: z.string(),
-	zip: z.string(),
-	phone: z.number()
-});
-
 const stripePromise = loadStripe(
-	'pk_test_51QVNrHDIv4SXGrBxLk9llPOeoiczwAeRWCINxXbBNNw2Ecr1FTlk4ZasY3wHAZrjDcANw5bJN318FKvXtS2qpJEA00O6QyClPD'
+  "pk_test_51QVNrHDIv4SXGrBxLk9llPOeoiczwAeRWCINxXbBNNw2Ecr1FTlk4ZasY3wHAZrjDcANw5bJN318FKvXtS2qpJEA00O6QyClPD"
 );
 
 function PlanBillingTab() {
-	const [dialogOpen, setDialogOpen] = useState(false);
-	const [companyExist, setCompanyExists] = useState(false);
-	const [showSubscriptionForm, setShowSubscriptionForm] = useState(false);
-	const [userInvitation, setUserInvitation] = useState(false);
+  const dispatch = useDispatch<AppDispatch>();
 
-	const { control, reset, handleSubmit, formState } = useForm<FormType>({
-		defaultValues,
-		mode: 'all',
-		resolver: zodResolver(schema)
-	});
-	const [company, setCompany] = useState<FormType>();
-	const { isValid, dirtyFields, errors } = formState;
+  const { user, company } = useSelector(selectAccount);
 
-	const fetchCompanyData = async () => {
-		try {
-			const getUserData = await fetchProfileData();
+  const schema = z.object({
+    plan: z.number(), // ✅ Store `plan_id` (number) instead of `value` (string)
+  });
 
-			if (getUserData.status === 200) {
-				const companyData = getUserData.data.userdata.company;
+  const { control, handleSubmit, formState } = useForm<FormType>({
+    defaultValues,
+    mode: "all",
+    resolver: zodResolver(schema),
+  });
 
-				console.log('plan billing tab', companyData);
+  const { isValid, dirtyFields } = formState;
 
-				if (!companyData) {
-					setCompanyExists(false);
-					setDialogOpen(true);
-				} else {
-					setCompanyExists(true);
-					setShowSubscriptionForm(true);
-				}
+  const [clientSecret, setIsClientSecret] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
-				setCompany(companyData);
-				reset(companyData); // Reset form values with fetched user data
-			}
-		} catch (error) {
-		} finally {
-			// setIsLoading(false);
-		}
-	};
-	useEffect(() => {
-		fetchCompanyData();
-	}, [reset]);
+  const onSubmit = async (formState: FormType) => {
+    try {
+      setIsLoading(true);
+      const session = await fetchAuthSession();
+      const authToken = session.tokens?.accessToken?.toString();
 
-	const handleDialogClose = () => {
-		setDialogOpen(false);
-	};
+      const requestData = {
+        currency_code: "USD",
+        company_id: company.id,
+        plan_id: formState.plan,
+        user_id: user.id,
+      };
 
-	const handleDialogYes = () => {
-		setDialogOpen(false);
-		setShowSubscriptionForm(true);
-	};
+      const response = await axios.post<SubscriptionResponse>(
+        `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/${create-subscription}`,
+        requestData,
+        {
+          headers: {
+            Authorization: authToken,
+          },
+        }
+      );
 
-	const handleDialogNo = () => {
-		setDialogOpen(false);
-		setUserInvitation(true);
-	};
+      const { clientSecret } = response.data;
 
-	const handleBack = () => {
-		setUserInvitation(false);
-		setDialogOpen(true);
-	};
-	const navigate = useNavigate();
-	const handlecancle = () => {
-		navigate(`/apps/settings/account`);
-	};
+      setIsClientSecret(clientSecret);
+      setIsLoading(false);
+    } catch (error) {
+      setIsLoading(false);
+      console.error("Error while fetching client secret", error);
+    }
+  };
 
-	const [clientSecretFetched, setClientSecret] = useState('');
+  useEffect(() => {
+    dispatch(fetchCompanySubscription());
+  }, []);
 
-	useEffect(() => {
-		const fetchClientSecret = async () => {
-			const session = await fetchAuthSession();
-			const authToken = session.tokens?.accessToken?.toString();
+  if (isLoading)
+    return (
+      <div>
+        <FuseLoading />
+      </div>
+    );
 
-			const paymentIntent = await axios.post(
-				'https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/create-payment',
-				{},
-				{
-					headers: {
-						Authorization: authToken
-					}
-				}
-			);
+  if (clientSecret)
+    return (
+      <div>
+        <Elements stripe={stripePromise} options={{ clientSecret }}>
+          <CheckoutForm clientSecret={clientSecret} />
+        </Elements>
+      </div>
+    );
 
-			setClientSecret(paymentIntent.data.clientSecret);
-		};
+  return (
+    <div>
+      <form onSubmit={handleSubmit(onSubmit)}>
+        <div className="mt-32 grid w-full gap-16 sm:grid-cols-3">
+          <div className="sm:col-span-3">
+            <Alert severity="info">
+              Changing the plan will take effect immediately. You will be
+              charged for the rest of the current month.
+            </Alert>
+          </div>
+          <Controller
+            name="plan"
+            control={control}
+            render={({ field }) => (
+              <>
+                {PLANS.map((plan) => (
+                  <Paper
+                    sx={{
+                      "&.selected": {
+                        border: (theme) =>
+                          `3px solid ${theme.palette.secondary.main}`,
+                      },
+                    }}
+                    className="flex flex-1 cursor-pointer flex-col items-start justify-start rounded-md p-24 border-3 border-transparent relative"
+                    onClick={() => field.onChange(plan.id)} // ✅ Store `plan.id` instead of `plan.value`
+                    key={plan.id} // ✅ Key should also be based on `id`
+                  >
+                    {Number(field.value) === plan.id && ( // ✅ Compare using `plan.id`
+                      <FuseSvgIcon
+                        className="absolute right-0 top-0 mr-12 mt-12"
+                        size={24}
+                        color="secondary"
+                      >
+                        heroicons-solid:check-circle
+                      </FuseSvgIcon>
+                    )}
+                    <Typography className="font-semibold uppercase">
+                      {plan.label}
+                    </Typography>
+                    <Typography className="mt-4" color="text.secondary">
+                      {plan.details}
+                    </Typography>
+                    <div className="flex-auto" />
+                    <div className="flex items-end mt-8 text-lg">
+                      <Typography>
+                        {plan.price.toLocaleString("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        })}
+                      </Typography>
+                      <Typography color="text.secondary">
+                        {" "}
+                        / policyholder
+                      </Typography>
+                    </div>
+                  </Paper>
+                ))}
+              </>
+            )}
+          />
+        </div>
 
-		fetchClientSecret();
-	}, []);
-
-	return (
-		<div className="w-full max-w-3xl">
-			<CompanyRegisterDialog
-				open={dialogOpen}
-				onClose={handleDialogClose}
-				onYes={handleDialogYes}
-				onNo={handleDialogNo}
-			/>
-			{userInvitation && (
-				<UserInvitationDialog
-					open={userInvitation}
-					onClose={() => setUserInvitation(false)}
-					onShare={() => console.log('Share')}
-					onCancel={() => handlecancle()}
-					onBack={() => handleBack()}
-				/>
-			)}
-
-			<SubscriptionForm/>
-		</div>
-	);
+        <Divider className="mb-40 mt-44 border-t" />
+        <div className="flex items-center justify-end space-x-8">
+          <Button variant="outlined">Cancel</Button>
+          <Button
+            variant="contained"
+            color="secondary"
+            type="submit"
+            disabled={_.isEmpty(dirtyFields) || !isValid}
+          >
+            {user.role_id === 1 ? "Update" : "Save"}
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
 }
 
 export default PlanBillingTab;

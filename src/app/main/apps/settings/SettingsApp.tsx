@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { styled } from '@mui/material/styles';
 import useThemeMediaQuery from '@fuse/hooks/useThemeMediaQuery';
 import { useSelector, useDispatch } from 'react-redux';
-import { Outlet, useLocation, Navigate } from 'react-router-dom';
+import { Outlet, useLocation, Navigate, useNavigate } from 'react-router-dom';
 import { fetchAccountDetails, selectAccount } from 'src/app/features/account/accountSlice';
 import { AppDispatch } from 'app/store/store';
 import FusePageSimple from '@fuse/core/FusePageSimple';
@@ -22,9 +22,10 @@ function SettingsApp() {
 	const location = useLocation();
 	const isMobile = useThemeMediaQuery((theme) => theme.breakpoints.down('lg'));
 	const [leftSidebarOpen, setLeftSidebarOpen] = useState(!isMobile);
-	const [isUserExists, setIsUserExists] = useState(false);
-	const account = useSelector(selectAccount);
+	const { user } = useSelector(selectAccount);
 	const dispatch = useDispatch<AppDispatch>();
+
+	const navigate = useNavigate();
 
 	useEffect(() => {
 		setLeftSidebarOpen(!isMobile);
@@ -41,19 +42,6 @@ function SettingsApp() {
 		dispatch(fetchAccountDetails());
 	}, []);
 
-	useEffect(() => {
-		if (account.error) {
-			setIsUserExists(false);
-		} else {
-			setIsUserExists(true);
-		}
-	}, [account]);
-
-	// Redirect to account page if not on it and user doesn't exist
-	if (!isUserExists && location.pathname !== '/apps/settings/account') {
-		return <Navigate to="/apps/settings/account" />;
-	}
-
 	return (
 		<Root
 			content={
@@ -61,7 +49,7 @@ function SettingsApp() {
 					<SettingsAppHeader
 						className="mb-24 md:mb-32"
 						onSetSidebarOpen={setLeftSidebarOpen}
-						isUserExists={isUserExists}
+						isUserExists={!!user}
 					/>
 					<Outlet />
 				</div>
@@ -73,7 +61,7 @@ function SettingsApp() {
 			leftSidebarContent={
 				<SettingsAppSidebarContent
 					onSetSidebarOpen={setLeftSidebarOpen}
-					isUserExists={isUserExists}
+					isUserExists={!!user}
 				/>
 			}
 			leftSidebarWidth={380}
