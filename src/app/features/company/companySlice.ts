@@ -7,19 +7,18 @@ import { CompanyFormInput } from "src/app/main/apps/settings/types/CompanyTypes.
 
 type CompanyReduxType = {
   localCompanyData: CompanyFormInput;
-  loading: false;
-  error: Error;
+  subscription: any; // Add proper type based on your subscription data structure
+  loading: boolean;
+  error: any;
 };
 
 const initialState: CompanyReduxType = {
   localCompanyData: null,
+  subscription: null,
   loading: false,
   error: null,
 };
 
-/**
- * Thunk to fetch company subscription status.
- */
 export const fetchCompanySubscription = createAsyncThunk(
   "company/fetchCompanySubscription",
   async (_, { rejectWithValue, getState }) => {
@@ -28,9 +27,8 @@ export const fetchCompanySubscription = createAsyncThunk(
         await fetchAuthSession()
       ).tokens?.accessToken?.toString();
 
-      // ✅ Fix: Correctly get state without calling `selectAccount()`
       const state = getState();
-      const { company } = state.account; // Ensure correct access to company
+      const { company } = state.account;
 
       if (!company?.id) {
         return rejectWithValue("Company ID is missing");
@@ -46,8 +44,7 @@ export const fetchCompanySubscription = createAsyncThunk(
       );
 
       if (response.status === 200) {
-        console.log("response", response.data);
-        // return response.data.subscription; // ✅ Return subscription data
+        return response.data.subscription;
       }
 
       return rejectWithValue("Failed to fetch subscription details");
@@ -57,9 +54,6 @@ export const fetchCompanySubscription = createAsyncThunk(
   }
 );
 
-/**
- * Company Slice.
- */
 export const companySlice = createSlice({
   name: "company",
   initialState,
@@ -68,9 +62,6 @@ export const companySlice = createSlice({
     setCompanyDataLocally: (state, action: PayloadAction<CompanyFormInput>) => {
       state.localCompanyData = action.payload;
     },
-    /**
-     * Update account settings locally in the Redux store.
-     */
     setCompanySettings: (state, action) => {
       const oldState = _.cloneDeep(state);
       const newState = _.merge({}, oldState, action.payload);
@@ -90,7 +81,7 @@ export const companySlice = createSlice({
       })
       .addCase(fetchCompanySubscription.fulfilled, (state, action) => {
         state.loading = false;
-        _.merge(state, action.payload);
+        state.subscription = action.payload; // Directly set subscription data
       })
       .addCase(fetchCompanySubscription.rejected, (state, action) => {
         state.loading = false;
@@ -104,5 +95,8 @@ export const { resetCompanyState, setCompanySettings, setCompanyDataLocally } =
 
 export const selectLocalCompanyData = (state: RootState) =>
   state.company.localCompanyData;
+
+export const selectCompanySubscription = (state: RootState) =>
+  state.company.subscription;
 
 export default companySlice.reducer;

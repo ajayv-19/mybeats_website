@@ -225,6 +225,10 @@ const NewSubscriptions = sequelize.define(
       allowNull: false,
       unique: true, // Ensures each Stripe subscription ID is unique
     },
+    plan_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
     user_id: {
       type: DataTypes.INTEGER,
       allowNull: true, // Can be NULL if it's a company-wide subscription

@@ -15,7 +15,10 @@ import { loadStripe } from "@stripe/stripe-js";
 import { SettingsPlanBilling } from "../SettingsApi";
 import CheckoutForm from "../tabcomponents/PlanBillingComponents/CheckoutForm";
 import { PlanType } from "../types/PlanTypes.types";
-import { fetchCompanySubscription } from "src/app/features/company/companySlice";
+import {
+  fetchCompanySubscription,
+  selectCompanySubscription,
+} from "src/app/features/company/companySlice";
 
 type FormType = SettingsPlanBilling;
 
@@ -62,12 +65,13 @@ function PlanBillingTab() {
   const dispatch = useDispatch<AppDispatch>();
 
   const { user, company } = useSelector(selectAccount);
+  const subscription = useSelector(selectCompanySubscription);
 
   const schema = z.object({
     plan: z.number(), // ✅ Store `plan_id` (number) instead of `value` (string)
   });
 
-  const { control, handleSubmit, formState } = useForm<FormType>({
+  const { control, handleSubmit, formState, reset } = useForm<FormType>({
     defaultValues,
     mode: "all",
     resolver: zodResolver(schema),
@@ -92,7 +96,7 @@ function PlanBillingTab() {
       };
 
       const response = await axios.post<SubscriptionResponse>(
-        `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/${create-subscription}`,
+        `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/create-subscription`,
         requestData,
         {
           headers: {
@@ -112,8 +116,20 @@ function PlanBillingTab() {
   };
 
   useEffect(() => {
+    console.log("Current subscription:", subscription);
+    if (subscription?.plan_id) {
+      console.log("Setting plan to:", subscription.plan_id);
+      reset({
+        plan: subscription.plan_id,
+      });
+    }
+  }, [subscription, reset]);
+
+  useEffect(() => {
     dispatch(fetchCompanySubscription());
   }, []);
+
+  console.log("subscription", subscription);
 
   if (isLoading)
     return (

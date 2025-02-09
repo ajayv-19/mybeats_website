@@ -63,20 +63,12 @@ const addSubscription = async (customer_subscription_created) => {
     const user = await User.findByPk(user_id);
     user.update({ role_id: 1 });
 
-    // Using static metadata since metadata is missing in Stripe response
-    // const metadata = {
-    //   company_id: 1, // Replace with actual static company ID
-    //   plan_id: 1, // Replace with actual static plan ID
-    //   user_id: 1, // Replace with actual static user ID (or keep NULL)
-    // };
-
-    console.log("✅ Using static metadata:", metadata);
-
     // Create a new row in the NewSubscriptions table
     const newSubscription = await NewSubscriptions.create({
       sub_id,
       user_id, //: metadata.user_id || null, // If user_id exists, store it; otherwise, keep it NULL
       company_id, //: metadata.company_id,
+      plan_id,
       amount: plan.amount / 100, // Convert cents to dollars (Stripe sends amounts in cents)
       bill_start: new Date(current_period_start * 1000), // Convert Unix timestamp to Date
       bill_end: new Date(current_period_end * 1000), // Convert Unix timestamp to Date
