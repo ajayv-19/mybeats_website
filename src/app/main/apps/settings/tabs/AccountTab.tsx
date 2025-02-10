@@ -20,6 +20,7 @@ import FuseLoading from "@fuse/core/FuseLoading";
 import { SettingsAccount } from "../SettingsApi";
 import AccountProfile from "../tabcomponents/AccountProfile";
 import { useNavigate } from "react-router";
+import { AppDispatch } from "app/store/store";
 
 type FormType = SettingsAccount;
 
@@ -38,13 +39,13 @@ const schema = z.object({
 
 function AccountTab() {
   const [profileImage, setProfileImage] = useState<string>("");
-  const [imageAdded, setImageAdded] = useState<File | null>(null);
+  const [imageAdded, setImageAdded] = useState(null);
   const [emailFetched, setEmailFetched] = useState("");
   const [fullName, setFullName] = useState("");
   const { user } = useSelector(selectAccount);
   const loading = useSelector(selectAccountLoading);
 
-  const dispatch = useDispatch();
+  const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
 
   const { control, reset, handleSubmit, formState, setValue } =

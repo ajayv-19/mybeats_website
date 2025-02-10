@@ -27,15 +27,15 @@ export const fetchCompanySubscription = createAsyncThunk(
         await fetchAuthSession()
       ).tokens?.accessToken?.toString();
 
-      const state = getState();
-      const { company } = state.account;
+      const state = getState() as RootState; // Ensure correct typing
+      const companyId = state.account.company?.id; // Adjust based on your Redux state structure
 
-      if (!company?.id) {
+      if (!companyId) {
         return rejectWithValue("Company ID is missing");
       }
 
       const response = await axios.get(
-        `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/company/${company.id}/subscription`,
+        `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/company/${companyId}/subscription`,
         {
           headers: {
             Authorization: authToken,

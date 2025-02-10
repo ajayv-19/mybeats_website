@@ -8,7 +8,6 @@ import Pricing from "./components/pricing/Pricing";
 import Faq from "./components/faq/Faq";
 import Contact from "./components/contact/Contact";
 import Footer from "./components/footer/Footer";
-import VideoShowcase from "./components/videoShowcase/VideoShowcase";
 import Finn from "./components/finn/Finn";
 import Login from "./components/login/Login";
 

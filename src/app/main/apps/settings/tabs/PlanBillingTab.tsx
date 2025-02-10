@@ -21,6 +21,7 @@ import {
 } from "src/app/features/company/companySlice";
 import { useNavigate } from "react-router";
 import { Check } from "@mui/icons-material";
+import { AppDispatch } from "app/store/store";
 
 type FormType = SettingsPlanBilling;
 

@@ -10,9 +10,10 @@ import { CompanyFormInput } from "src/app/main/apps/settings/types/CompanyTypes.
 
 type UserDetails = {
   id?: number;
-  Customer_Name: string;
-  email: string;
+  Customer_Name?: string;
+  email?: string;
   image?: string;
+  role_id?: number;
 };
 
 type CompanyDetails = {
@@ -20,6 +21,8 @@ type CompanyDetails = {
   Company_Name: string;
   domain: string;
   phone_number: number;
+  website?: string;
+  is_subscribed?: boolean;
   plan_type: string;
   address: string;
   policyholder_count: number;
