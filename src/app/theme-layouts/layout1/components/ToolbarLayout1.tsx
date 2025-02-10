@@ -4,6 +4,7 @@ import Hidden from "@mui/material/Hidden";
 import Toolbar from "@mui/material/Toolbar";
 import clsx from "clsx";
 import { memo } from "react";
+import Button from "@mui/material/Button";
 import {
   selectFuseCurrentLayoutConfig,
   selectToolbarTheme,
@@ -24,6 +25,14 @@ import NavigationSearch from "../../shared-components/navigation/NavigationSearc
 import QuickPanelToggleButton from "../../shared-components/quickPanel/QuickPanelToggleButton";
 import { useNavigate } from "react-router-dom";
 import useAuth from "src/app/auth/useAuth";
+import {
+  fetchAccountDetails,
+  selectAccount,
+  selectAccountLoading,
+  submitAccountDetails,
+} from "src/app/features/account/accountSlice";
+import { useDispatch, useSelector } from "react-redux";
+import { useState, ReactNode, useEffect } from "react";
 
 type ToolbarLayout1Props = {
   className?: string;
@@ -33,6 +42,16 @@ type ToolbarLayout1Props = {
  * The toolbar layout 1.
  */
 function ToolbarLayout1(props: ToolbarLayout1Props) {
+  const account = useSelector(selectAccount);
+  console.log({ account }, "account");
+  const [showDemo, setShowDemo] = useState(false);
+
+  useEffect(() => {
+    if (account) {
+      setShowDemo(account.isactive);
+    }
+  }, [account]);
+
   const { className } = props;
   const { signOut } = useAuth();
   const config = useAppSelector(
@@ -41,12 +60,13 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
   const navbar = useAppSelector(selectFuseNavbar);
   const toolbarTheme = useAppSelector(selectToolbarTheme);
   const navigate = useNavigate();
+
   const handleFreeTrial = () => {
     signOut();
     navigate("/sign-out");
     setTimeout(() => {
-      navigate("/sign-in?demo=true");
-    }, 500);
+      navigate("/sign-in?demo=true"), window.location.reload();
+    }, 1000);
   };
   return (
     <ThemeProvider theme={toolbarTheme}>
@@ -90,22 +110,34 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
           </div>
 
           <div className="flex items-center overflow-x-auto px-8 md:px-16 space-x-6">
-            <LanguageSwitcher />
+            {/* <LanguageSwitcher /> */}
             <AdjustFontSize />
             <FullScreenToggle />
-            <LightDarkModeToggle
+            {/* <LightDarkModeToggle
               lightTheme={_.find(themeOptions, { id: "Default" })}
               darkTheme={_.find(themeOptions, { id: "Default Dark" })}
-            />
-            <NavigationSearch />
-            <QuickPanelToggleButton />
-            <NotificationPanelToggleButton />
-            <button
+            /> */}
+            {/* <NavigationSearch /> */}
+            {/* <QuickPanelToggleButton />
+            <NotificationPanelToggleButton /> */}
+            {/* <button
               onClick={handleFreeTrial}
-              className="px-2 bg-grey-300 h-40 rounded-6"
+              className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0 h-auto w-auto min-w-0 px-8 py-4"
             >
               View Demo
-            </button>
+            </button> */}
+            {!showDemo && (
+              <Button
+                variant="contained"
+                onClick={handleFreeTrial}
+                size="small"
+                color="secondary"
+                className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
+                classes={{ startIcon: "mr-4" }}
+              >
+                View Demo
+              </Button>
+            )}
           </div>
 
           {config.navbar.display && config.navbar.position === "right" && (

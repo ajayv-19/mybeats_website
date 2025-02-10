@@ -60,7 +60,7 @@ function ProjectDashboardAppHeader({
   }
 
   return (
-    <div className="flex flex-col w-full px-24 sm:px-32 ">
+    <div className="flex flex-col w-full px-20 sm:px-20 ">
       <div className="flex flex-col sm:flex-row flex-auto sm:items-center min-w-0 buttom-4 ">
         <div className="flex flex-auto items-start min-w-0">
           <Avatar

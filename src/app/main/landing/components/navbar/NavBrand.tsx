@@ -1,6 +1,5 @@
 import React from "react";
-import desktopLogo from "../../../../../assets/logo/mybeats-logo-desktop.svg";
-import phoneLogo from "../../../../../assets/logo/mybeats-logo-phone.svg";
+import desktopLogo from "../../../../../assets/logo/logo-desktop.png";
 
 function NavBrand() {
   return (

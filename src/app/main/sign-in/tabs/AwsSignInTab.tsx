@@ -14,44 +14,49 @@ function AwsSignInTab() {
 
 	const dispatch = useDispatch();
 
-	useEffect(() => {
-		const attemptDemoLogin = async () => {
-			if (isDemo && demoEmail && demoPassword) {
-				try {
-					const res = await signIn({
-						username: demoEmail,
-						password: demoPassword
-					});
+  useEffect(() => {
+    const attemptDemoLogin = async () => {
+      if (isDemo && demoEmail && demoPassword) {
+        console.log("demoEmail", demoEmail);
+        console.log("demoPassword", demoPassword);
+        console.log("isDemo", isDemo);
+        try {
+          const res = await signIn({
+            username: demoEmail,
+            password: demoPassword,
+          });
 
-					if (res.isSignedIn) {
-						navigate('/dashboards/project');
-					}
-				} catch (error) {
-					console.error('Error', 'error about signin');
-				}
-			}
-		};
+          console.log("res", res);
+          if (res.isSignedIn) {
+            console.log("SignedInWorked", res.isSignedIn);
+            navigate("/dashboards/analytics");
+          }
+        } catch (error) {
+          console.error("Error", "error about signin");
+        }
+      }
+    };
 
-		attemptDemoLogin();
-	}, [isDemo, demoEmail, demoPassword, navigate]);
+    attemptDemoLogin();
+  }, [isDemo, demoEmail, demoPassword, navigate]);
 
-	return (
-		<AwsAuthenticator
-			initialState="signIn"
-			socialProviders={[]}
-			hideSignUp
-			formFields={{
-				signIn: {
-					username: {
-						defaultValue: demoEmail
-					},
-					password: {
-						defaultValue: demoPassword
-					}
-				}
-			}}
-		/>
-	);
+  return (
+    <AwsAuthenticator
+      initialState="signIn"
+      socialProviders={[]}
+      hideSignUp
+      formFields={{
+        signIn: {
+          username: {
+            defaultValue: demoEmail,
+          },
+          password: {
+            defaultValue: demoPassword,
+          },
+        },
+      }}
+    />
+  );
 }
 
 export default AwsSignInTab;
