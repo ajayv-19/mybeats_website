@@ -11,7 +11,6 @@ import Footer from "./components/footer/Footer";
 import Finn from "./components/finn/Finn";
 import Login from "./components/login/Login";
 
-
 function LandingPage() {
   const showcaseRef = useRef<HTMLDivElement | null>(null);
   const featuresRef = useRef<HTMLDivElement | null>(null);
@@ -23,6 +22,8 @@ function LandingPage() {
   const navigate = useNavigate();
 
   const scrollToSection = (ref: React.RefObject<HTMLDivElement>) => {
+    console.log("ref", ref);
+
     if (ref.current) {
       ref.current.scrollIntoView({ behavior: "smooth" });
     }
@@ -69,9 +70,7 @@ function LandingPage() {
           <div ref={detailedRef}>
             <Detailed scrollToContactUs={() => scrollToSection(contactRef)} />
           </div>
-          <div>
-            {/* <VideoShowcase /> */}
-          </div>
+          <div>{/* <VideoShowcase /> */}</div>
           <div>
             <Finn />
           </div>

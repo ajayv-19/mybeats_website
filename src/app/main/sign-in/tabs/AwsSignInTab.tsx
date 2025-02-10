@@ -1,18 +1,17 @@
-import { useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { signIn } from 'aws-amplify/auth';
-import AwsAuthenticator from '../../../auth/services/aws/components/AWSAuthenticator';
-import { useDispatch } from 'react-redux';
-import { fetchAccountDetails } from 'src/app/features/account/accountSlice';
+import { useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import { signIn } from "aws-amplify/auth";
+import { useDispatch } from "react-redux";
+import AwsAuthenticator from "../../../auth/services/aws/components/AWSAuthenticator";
 
 function AwsSignInTab() {
-	const [searchParams] = useSearchParams();
-	const navigate = useNavigate();
-	const isDemo = searchParams.get('demo') === 'true';
-	const demoEmail = isDemo ? 'ajayvdurga911999@gmail.com' : '';
-	const demoPassword = isDemo ? 'Aj19!@#$' : '';
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const isDemo = searchParams.get("demo") === "true";
+  const demoEmail = isDemo ? "ajayvdurga911999@gmail.com" : "";
+  const demoPassword = isDemo ? "Aj19!@#$" : "";
 
-	const dispatch = useDispatch();
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const attemptDemoLogin = async () => {
@@ -27,6 +26,7 @@ function AwsSignInTab() {
           });
 
           console.log("res", res);
+
           if (res.isSignedIn) {
             console.log("SignedInWorked", res.isSignedIn);
             navigate("/dashboards/analytics");

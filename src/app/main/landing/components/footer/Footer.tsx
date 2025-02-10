@@ -22,7 +22,7 @@ const Footer: React.FC<FooterProps> = ({ scrollToSection, refs }) => {
         <FooterLinks scrollToSection={scrollToSection} refs={refs} />
         <div>
           <span className="text-white text-xs">
-            &copy; 2024 FireBeats, Inc.
+            &copy; 2025 MyBeats
           </span>
         </div>
       </div>

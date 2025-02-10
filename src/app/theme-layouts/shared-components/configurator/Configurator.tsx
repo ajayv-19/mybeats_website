@@ -92,7 +92,7 @@ function Configurator() {
 				id="fuse-settings-panel"
 				className="buttonWrapper"
 			>
-				<Button
+				{/* <Button
 					className="settingsButton m-0 h-36 w-36 min-w-36"
 					onClick={() => handleOpen('settings')}
 					variant="text"
@@ -113,7 +113,7 @@ function Configurator() {
 					disableRipple
 				>
 					<FuseSvgIcon size={20}>heroicons-outline:swatch</FuseSvgIcon>
-				</Button>
+				</Button> */}
 			</Root>
 
 			<SettingsPanel

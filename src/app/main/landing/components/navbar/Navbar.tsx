@@ -53,7 +53,8 @@ function Navbar({ scrollToSection, refs }: NavbarProps) {
   };
 
   const handleNavLinkClick = (refName: string) => {
-    if (location.pathname === "/") {
+    console.log("ref name", refName);
+    if (location.pathname === "/home" || location.pathname === "/") {
       // If the user is on the home dashboard, scroll to section
       scrollToSection(refs[refName]);
     } else {
