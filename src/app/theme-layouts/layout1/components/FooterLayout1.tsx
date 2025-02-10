@@ -36,7 +36,7 @@ function FooterLayout1(props: FooterLayout1Props) {
     // 		</Toolbar>
     // 	</AppBar>
     // </ThemeProvider>
-    <></>
+     <></>
   );
 }
 

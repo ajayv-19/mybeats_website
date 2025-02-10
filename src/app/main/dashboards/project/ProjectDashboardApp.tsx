@@ -125,15 +125,15 @@ function ProjectDashboardApp() {
         //   }
         // );
 
-        const testingapi = await axios.get(
-          `https://2l7kgrkd47.execute-api.us-east-1.amazonaws.com/dev/getallcompanyusers?email=${email}`,
-          {
-            headers: {
-              Authorization: authToken2,
-            },
-          }
-        );
-        console.log(testingapi);
+        // const testingapi = await axios.get(
+        //   `https://2l7kgrkd47.execute-api.us-east-1.amazonaws.com/dev/getallcompanyusers?email=${email}`,
+        //   {
+        //     headers: {
+        //       Authorization: authToken2,
+        //     },
+        //   }
+        // );
+        // console.log(testingapi);
 
         setLoader(false);
       } catch (error) {
@@ -166,7 +166,7 @@ function ProjectDashboardApp() {
                   <button
                     type="button"
                     className="px-16 py-4 text-center absolute top-8 right-16 rounded bg-[#177199] text-white"
-                    style={{ width: '110px' }}
+                    style={{ width: "110px" }}
                     onClick={() => setQaModel(false)}
                   >
                     <span>CLOSE</span>
@@ -180,13 +180,26 @@ function ProjectDashboardApp() {
         />
       }
       content={
-        <div className="h-full w-full p-12 flex flex-col relative  ">
+        <div className="h-full w-full px-12 flex flex-col relative  ">
           <iframe
             className="w-full h-full grow border-none"
             width="100%"
             height={"100%"}
             src={url}
           ></iframe>
+          <div className="relative flex">
+            <button
+              type="button"
+              className="px-16 py-8 text-center absolute bottom-2  rounded bg-[#ffffff] text-white"
+              style={{ width: "100%" }}
+            >
+              {/* <span>CLOSE</span> */}
+              {/* <Close /> */}
+            </button>
+          </div>
+          {/* <div
+            style={{ width: "100%", height: "4px", backgroundColor: "white" }}
+          ></div> */}
         </div>
       }
       scroll={isMobile ? "normal" : "page"}
