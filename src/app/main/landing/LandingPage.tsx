@@ -71,7 +71,7 @@ function LandingPage() {
             <Detailed scrollToContactUs={() => scrollToSection(contactRef)} />
           </div>
           <div>
-            <VideoShowcase />
+            {/* <VideoShowcase /> */}
           </div>
           <div>
             <Finn />

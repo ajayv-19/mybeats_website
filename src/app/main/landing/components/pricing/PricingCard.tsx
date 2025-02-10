@@ -5,6 +5,7 @@ import CheckIcon from "@mui/icons-material/Check";
 import Check from "@mui/icons-material/Check";
 import Button from "app/shared-components/buttons/Button";
 import FadeAnimatedContainer from "app/shared-components/containers/FadeAnimatedContainer";
+import { useNavigate } from "react-router";
 
 interface PricingCardProps {
   title: string;
@@ -14,13 +15,15 @@ interface PricingCardProps {
   delay?: number;
 }
 
-const PricingCard: React.FC<PricingCardProps> = ({
+function PricingCard({
   title,
   price,
   description,
   features,
   delay,
-}) => {
+}: PricingCardProps) {
+  const navigate = useNavigate();
+
   return (
     <FadeAnimatedContainer delay={delay} direction="bottom">
       <div className="h-[540px] md:w-[320px] w-full bg-white shadow-xl rounded-32 p-20 flex flex-col">
@@ -53,13 +56,13 @@ const PricingCard: React.FC<PricingCardProps> = ({
         </div>
 
         <div className="flex flex-col items-center">
-          <Button variant="contained" onClick={() => {}}>
+          <Button variant="contained" onClick={() => navigate("/sign-in")}>
             <span className="text-white">Select</span>
           </Button>
         </div>
       </div>
     </FadeAnimatedContainer>
   );
-};
+}
 
 export default PricingCard;

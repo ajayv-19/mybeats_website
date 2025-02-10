@@ -3,7 +3,7 @@ import React from "react";
 import ContactForm from "./ContactForm";
 import FadeAnimatedContainer from "app/shared-components/containers/FadeAnimatedContainer";
 
-const Contact = () => {
+function Contact() {
   return (
     <div className="flex flex-col space-y-20 md:flex-row md:space-x-20 py-40">
       <div className="flex-1">
@@ -25,6 +25,6 @@ const Contact = () => {
       </div>
     </div>
   );
-};
+}
 
 export default Contact;

@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom"; // Import the hooks
 import { motion } from "framer-motion";
 import Container from "app/shared-components/containers/Container";
-import Button from "app/shared-components/buttons/Button";
 import MenuIcon from "@mui/icons-material/Menu";
 import CloseIcon from "@mui/icons-material/Close";
 import NavBrand from "./NavBrand";
@@ -43,7 +42,7 @@ interface NavbarProps {
   };
 }
 
-const Navbar: React.FC<NavbarProps> = ({ scrollToSection, refs }) => {
+function Navbar({ scrollToSection, refs }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false); // State to manage the menu open/close
   const [isSticky, setIsSticky] = useState(false); // State to track when the navbar should be sticky
   const location = useLocation(); // Get the current route
@@ -139,6 +138,6 @@ const Navbar: React.FC<NavbarProps> = ({ scrollToSection, refs }) => {
       </Container>
     </div>
   );
-};
+}
 
 export default Navbar;

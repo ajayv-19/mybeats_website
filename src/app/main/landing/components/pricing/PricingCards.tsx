@@ -44,7 +44,7 @@ const pricingData = [
   },
 ];
 
-const PricingCards = () => {
+function PricingCards() {
   return (
     <div className="flex flex-col items-center space-y-20 md:flex-row md:justify-between md:space-x-20 md:space-y-0 w-[100%]">
       {pricingData.map((pricing, index) => (
@@ -59,6 +59,6 @@ const PricingCards = () => {
       ))}
     </div>
   );
-};
+}
 
 export default PricingCards;

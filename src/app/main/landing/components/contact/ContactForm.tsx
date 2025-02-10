@@ -3,7 +3,7 @@ import TextArea from "app/shared-components/inputs/TextArea";
 import TextInput from "app/shared-components/inputs/TextInput";
 import React from "react";
 
-const ContactForm = () => {
+function ContactForm() {
   return (
     <div className="flex flex-col p-20 bg-white shadow-xl rounded-32 space-y-20">
       <div className="flex flex-row space-x-20">

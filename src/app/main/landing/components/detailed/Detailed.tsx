@@ -6,12 +6,15 @@ import ChartImage from "../../../../../assets/images/chart_NIST.png";
 import InsuranceDashboardImage from "../../../../../assets/images/dashboard_Insurance.png";
 
 import DetailedCard from "./DetailedCard";
+import { useNavigate } from "react-router";
 
 interface DetailedProps {
   scrollToContactUs: () => void;
 }
 
-const Detailed: React.FC<DetailedProps> = ({ scrollToContactUs }) => {
+function Detailed({ scrollToContactUs }: DetailedProps) {
+  const navigate = useNavigate();
+
   return (
     <div className="flex flex-col space-y-80">
       <div className="flex flex-col md:flex-row md:space-x-32 space-y-32">
@@ -61,7 +64,7 @@ const Detailed: React.FC<DetailedProps> = ({ scrollToContactUs }) => {
                 firefighters into actionable insurance insights and analytics.
               </Text>
 
-              <Button onClick={() => {}} variant="contained">
+              <Button onClick={() => navigate("/sign-in")} variant="contained">
                 <span className="text-white">Get Started</span>
               </Button>
             </div>
@@ -70,6 +73,6 @@ const Detailed: React.FC<DetailedProps> = ({ scrollToContactUs }) => {
       </div>
     </div>
   );
-};
+}
 
 export default Detailed;
