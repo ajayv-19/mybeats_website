@@ -46,7 +46,8 @@ const conditionalAuthMiddleware = async (req, res, next) => {
     `${API_PREFIX}/payment-cancel`,
     `${API_PREFIX}/daily-schedule`,
     `${API_PREFIX}/create-subscription`,
-    `${API_PREFIX}/webhook`
+    `${API_PREFIX}/webhook`,
+    `${API_PREFIX}/addcomment`,
   ];
   console.log({ currentPath: req.path, bypassRoutes });
   if (bypassRoutes.includes(req.path)) {

@@ -76,6 +76,7 @@ const addSubscription = async (customer_subscription_created) => {
       bill_end: new Date(current_period_end * 1000), // Convert Unix timestamp to Date
       status: status.toUpperCase(), // Normalize status
     });
+    company.update({ subscription_id: newSubscription.id });
 
     console.log("✅ Subscription created successfully:", newSubscription);
     return { success: true, data: newSubscription };

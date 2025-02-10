@@ -1,5 +1,11 @@
 // const { is } = require("immutable");
-const { User, Company, Subscriptions, NewSubscriptions } = require("../models");
+const {
+  User,
+  Company,
+  Subscriptions,
+  NewSubscriptions,
+  CustomerQueries,
+} = require("../models");
 
 const UserController = {
   async getUserById(req, res) {
@@ -261,6 +267,45 @@ const UserController = {
       });
     } catch (error) {
       console.error("Error updating user role:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update user role",
+        error: error.message,
+      });
+    }
+  },
+
+  async addComment(req, res) {
+    const { email, firstName, lastName, message } = req.body;
+
+    // Determine role_id based on the role
+
+    try {
+      // Find the user by email
+      // const user = await User.findOne({ where: { email } });
+
+      // if (!user) {
+      //   return res.status(404).json({
+      //     success: false,
+      //     message: "User not found",
+      //   });
+      // }
+
+      // Create a new comment
+      const newComment = await CustomerQueries.create({
+        email,
+        firstName,
+        lastName,
+        message,
+      });
+
+      return res.json({
+        success: true,
+        message: "Comment added successfully",
+        newComment,
+      });
+    } catch (error) {
+      console.error("Error adding the comment:", error);
       return res.status(500).json({
         success: false,
         message: "Failed to update user role",

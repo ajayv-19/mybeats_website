@@ -268,7 +268,38 @@ const NewSubscriptions = sequelize.define(
     timestamps: false, // Set to true if your table includes createdAt/updatedAt fields
   }
 );
-
+const CustomerQueries = sequelize.define(
+  "CustomerQueries",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    firstName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    lastName: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    message: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize,
+    modelName: "CustomerQueries",
+    tableName: "Customer_queries", // Explicitly specify the table name
+    timestamps: false, // Assuming there are no createdAt/updatedAt fields
+  }
+);
 module.exports = {
   User,
   Company,
@@ -278,4 +309,5 @@ module.exports = {
   Subscriptions,
   NewSubscriptions,
   sequelize,
+  CustomerQueries,
 };

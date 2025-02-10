@@ -12,7 +12,18 @@ function ContactForm() {
 
   const handleSubmit = async () => {
     try {
-      
+      const response = await axios.post(
+        "https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/addcomment",
+        {
+          firstName,
+          lastName,
+          email,
+          message,
+        }
+      );
+      console.log("response", response);
+      // eslint-disable-next-line no-alert
+      alert("Your message has been sent succesfully!");
     } catch (error) {
       console.error(error);
     }

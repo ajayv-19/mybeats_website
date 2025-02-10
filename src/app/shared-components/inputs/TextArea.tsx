@@ -4,7 +4,7 @@ import Text from "../texts/Text";
 interface TextAreaProps {
   label?: string;
   value?: string;
-  onChange?: () => void;
+  onChange?: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
 }
 
 function TextArea({ value, onChange }: TextAreaProps) {
