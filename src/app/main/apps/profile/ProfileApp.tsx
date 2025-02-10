@@ -55,7 +55,7 @@ function ProfileApp() {
   //const navigate = useNavigate();
   const handleDashbaordClick = () => {
     // navigate(`${window.origin}/dashboards/project`);
-    navigate(`/dashboards/project`);
+    navigate("/dashboards/analytics");
   };
 
   const handleSettingClick = () => {

@@ -190,7 +190,7 @@ function ProjectDashboardApp() {
           <div className="relative flex">
             <button
               type="button"
-              className="px-16 py-8 text-center absolute   rounded bg-[#ffffff] text-white"
+              className="px-16 py-8 text-center absolute bottom-2  rounded bg-[#ffffff] text-white"
               style={{ width: "100%" }}
             >
               {/* <span>CLOSE</span> */}

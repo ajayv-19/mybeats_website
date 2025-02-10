@@ -11,7 +11,7 @@ const {
   Plans,
   Payment,
   Subscriptions,
-  NewSubscriptions
+  NewSubscriptions,
 } = require("../models/index.js");
 
 const datelib = require("../lib/date.js");
@@ -25,6 +25,8 @@ const getCustomerDetails = async (email, payload) => {
       email,
       limit: 1, // Fetch only the first matching customer
     });
+
+    console.log("existing customers", existingCustomers[0]);
 
     // If customer exists, return the first match
     if (existingCustomers.length > 0) {
@@ -48,27 +50,33 @@ const addSubscription = async (customer_subscription_created) => {
       current_period_start,
       current_period_end,
       plan,
+      metadata, // ✅ Extract metadata dynamically from Stripe event
     } = customer_subscription_created;
 
-    // Using static metadata since metadata is missing in Stripe response
-    const metadata = {
-      company_id: 1, // Replace with actual static company ID
-      plan_id: 1, // Replace with actual static plan ID
-      user_id: 1, // Replace with actual static user ID (or keep NULL)
-    };
+    // Ensure metadata exists before using it
+    const company_id = metadata?.company_id
+      ? Number(metadata.company_id)
+      : null;
+    const plan_id = metadata?.plan_id ? Number(metadata.plan_id) : null;
+    const user_id = metadata?.user_id ? Number(metadata.user_id) : null;
 
-    console.log("✅ Using static metadata:", metadata);
+    const company = await Company.findByPk(company_id);
+    company.update({ is_subscribed: true });
+    const user = await User.findByPk(user_id);
+    user.update({ role_id: 1 });
 
     // Create a new row in the NewSubscriptions table
     const newSubscription = await NewSubscriptions.create({
       sub_id,
-      user_id: metadata.user_id || null, // If user_id exists, store it; otherwise, keep it NULL
-      company_id: metadata.company_id,
+      user_id, //: metadata.user_id || null, // If user_id exists, store it; otherwise, keep it NULL
+      company_id, //: metadata.company_id,
+      plan_id,
       amount: plan.amount / 100, // Convert cents to dollars (Stripe sends amounts in cents)
       bill_start: new Date(current_period_start * 1000), // Convert Unix timestamp to Date
       bill_end: new Date(current_period_end * 1000), // Convert Unix timestamp to Date
       status: status.toUpperCase(), // Normalize status
     });
+    company.update({ subscription_id: newSubscription.id });
 
     console.log("✅ Subscription created successfully:", newSubscription);
     return { success: true, data: newSubscription };
@@ -85,7 +93,9 @@ const handleSuccesfullInvoicePayment = async (invoice) => {
     console.log("💰 Payment succeeded for subscription:", subscription_id);
 
     // Find the subscription in our database
-    const subscription = await NewSubscriptions.findOne({ where: { sub_id: subscription_id } });
+    const subscription = await NewSubscriptions.findOne({
+      where: { sub_id: subscription_id },
+    });
 
     if (!subscription) {
       console.error("Subscription not found in DB:", subscription_id);
@@ -111,14 +121,55 @@ const handleSuccesfullInvoicePayment = async (invoice) => {
   } catch (error) {
     console.error("❌ Error updating successful payment:", error);
   }
-}
+};
+
+// const handleSubscriptionUpdated = async (subscription) => {
+//   try {
+//     const stripe = StripeClient(STRIPE_SECRET_KEY);
+//     console.log("🔄 Subscription updated in Stripe:", subscription.id);
+
+//     const existingSubscription = await NewSubscriptions.findOne({
+//       where: { sub_id: subscription.id },
+//     });
+
+//     if (!existingSubscription) {
+//       console.error("⚠️ Subscription not found in DB:", subscription.id);
+//       return;
+//     }
+
+//     // Extract subscription item details
+//     const subscriptionItem = subscription.items.data[0];
+//     const newQuantity = subscriptionItem.quantity;
+//     const subscriptionItemId = subscriptionItem.id;
+
+//     // Fetch subscription item from Stripe to get price details
+//     const stripeItem =
+//       await stripe.subscriptionItems.retrieve(subscriptionItemId);
+//     const newAmount = (stripeItem.price.unit_amount / 100) * newQuantity; // Convert cents to dollars
+
+//     console.log("📊 Updating DB with new values:", { newQuantity, newAmount });
+
+//     // Update database
+//     existingSubscription.amount = newAmount;
+//     existingSubscription.bill_end = new Date(
+//       subscription.current_period_end * 1000
+//     );
+//     await existingSubscription.save();
+
+//     console.log("✅ Subscription updated in database.");
+//   } catch (error) {
+//     console.error("❌ Error handling subscription update:", error);
+//   }
+// };
 
 const handleSubscriptionUpdated = async (subscription) => {
   try {
     const stripe = StripeClient(STRIPE_SECRET_KEY);
     console.log("🔄 Subscription updated in Stripe:", subscription.id);
 
-    const existingSubscription = await NewSubscriptions.findOne({ where: { sub_id: subscription.id } });
+    const existingSubscription = await NewSubscriptions.findOne({
+      where: { sub_id: subscription.id },
+    });
 
     if (!existingSubscription) {
       console.error("⚠️ Subscription not found in DB:", subscription.id);
@@ -131,19 +182,31 @@ const handleSubscriptionUpdated = async (subscription) => {
     const subscriptionItemId = subscriptionItem.id;
 
     // Fetch subscription item from Stripe to get price details
-    const stripeItem = await stripe.subscriptionItems.retrieve(subscriptionItemId);
+    const stripeItem =
+      await stripe.subscriptionItems.retrieve(subscriptionItemId);
     const newAmount = (stripeItem.price.unit_amount / 100) * newQuantity; // Convert cents to dollars
 
-    console.log("📊 Updating DB with new values:", { newQuantity, newAmount });
+    // Get plan_id from subscription metadata
+    const plan_id = subscription.metadata.plan_id;
 
-    // Update database
-    existingSubscription.amount = newAmount;
-    existingSubscription.bill_end = new Date(subscription.current_period_end * 1000);
-    await existingSubscription.save();
+    console.log("📊 Updating DB with new values:", {
+      newQuantity,
+      newAmount,
+      plan_id,
+    });
 
-    console.log("✅ Subscription updated in database.");
+    // Update database with all values including plan_id
+    await existingSubscription.update({
+      amount: newAmount,
+      bill_end: new Date(subscription.current_period_end * 1000),
+      plan_id: plan_id,
+    });
+
+    console.log("✅ Subscription updated in database with new plan.");
   } catch (error) {
     console.error("❌ Error handling subscription update:", error);
+    // You might want to add additional error handling here
+    throw error; // Re-throw if you want to handle it in the calling function
   }
 };
 
@@ -154,7 +217,9 @@ const handleFailedInvoive = async (invoice) => {
     console.log("❌ Payment failed for subscription:", subscription_id);
 
     // Find the subscription in our database
-    const subscription = await NewSubscriptions.findOne({ where: { sub_id: subscription_id } });
+    const subscription = await NewSubscriptions.findOne({
+      where: { sub_id: subscription_id },
+    });
 
     if (!subscription) {
       console.error("Subscription not found in database:", subscription_id);
@@ -186,6 +251,13 @@ class PaymentController {
     router.post("/create-subscription", (...arg) =>
       this.CreateSubscription(...arg)
     );
+    router.post("/update-subscription", (...arg) =>
+      this.UpdateSubscription(...arg)
+    );
+    router.post("/cancel-subscription", (...arg) =>
+      this.CancelSubscription(...arg)
+    );
+
     router.post("/webhook", (...arg) => this.HandleStripeEvent(...arg));
   }
 
@@ -195,11 +267,10 @@ class PaymentController {
 
       // Handle the event
       switch (event.type) {
-
         // When a subscription is created for a customer for a customer
         // Add a row to the subscription table with status active
         // Update the payment row's status from active to succesfull
-        case "customer.subscription.created":
+        case "customer.subscription.created": //get company subscrited true
           const customer_subscription_created = event.data.object;
           await addSubscription(customer_subscription_created);
           break;
@@ -216,9 +287,9 @@ class PaymentController {
           break;
 
         // When a customer fails to pay for the subscription
-        case "invoice.payment_failed":
+        case "invoice.payment_failed": //get company subscrited false
           const invoice_failed = event.data.object;
-          await handleFailedInvoive(invoice_failed)
+          await handleFailedInvoive(invoice_failed);
           break;
 
         // TODO: Update subscription (Prorated Charge) -> Change the number of policyholders (Change the price) -> Update the payment and the subscription in stripe
@@ -233,10 +304,106 @@ class PaymentController {
     }
   }
 
-
   // Update subscription
   // TODO: Downgrade -> Calc new amount -> Calc new subscription -> Cancel previous sub -> Calc refund amount to the user
   // TODO: Upgrade -> Same thing
+
+  async UpdateSubscription(req, res) {
+    try {
+      const stripe = StripeClient(STRIPE_SECRET_KEY);
+      const { company_id, plan_id, user_id } = req.body;
+
+      // Validate required parameters
+      if (!user_id || !plan_id || !company_id) {
+        return res.status(400).json({ error: "Missing required parameters" });
+      }
+
+      // Get the user, plan and company details
+      const [user, plan, company] = await Promise.all([
+        User.findOne({ where: { id: user_id } }),
+        Plans.findOne({ where: { id: plan_id } }),
+        Company.findOne({ where: { id: company_id } }),
+      ]);
+
+      if (!user || !plan || !company) {
+        return res
+          .status(400)
+          .json({ error: "Invalid user, plan, or company" });
+      }
+
+      const customer = await getCustomerDetails(user.email);
+
+      // Find existing subscription in Stripe
+      const existingSubscriptions = await stripe.subscriptions.list({
+        limit: 1,
+        customer: customer.id,
+        status: "active",
+      });
+
+      if (existingSubscriptions.data.length === 0) {
+        return res.status(404).json({ error: "No active subscription found" });
+      }
+
+      const currentSubscription = existingSubscriptions.data[0];
+
+      // Create a new subscription item with the new price
+      const subscriptionUpdateParams = {
+        proration_behavior: "always_invoice", // or 'create_prorations' based on your billing model
+        items: [
+          {
+            id: currentSubscription.items.data[0].id,
+            price: plan.price_id,
+            quantity: company.policyholder_count,
+          },
+        ],
+        metadata: {
+          user_id,
+          company_id,
+          plan_id,
+          updated_at: new Date().toISOString(),
+        },
+        payment_settings: {
+          save_default_payment_method: "on_subscription",
+          payment_method_types: ["card", "us_bank_account"],
+        },
+      };
+
+      // If the plan is changing, we need to handle the proration
+      if (currentSubscription.items.data[0].price.id !== plan.price_id) {
+        // Optional: Add any specific proration handling here
+        subscriptionUpdateParams.proration_date = Math.floor(Date.now() / 1000);
+      }
+
+      // Update the subscription
+      const updatedSubscription = await stripe.subscriptions.update(
+        currentSubscription.id,
+        subscriptionUpdateParams
+      );
+
+      // If you need to create a new payment intent for the updated subscription
+      let paymentIntent = null;
+      if (updatedSubscription.latest_invoice?.payment_intent) {
+        paymentIntent = await stripe.paymentIntents.retrieve(
+          updatedSubscription.latest_invoice.payment_intent
+        );
+      }
+
+      // Update local database records if needed
+      // Add your database update logic here
+
+      res.status(200).json({
+        message: "Subscription updated successfully",
+        subscription: updatedSubscription,
+        clientSecret: paymentIntent?.client_secret,
+      });
+    } catch (error) {
+      console.error("Error updating subscription:", error);
+      res.status(500).json({
+        error: "Unable to update subscription",
+        details: error.message,
+      });
+    }
+  }
 
   // Create Subscription route
   async CreateSubscription(req, res) {
@@ -245,18 +412,23 @@ class PaymentController {
       const {
         currency_code = "USD",
         company_id,
-        price_id,
+
         plan_id,
         user_id,
       } = req.body;
 
       // Throw an error when the required parameters are not there
-      if (!currency_code || !price_id || !user_id || !plan_id) {
+      if (!currency_code || !user_id || !plan_id) {
         return res.status(400).json({ error: "Missing required parameters" });
       }
 
       // Get the user details
       const user = await User.findOne({ where: { id: user_id } });
+      const plan = await Plans.findOne({ where: { id: plan_id } });
+      if (!user || !plan) {
+        return res.status(400).json({ error: "Invalid user or plan" });
+      }
+      const price_id = plan.price_id;
 
       // Get the company details
       const company = await Company.findOne({ where: { id: company_id } });
@@ -290,17 +462,6 @@ class PaymentController {
         expand: ["latest_invoice.payment_intent"],
       });
 
-      // Initiate payment
-      await Payment.create({
-        user_id,
-        company_id,
-        plan_id,
-        vendor: "stripe",
-        status: "INITIATED",
-        subscription_id: subscription.id,
-        transaction_payload: JSON.stringify(subscription),
-      });
-
       res.status(200).json({
         message: "Subscription initiated successfully",
         clientSecret: subscription.latest_invoice.payment_intent.client_secret,
@@ -314,43 +475,50 @@ class PaymentController {
   async CancelSubscription(req, res) {
     try {
       const stripe = StripeClient(STRIPE_SECRET_KEY);
-      const { subscription_id, cancel_immediately } = req.body;
+      const { user_id } = req.body;
 
-      if (!subscription_id) {
-          return res.status(400).json({ error: "Missing subscription_id" });
+      // Validate required input
+      if (!user_id) {
+        return res.status(400).json({ error: "Missing required parameters" });
       }
 
-      // Fetch existing subscription
-      const subscription = await stripe.subscriptions.retrieve(subscription_id);
-
-      if (!subscription) {
-          return res.status(404).json({ error: "Subscription not found" });
+      // Fetch user details
+      const user = await User.findOne({ where: { id: user_id } });
+      if (!user) {
+        return res.status(400).json({ error: "Invalid user" });
       }
 
-      // Cancel the subscription (either immediately or at the end of the billing period)
-      const canceledSubscription = await stripe.subscriptions.update(subscription_id, {
-          cancel_at_period_end: !cancel_immediately, // If true, the user will have access till the end of their billing cycle
+      // Find the active subscription in your database
+      const activeSubscription = await NewSubscriptions.findOne({
+        where: { user_id, status: "ACTIVE" },
       });
 
-      // Update subscription status in DB
-      await Subscriptions.update(
-          {
-              status: cancel_immediately ? "CANCELED" : "PENDING_CANCELLATION",
-              updated_at: new Date(),
-          },
-          { where: { subscription_id } }
+      if (!activeSubscription) {
+        return res.status(404).json({ error: "No active subscription found" });
+      }
+
+      // Cancel the subscription in Stripe
+      const canceledSubscription = await stripe.subscriptions.update(
+        activeSubscription.sub_id,
+        {
+          cancel_at_period_end: true,
+        }
+      );
+
+      // Update the subscription status in the database
+      await NewSubscriptions.update(
+        { status: "CANCELED", plan_id: -1 },
+        { where: { id: activeSubscription.id } }
       );
 
       res.status(200).json({
-          message: cancel_immediately
-              ? "Subscription canceled immediately"
-              : "Subscription will be canceled at the end of the billing cycle",
-          canceledSubscription,
+        message: "Subscription canceled successfully",
+        subscription: canceledSubscription,
       });
-  } catch (error) {
+    } catch (error) {
       console.error("Error canceling subscription:", error);
       res.status(500).json({ error: "Unable to cancel subscription" });
-  }
+    }
   }
 
   //   async CreatePayment(req, res) {
