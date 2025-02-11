@@ -31,12 +31,11 @@ const PLANS: Array<PlanType> = [
     value: "free",
     label: "Free",
     details: "Monthly Starter Plan",
-    price: 0,
+    price: 0.99,
     bulletPoints: [
-      "Maximum 100 policyholders",
-      "Valid for three months",
       "Access to basic features",
       "Dashboard tutorials",
+      "One business account",
     ],
   },
   {
@@ -44,13 +43,14 @@ const PLANS: Array<PlanType> = [
     value: "silver",
     label: "Silver",
     details: "Monthly Plan for Mid-sized Companies",
-    price: 0.99,
+    price: 1.99,
     bulletPoints: [
       "Access to advanced features",
       "Historical data trends",
       "Report generation",
       "Free training for dashboard",
       "Customer Support Via Email",
+      "Five business accounts",
     ],
   },
   {
@@ -58,14 +58,15 @@ const PLANS: Array<PlanType> = [
     value: "gold",
     label: "Gold",
     details: "Monthly Plan for Large Companies",
-    price: 1.99,
+    price: 2.99,
     bulletPoints: [
-      "Integration of FINN",
+      "Integration of FINN - AI Agent",
       "Access to advanced features",
       "Historical data trends",
       "Advanced reporting",
       "Periodic free training for dashboard",
       "Dedicated representative for support",
+      "Ten business accounts",
     ],
   },
 ];
