@@ -65,73 +65,66 @@ export const submitAccountDetails = createAsyncThunk(
       defaultEmail: string;
     },
     { rejectWithValue }
-  ) => {
-    try {
-      let linkFromS3 = "";
-  "account/submitDetails",
-  async (
-    {
-      formData,
-      profileImageLink,
-      defaultEmail,
-    }: {
-      formData: UserDetails;
-      profileImageLink: File | null;
-      defaultEmail: string;
-    },
-    { rejectWithValue }
-  ) => {
-    try {
-      let linkFromS3 = "";
+  ) =>
+    async (
+      {
+        formData,
+        profileImageLink,
+        defaultEmail,
+      }: {
+        formData: UserDetails;
+        profileImageLink: File | null;
+        defaultEmail: string;
+      },
+      { rejectWithValue }
+    ) => {
+      try {
+        let linkFromS3 = "";
 
-      // Upload the image to S3 if a profile image link exists
-      if (profileImageLink) {
-        const sanitizedEmail = defaultEmail.replace(/[.@]/g, ""); // Sanitize email
-        const fileExtension = profileImageLink.name.substring(
-          profileImageLink.name.lastIndexOf(".")
-        );
-        const fileName = `profiles/${sanitizedEmail}${fileExtension}`;
-      // Upload the image to S3 if a profile image link exists
-      if (profileImageLink) {
-        const sanitizedEmail = defaultEmail.replace(/[.@]/g, ""); // Sanitize email
-        const fileExtension = profileImageLink.name.substring(
-          profileImageLink.name.lastIndexOf(".")
-        );
-        const fileName = `profiles/${sanitizedEmail}${fileExtension}`;
+        // Upload the image to S3 if a profile image link exists
+        if (profileImageLink) {
+          const sanitizedEmail = defaultEmail.replace(/[.@]/g, ""); // Sanitize email
+          const fileExtension = profileImageLink.name.substring(
+            profileImageLink.name.lastIndexOf(".")
+          );
+          const fileName = `profiles/${sanitizedEmail}${fileExtension}`;
 
-        // Upload image
-        // TODO: uploadData is deprecated, have to change this method.
-        const result = await uploadData({
-          key: fileName,
-          data: profileImageLink,
-        }).result;
-        // Upload image
-        // TODO: uploadData is deprecated, have to change this method.
-        const result = await uploadData({
-          key: fileName,
-          data: profileImageLink,
-        }).result;
+          // Upload the image to S3 if a profile image link exists
+          if (profileImageLink) {
+            const sanitizedEmail = defaultEmail.replace(/[.@]/g, ""); // Sanitize email
+            const fileExtension = profileImageLink.name.substring(
+              profileImageLink.name.lastIndexOf(".")
+            );
+            const fileName = `profiles/${sanitizedEmail}${fileExtension}`;
 
-        linkFromS3 = `https://insurance-dashboard-imagesdd445-dev.s3.us-east-1.amazonaws.com/public/${result.key}`;
-        formData = { ...formData, image: linkFromS3 };
+            // Upload image
+            // TODO: uploadData is deprecated, have to change this method.
+            const result = await uploadData({
+              key: fileName,
+              data: profileImageLink,
+            }).result;
+
+            linkFromS3 = `https://insurance-dashboard-imagesdd445-dev.s3.us-east-1.amazonaws.com/public/${result.key}`;
+            formData = { ...formData, image: linkFromS3 };
+          }
+
+          linkFromS3 = `https://insurance-dashboard-imagesdd445-dev.s3.us-east-1.amazonaws.com/public/${result.key}`;
+          formData = { ...formData, image: linkFromS3 };
+        }
+
+        // Submit the account details to the API
+        const response = await addOrUpdateUser(formData);
+
+        if (response.status === 200) {
+          return response.data.userdata as UserDetails;
+        }
+
+        return rejectWithValue("Failed to submit account details");
+      } catch (error) {
+        console.error("Failed to update account settings:", error);
+        return rejectWithValue(error.message || "Unknown error");
       }
-        linkFromS3 = `https://insurance-dashboard-imagesdd445-dev.s3.us-east-1.amazonaws.com/public/${result.key}`;
-        formData = { ...formData, image: linkFromS3 };
-      }
-
-      // Submit the account details to the API
-      const response = await addOrUpdateUser(formData);
-
-      if (response.status === 200) {
-        return response.data.userdata as UserDetails;
-      }
-
-      return rejectWithValue("Failed to submit account details");
-    } catch (error) {
-      console.error("Failed to update account settings:", error);
-      return rejectWithValue(error.message || "Unknown error");
     }
-  }
 );
 
 /**

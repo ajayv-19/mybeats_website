@@ -65,7 +65,7 @@ app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
 
   // const emaildomain = getDomainFromEmail(email);
   // const companyQuery =
-  //   'SELECT c FROM "public"."Subscribed_Companies" WHERE domain = $1';
+  //   'SELECT subscription_id FROM "public"."Subscribed_Companies" WHERE domain = $1';
   // const selectResult = await client.query(companyQuery, [emaildomain]);
 
   // const company = selectResult.rows.length
