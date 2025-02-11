@@ -1,22 +1,13 @@
 import Typography from "@mui/material/Typography";
 import Button from "@mui/material/Button";
-import FuseSvgIcon from "@fuse/core/FuseSvgIcon";
 import PageBreadcrumb from "app/shared-components/PageBreadcrumb";
 import { useState, ReactNode, useEffect } from "react";
-import _ from "@lodash";
 import { darken } from "@mui/material/styles";
-import { selectUser } from "src/app/auth/user/store/userSlice";
-import { useAppSelector } from "app/store/hooks";
 import Avatar from "@mui/material/Avatar";
+import { selectAccount } from "src/app/features/account/accountSlice";
+import { useSelector } from "react-redux";
 import { useGetProjectDashboardProjectsQuery } from "../project/ProjectDashboardApi";
-import {
-  fetchAccountDetails,
-  selectAccount,
-  selectAccountLoading,
-  submitAccountDetails,
-} from "src/app/features/account/accountSlice";
-import { useDispatch, useSelector } from "react-redux";
-import { fetchDefaultEmail } from "src/utils/apis/userAuthApis";
+
 /**
  * The analytics dashboard app header.
  */
@@ -43,7 +34,7 @@ function AnalyticsDashboardAppHeader({
     }
   }, [user]);
 
-  //const user = useAppSelector(selectUser);
+  // const user = useAppSelector(selectUser);
 
   const [selectedProject, setSelectedProject] = useState<{
     id: number;
@@ -73,6 +64,7 @@ function AnalyticsDashboardAppHeader({
       menuEl: null,
     });
   }
+
   return (
     <div className="flex flex-col w-full px-20 sm:px-20 ">
       <div className="flex flex-col sm:flex-row flex-auto sm:items-center min-w-0 buttom-4 ">
@@ -102,13 +94,13 @@ function AnalyticsDashboardAppHeader({
               <Typography
                 className="mx-6 leading-6 truncate"
                 color="text.secondary"
-              ></Typography>
+              />
             </div>
           </div>
         </div>
-        <div className="flex flex-col items-center mt-24 sm:mt-0 sm:mx-8 space-x-8 space-y-2 bottom-4">
+        <div className="flex flex-col items-center mb-12 sm:mt-0 sm:mx-8 space-x-8 space-y-2 bottom-4">
           <img
-            className="h-120 object-cover w-full object-[0px_10px] cursor-pointer "
+            className="w-auto h-[100px] sm:h-[100px] cursor-pointer"
             src="assets/images/pages/dashboard/finn.png"
             alt="Profile Cover"
             onClick={() => onFinnClick && onFinnClick()}
@@ -119,7 +111,7 @@ function AnalyticsDashboardAppHeader({
             // onClick={handleButtonClick}
             size="small"
             color="secondary"
-            className="m-6 z-10 rounded p-0 text-md min-h-0 h-auto w-auto min-w-0 px-12 !mt-0 "
+            className="m-6 z-10 rounded p-0 text-md min-h-0 h-32 w-auto min-w-0 px-24 !mt-0 "
             // style={{ width: '200px' }}
             classes={{ startIcon: "mr-4" }}
             onClick={() => onFinnClick && onFinnClick()}

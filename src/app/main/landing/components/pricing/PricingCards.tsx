@@ -1,44 +1,44 @@
 import React from "react";
 import PricingCard from "./PricingCard";
-import { delay } from "lodash";
 
 const pricingData = [
   {
-    title: "Free Plan",
+    title: "Bronze Plan",
     description: "Monthly Starter Plan",
-    price: "0.00",
+    price: "0.99",
     features: [
-      "Maximum 100 policyholders",
-      "Valid for three months",
       "Access to basic features",
       "Dashboard tutorials",
+      "One business account",
     ],
     delay: 0,
   },
   {
     title: "Silver Plan",
     description: "Monthly Plan for Small to Mid-sized Companies",
-    price: "0.99",
+    price: "1.99",
     features: [
       "Access to advanced features",
       "Historical data trends",
       "Report generation",
       "Free training for dashboard",
       "Customer Support Via Email",
+      "Five business accounts",
     ],
     delay: 0.4,
   },
   {
     title: "Gold Plan",
     description: "Monthly Plan for Large Companies",
-    price: "1.99",
+    price: "2.99",
     features: [
-      "Integration of FINN",
+      "Integration of FINN - AI Agent",
       "Access to advanced features",
       "Historical data trends",
       "Advanced reporting",
       "Periodic free training for dashboard",
       "Dedicated representative for support",
+      "Ten business accounts",
     ],
     delay: 0.8,
   },

@@ -1,8 +1,8 @@
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import FadeAnimatedContainer from "app/shared-components/containers/FadeAnimatedContainer";
-import ShowcaseCard from "./ShowcaseCard";
 import ShowcaseHeader from "./ShowcaseHeader";
+import MyBeats from "../../../../../assets/MyBeats.png";
 
 interface ShowcaseScreenOneProps {
   openModal: () => void;
@@ -18,7 +18,13 @@ function ShowcaseScreenOne({ openModal }: ShowcaseScreenOneProps) {
         <ShowcaseCard tiltDirection="right" />
       </FadeAnimatedContainer> */}
         <FadeAnimatedContainer delay={1} direction="bottom">
-          <ShowcaseCard scale="large" tiltDirection="center" />
+          {/* <ShowcaseCard scale="large" tiltDirection="center" /> */}
+          <video controls poster={MyBeats}>
+            <source
+              src="https://fire.engineering.nyu.edu/home/documents/MyBeats_Final.mp4"
+              type="video/mp4"
+            />
+          </video>
         </FadeAnimatedContainer>
         {/* <FadeAnimatedContainer delay={2} direction="rightBottom">
         <ShowcaseCard tiltDirection="left" />

@@ -199,9 +199,9 @@ const navigationConfig: FuseNavItemType[] = [
       {
         ...SettingsAppNavigation,
         type: "item",
-        badge: {
-          title: "NEW",
-        },
+        // badge: {
+        //   title: "NEW",
+        // },
       },
       // {
       //   id: "apps.help-center",

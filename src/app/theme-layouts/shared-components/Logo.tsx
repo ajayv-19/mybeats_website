@@ -1,6 +1,7 @@
 import { styled } from "@mui/material/styles";
 import Typography from "@mui/material/Typography";
 import Box from "@mui/material/Box";
+import logo from "../../../assets/mybeats-final-logo.png";
 
 const Root = styled("div")(({ theme }) => ({
   "& > .logo-icon": {
@@ -23,17 +24,13 @@ const Root = styled("div")(({ theme }) => ({
 function Logo() {
   return (
     <Root className="flex items-center space-x-8">
-      <img
-        className="logo-icon h-36 w-36"
-        src="assets/images/logo/MyBeatsBlueLogo_Final2025.png"
-        alt="logo"
-      />
+      <img className="logo-iconn h-40 w-40" src={logo} alt="logo" />
       <div className="logo-text flex space-x-8 items-center">
         <Typography
           className="text-2xl tracking-light font-semibold"
           sx={{
             // backgroundColor: "#23272f",
-            color: "#00A4ef",
+            color: "#fb923c",
           }}
         >
           MyBeats

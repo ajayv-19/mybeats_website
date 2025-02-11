@@ -18,7 +18,7 @@ function SignInPage() {
         <CardContent className="mx-auto w-full max-w-320 sm:mx-0 sm:w-320">
           <div className="flex items-center justify-center">
             <img
-              className="w-48"
+              className="w-[72px]"
               src="assets/images/logo/logo.svg"
               alt="logo"
             />

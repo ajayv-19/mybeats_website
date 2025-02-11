@@ -10,6 +10,7 @@ import Contact from "./components/contact/Contact";
 import Footer from "./components/footer/Footer";
 import Finn from "./components/finn/Finn";
 import Login from "./components/login/Login";
+import VideoShowcase from "./components/videoShowcase/VideoShowcase";
 
 function LandingPage() {
   const showcaseRef = useRef<HTMLDivElement | null>(null);
@@ -70,7 +71,9 @@ function LandingPage() {
           <div ref={detailedRef}>
             <Detailed scrollToContactUs={() => scrollToSection(contactRef)} />
           </div>
-          <div>{/* <VideoShowcase /> */}</div>
+          <div>
+            {/* <VideoShowcase /> */}
+          </div>
           <div>
             <Finn />
           </div>
