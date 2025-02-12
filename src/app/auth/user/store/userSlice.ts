@@ -118,7 +118,7 @@ export const selectUserRole = (state: RootState) => state?.user?.role;
 export const selectIsUserGuest = (state: RootState) => {
 	const userRole = state?.user?.role;
 
-	return !userRole || userRole?.length === 0;
+	return false;
 };
 
 export const selectUserShortcuts = (state: RootState) => state.user?.data?.shortcuts;

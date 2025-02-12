@@ -188,6 +188,8 @@ export const fetchAccountDetails = createAsyncThunk(
       if (response.status === 200) {
         console.log("response user", response.data.userdata);
         return response.data.userdata;
+      } else if (response.status === 404) {
+        return null; 
       }
 
       return rejectWithValue("Failed to fetch account details");

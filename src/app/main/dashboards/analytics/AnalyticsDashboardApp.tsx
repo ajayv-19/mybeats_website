@@ -1,25 +1,13 @@
 import FusePageSimple from "@fuse/core/FusePageSimple";
-import { motion } from "framer-motion";
-import Typography from "@mui/material/Typography";
 import FuseLoading from "@fuse/core/FuseLoading";
-import AnalyticsDashboardAppHeader from "./AnalyticsDashboardAppHeader";
-import VisitorsOverviewWidget from "./widgets/VisitorsOverviewWidget";
-import ConversionsWidget from "./widgets/ConversionsWidget";
-import ImpressionsWidget from "./widgets/ImpressionsWidget";
-import VisitsWidget from "./widgets/VisitsWidget";
-import VisitorsVsPageViewsWidget from "./widgets/VisitorsVsPageViewsWidget";
-import NewVsReturningWidget from "./widgets/NewVsReturningWidget";
-import AgeWidget from "./widgets/AgeWidget";
-import LanguageWidget from "./widgets/LanguageWidget";
-import GenderWidget from "./widgets/GenderWidget";
-import { useGetAnalyticsDashboardWidgetsQuery } from "./AnalyticsDashboardApi";
 import { fetchAuthSession } from "@aws-amplify/auth";
 import { get } from "aws-amplify/api";
-import awsExports from "../../../../../src2/aws-exports";
 import { Amplify } from "aws-amplify";
 import useThemeMediaQuery from "@fuse/hooks/useThemeMediaQuery";
 import { useState, useEffect } from "react";
 import { styled } from "@mui/material/styles";
+import AnalyticsDashboardAppHeader from "./AnalyticsDashboardAppHeader";
+import awsExports from "../../../../../src2/aws-exports";
 // const container = {
 // 	show: {
 // 		transition: {
@@ -40,6 +28,7 @@ const Root = styled(FusePageSimple)(({ theme }) => ({
     boxShadow: `inset 0 -1px 0 0px  ${theme.palette.divider}`,
   },
 }));
+
 /**
  * The analytics dashboard app.
  */
@@ -70,7 +59,7 @@ function AnalyticsDashboardApp() {
         console.log("authToken2 ", authToken2);
 
         const payloadSub = data.tokens.idToken.payload.sub;
-        const email = data.tokens.idToken.payload.email;
+        const { email } = data.tokens.idToken.payload;
 
         const params = {
           headers: {
@@ -79,8 +68,8 @@ function AnalyticsDashboardApp() {
           response: true,
           queryStringParameters: {
             jwtToken: authToken,
-            payloadSub: payloadSub,
-            email: email,
+            payloadSub,
+            email,
           },
         };
 
@@ -95,8 +84,8 @@ function AnalyticsDashboardApp() {
             },
             queryStringParameters: {
               jwtToken: authToken,
-              payloadSub: payloadSub,
-              email: email,
+              payloadSub,
+              email,
             },
           } as any,
         });
@@ -161,27 +150,24 @@ function AnalyticsDashboardApp() {
         <AnalyticsDashboardAppHeader
           onFinnClick={() => setQaModel(true)}
           content={
-            <>
-              <div
-                className={
-                  "absolute top-5 left-10 rounded-md w-full h-full z-10 " +
-                  (qaModel ? "" : "hidden")
-                }
-              >
-                <div className="relative flex">
-                  <button
-                    type="button"
-                    className="px-16 py-4 text-center absolute top-8 right-16 rounded bg-[#177199] text-white"
-                    style={{ width: "110px" }}
-                    onClick={() => setQaModel(false)}
-                  >
-                    <span>CLOSE</span>
-                    {/* <Close /> */}
-                  </button>
-                </div>
-                <iframe width="100%" height={"100%"} src={qaUrl}></iframe>
+            <div
+              className={`absolute top-5 left-10 rounded-md w-full h-full z-10 ${
+                qaModel ? "" : "hidden"
+              }`}
+            >
+              <div className="relative flex">
+                <button
+                  type="button"
+                  className="px-16 py-4 text-center absolute top-8 right-16 rounded bg-[#177199] text-white"
+                  style={{ width: "110px" }}
+                  onClick={() => setQaModel(false)}
+                >
+                  <span>CLOSE</span>
+                  {/* <Close /> */}
+                </button>
               </div>
-            </>
+              <iframe width="100%" height="100%" src={qaUrl} />
+            </div>
           }
         />
       }
@@ -190,9 +176,9 @@ function AnalyticsDashboardApp() {
           <iframe
             className="w-full h-full grow border-none"
             width="100%"
-            height={"100%"}
+            height="100%"
             src={url}
-          ></iframe>
+          />
           <div className="relative flex">
             <button
               type="button"
