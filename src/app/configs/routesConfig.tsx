@@ -36,7 +36,7 @@ const routes: FuseRoutesType = [
     children: [
       {
         path: "/",
-        element: <Navigate to="/apps/profile" />,
+        element: <Navigate to="/apps/settings/account" />,
       },
       ...mainRoutes,
       {
