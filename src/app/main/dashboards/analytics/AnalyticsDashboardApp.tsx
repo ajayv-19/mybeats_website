@@ -8,6 +8,9 @@ import { useState, useEffect } from "react";
 import { styled } from "@mui/material/styles";
 import AnalyticsDashboardAppHeader from "./AnalyticsDashboardAppHeader";
 import awsExports from "../../../../../src2/aws-exports";
+import { useSelector } from "react-redux";
+import { selectAccount } from "src/app/features/account/accountSlice";
+import { useNavigate } from "react-router";
 // const container = {
 // 	show: {
 // 		transition: {
@@ -40,6 +43,8 @@ function AnalyticsDashboardApp() {
   const [url, setUrl] = useState("");
   const [qaUrl, setQaUrl] = useState("");
   const [companyName, setCompanyName] = useState(""); // State to store the company name
+  const { account } = useSelector(selectAccount);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const getQuickSightDashboardEmbedURL = async () => {

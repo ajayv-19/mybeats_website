@@ -1,30 +1,58 @@
-import React, { ReactElement, useEffect, useState } from "react";
-import { useSelector } from "react-redux";
-import { Navigate } from "react-router-dom";
-import { selectAccount } from "../features/account/accountSlice";
+import { useEffect, useState } from "react";
+import { Navigate, Outlet, useNavigate } from "react-router-dom";
+import axios from "axios";
 import FuseLoading from "@fuse/core/FuseLoading";
+import { fetchAuthSession } from "@aws-amplify/auth";
 
-function PrivateRoute({ children }: { children: ReactElement }) {
-  const { user } = useSelector(selectAccount);
-  const [isChecking, setIsChecking] = useState(true);
+function PrivateRoute() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [userExists, setUserExists] = useState(false);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setIsChecking(false);
-    }, 2000); // 2-second delay
+    const checkUser = async () => {
+      try {
+        const authToken = (
+          await fetchAuthSession()
+        ).tokens?.accessToken?.toString();
 
-    return () => clearTimeout(timer); // Cleanup on unmount
-  }, []);
+        const data = await fetchAuthSession();
+        const { email } = data.tokens.idToken.payload;
 
-  if (isChecking) {
-    return <FuseLoading />; // Show loading state for 2 seconds
+        const response = await axios.get(
+          `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/users`,
+          {
+            params: {
+              email,
+            },
+            headers: {
+              Authorization: authToken,
+            },
+          }
+        );
+
+        if (response.status === 200) {
+          setUserExists(true);
+          navigate("/dashboards/analytics");
+        } else {
+          navigate("/apps/settings/account");
+        }
+      } catch (error) {
+        console.error("User authentication failed:", error);
+        navigate("/apps/settings/account");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkUser();
+  }, [navigate]);
+
+  if (isLoading) {
+    return <FuseLoading />; // Show loading indicator
   }
 
-  if (user === null) {
-    return <Navigate to="/apps/settings/account" />; // Redirect if no user
-  }
-
-  return <>{children}</>;
+  return userExists ? <Outlet /> : <Navigate to="/apps/settings/account" />;
 }
 
 export default PrivateRoute;
