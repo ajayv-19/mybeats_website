@@ -43,8 +43,6 @@ function AnalyticsDashboardApp() {
   const [url, setUrl] = useState("");
   const [qaUrl, setQaUrl] = useState("");
   const [companyName, setCompanyName] = useState(""); // State to store the company name
-  const { account } = useSelector(selectAccount);
-  const navigate = useNavigate();
 
   useEffect(() => {
     const getQuickSightDashboardEmbedURL = async () => {

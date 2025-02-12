@@ -22,13 +22,8 @@ import { is } from "immutable";
  */
 function AboutTab() {
   const { data: profile, isLoading } = useGetProfileAboutQuery();
-  //console.log("profile", profile);
   const [user, setUser] = useState(null);
   const [company, setCompany] = useState(null);
-  //const [admin, setAdmin] = useState(null);
-  console.log(user, "user");
-  console.log(company, "company");
-  console.log(isLoading, "isLoading");
 
   const [isLoading2, setIsLoading] = useState(true);
 
@@ -41,12 +36,9 @@ function AboutTab() {
         if (getUserData.status === 200) {
           const userData = getUserData.data.userdata.user;
           const companyData = getUserData.data.userdata.company;
-          //const adminData = getUserData.data.userdata.admin;
-          // Extracting and setting the user data fields
           setUser(userData);
           setCompany(companyData);
-          //setAdmin(adminData);
-          //console.log(userData, "userData");
+
         }
       } catch (error) {
         console.log(error);
@@ -144,19 +136,19 @@ function AboutTab() {
                 <Typography className="font-semibold mb-4 text-lg">
                   Company Name
                 </Typography>
-                <Typography>{user?.Company_Name || "null"}</Typography>
+                <Typography>{user?.Company_Name || "Novel AI Tech"}</Typography>
               </div>
 
               <div className="mb-24">
                 <Typography className="font-semibold mb-4 text-lg">
                   Subscription Plan
                 </Typography>
-                <Typography>{company?.plan_type || "null"}</Typography>
+                <Typography>{company?.plan_type || "Silver"}</Typography>
               </div>
 
               <div className="mb-24">
                 <Typography className="font-semibold mb-4 text-lg">
-                  Admin Contact
+                  Role: Admin
                 </Typography>
                 {/* <table>
                   <tbody>
@@ -240,7 +232,7 @@ function AboutTab() {
         </div>
 
         <div className="flex flex-col md:w-320">
-          <Card component={motion.div} variants={item} className="w-full mb-32">
+          {/* <Card component={motion.div} variants={item} className="w-full mb-32">
             <div className="flex items-center px-32 pt-24">
               <Typography className="flex flex-1 text-2xl font-semibold leading-tight">
                 Friends
@@ -261,7 +253,7 @@ function AboutTab() {
                 />
               ))}
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* <Card
             component={motion.div}

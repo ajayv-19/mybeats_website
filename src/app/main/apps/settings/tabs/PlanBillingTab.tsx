@@ -29,7 +29,7 @@ const PLANS: Array<PlanType> = [
   {
     id: 1,
     value: "free",
-    label: "Free",
+    label: "Bronze",
     details: "Monthly Starter Plan",
     price: 0.99,
     bulletPoints: [

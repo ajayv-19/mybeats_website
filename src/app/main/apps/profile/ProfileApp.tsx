@@ -42,7 +42,7 @@ function ProfileApp() {
   const isMobile = useThemeMediaQuery((theme) => theme.breakpoints.down("lg"));
 
   // New State variables for user data
-  const [companyName, setCompanyName] = useState("");
+  const [companyName, setCompanyName] = useState("Novel AI");
   const [createdTimestamp, setCreatedTimestamp] = useState("");
   const [customerName, setCustomerName] = useState("");
   const [image, setImage] = useState();

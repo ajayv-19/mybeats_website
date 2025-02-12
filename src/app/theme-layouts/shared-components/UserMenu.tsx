@@ -67,7 +67,7 @@ function UserMenu(props: UserMenuProps) {
         onClick={userMenuClick}
         color="inherit"
       >
-        {user.data.photoURL ? (
+        {/* {user.data.photoURL ? (
           <Avatar
             sx={{
               background: (theme) => theme.palette.background.default,
@@ -89,7 +89,19 @@ function UserMenu(props: UserMenuProps) {
           >
             {user?.data?.displayName?.[0]}
           </Avatar>
-        )}
+        )} */}
+
+        <Avatar
+          sx={{
+            background: (theme) => theme.palette.background.default,
+            color: (theme) => theme.palette.text.secondary,
+          }}
+          className="avatar w-40 h-40 rounded-lg"
+          alt="user photo"
+          src="assets/images/pages/dashboard/finn.png"
+          variant="rounded"
+        />
+
         <div className="flex flex-col flex-auto space-y-8">
           <Typography
             component="span"
