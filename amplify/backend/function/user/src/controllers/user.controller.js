@@ -148,12 +148,12 @@ const UserController = {
     try {
       const {
         email,
-        username,
         role_id,
         Customer_Name,
         usertype,
         image,
         removedByAdmin,
+        invited_by = 0,
       } = req.body;
 
       if (!email || !Customer_Name) {
@@ -172,7 +172,7 @@ const UserController = {
       // If the user exists, update only the fields that are not null
       if (existingUser) {
         const updatedUser = await existingUser.update({
-          username: username !== null ? username : existingUser.username,
+          username: (existingUser.username != req?.cognitoUser?.username) ? req?.cognitoUser?.username : existingUser.username,
           role_id: role_id !== null ? role_id : existingUser.role_id,
           Customer_Name:
             Customer_Name !== null ? Customer_Name : existingUser.Customer_Name,
@@ -202,7 +202,7 @@ const UserController = {
       // If the user does not exist, create a new user
       const newUser = await User.create({
         email,
-        username,
+        username: req?.cognitoUser?.username || username,
         role_id,
         Customer_Name,
         usertype,
@@ -211,8 +211,8 @@ const UserController = {
         domain,
         removedByAdmin,
         is_varified: 1,
-        is_invited: 0,
-        invited_by: 0,
+        is_invited: invited_by ? 1 : 0,
+        invited_by,
         ...(company_id && { company_id }),
       });
 

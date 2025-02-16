@@ -1,3 +1,4 @@
+const APP_URL = "https://mybeatshealth.com";
 const API_URL = "https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev";
 const API_PREFIX = "/backendapi";
 const STRIPE_SECRET_KEY =
@@ -11,10 +12,12 @@ const COGNITO_ISSUER = `https://cognito-idp.${COGNITO_REGION}.amazonaws.com/${CO
 const COGNITO_JWT_JSON = `${COGNITO_ISSUER}/.well-known/jwks.json`;
 
 module.exports = {
+  APP_URL,
   API_URL,
   API_PREFIX,
   STRIPE_SECRET_KEY,
   COGNITO_PUBLIC_KEY,
+  AWS_REGION: COGNITO_REGION,
   COGNITO_REGION,
   COGNITO_USER_POOL_ID,
   COGNITO_ISSUER,
