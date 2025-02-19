@@ -77,6 +77,8 @@ const addSubscription = async (customer_subscription_created) => {
       status: status.toUpperCase(), // Normalize status
     });
     company.update({ subscription_id: newSubscription.id });
+    company.update({ plan_id: plan_id });
+
 
     console.log("✅ Subscription created successfully:", newSubscription);
     return { success: true, data: newSubscription };
@@ -236,9 +238,9 @@ const handleFailedInvoive = async (invoice) => {
   }
 };
 
-const pauseSubscription = async () => {};
+const pauseSubscription = async () => { };
 
-const removeAccessQ = async () => {};
+const removeAccessQ = async () => { };
 
 class PaymentController {
   setupRoutes(router) {

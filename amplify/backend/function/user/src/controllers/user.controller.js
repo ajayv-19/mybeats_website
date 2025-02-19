@@ -5,6 +5,7 @@ const {
   Subscriptions,
   NewSubscriptions,
   CustomerQueries,
+  UserInvites,
 } = require("../models");
 
 const UserController = {
@@ -144,6 +145,18 @@ const UserController = {
     }
   },
 
+  async syncMyInvites(user) {
+    const invite = await UserInvites.findOne({ where: { email: user.email } });
+    if (!invite) {
+      return false;
+    }
+    await invite.update({
+      is_accepted: true
+    });
+    await user.update({ is_varified: true });
+    return invite;
+  },
+
   async addOrUpdateUserDetails(req, res) {
     try {
       const {
@@ -187,6 +200,7 @@ const UserController = {
               ? removedByAdmin
               : existingUser.removedByAdmin,
         });
+        await this.syncMyInvites(updatedUser);
         return res.json({
           success: true,
           message: "User updated successfully",
@@ -210,11 +224,13 @@ const UserController = {
         image,
         domain,
         removedByAdmin,
-        is_varified: 1,
+        is_varified: false,
         is_invited: invited_by ? 1 : 0,
         invited_by,
         ...(company_id && { company_id }),
       });
+
+      await this.syncMyInvites(newUser);
 
       res.json({
         success: true,

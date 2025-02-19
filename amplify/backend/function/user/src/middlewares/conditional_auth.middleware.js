@@ -56,8 +56,10 @@ const conditionalAuthMiddleware = async (req, res, next) => {
     return next();
   }
   const cuser = await validateUser(req, res, next);
+  cuser.username = cuser.username || cuser["cognito:username"];
   const user = await User.findOne({ where: { username: cuser.username } });
   const hasUser = !!user || !!cuser;
+  console.log({ user, cuser, hasUser });
   if (hasUser) {
     req.isAuthenticated = true;
     req.user = user;
