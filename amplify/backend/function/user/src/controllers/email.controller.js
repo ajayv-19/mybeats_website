@@ -2,6 +2,7 @@ const { console } = require("inspector");
 const { APP_URL } = require("../globals.const");
 const { Company, User, NewSubscriptions, UserInvites, Plans } = require("../models");
 const EmailService = require("../services/email.service");
+const { update } = require("lodash");
 class EmailController {
     request = null;
     setupRoutes(app) {
@@ -62,12 +63,23 @@ class EmailController {
                 email: to,
                 invitedBy: req.user.id,
                 company_id: req.user.company_id,
+                is_accepted: false,
+                created_at: new Date()
             });
         }
         const user = await User.findOne({ where: { email: to } });
         if (user) {
-            await invite.update({ is_accepted: true });
-            await user.update({ company_id: req.user.company_id, is_varified: true });
+            await invite.update({
+                is_accepted: true,
+                updated_at: new Date()
+            });
+            await user.update({
+                company_id: req.user.company_id,
+                is_varified: true,
+                is_invited: true,
+                invited_by: req.user.id
+
+            });
         }
         const { replacements, subject } = this.getTemplateAttributes(templateName);
         replacements["inviteUrl"] = APP_URL + `/invite?invite_id=${invite.id}`;

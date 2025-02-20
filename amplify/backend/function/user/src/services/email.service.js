@@ -41,17 +41,27 @@ class EmailService {
      */
     async sendTemplateEmail(to, subject, templateName, replacements) {
         const htmlContent = await this.loadTemplate(templateName, replacements);
-
-        const params = {
-            Source: "firebeatsapp@gmail.com",
-            Destination: { ToAddresses: [to] },
-            Message: {
-                Subject: { Data: subject },
-                Body: { Html: { Data: htmlContent } },
-            },
-        };
-
-        return this.ses.sendEmail(params).promise();
+        try {
+            const params = {
+                Source: "firebeatsapp@gmail.com",
+                Destination: { ToAddresses: [to] },
+                Message: {
+                    Subject: { Data: subject },
+                    Body: { Html: { Data: htmlContent } },
+                },
+            };
+            return new Promise((resolve, reject) => {
+                this.ses.sendEmail(params).promise().then(resolve).catch((error) => {
+                    console.error("Email send error:", error);
+                    //resolve("Email sent");
+                    reject(error, "Email sending failed");
+                });
+            });
+        } catch (error) {
+            console.error("Email send error:", error);
+            //return new Promise((resolve, reject) => resolve("Email sent"));
+            return new Promise((resolve, reject) => reject(error, "Email sending failed"));
+        }
     }
 }
 

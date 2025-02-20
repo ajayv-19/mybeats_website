@@ -31,30 +31,7 @@ const UserController = {
 
       let subscription = null;
 
-      // if (company) {
-      //   subscription = await Subscriptions.findOne({
-      //     where: { id: company.subscription_id },
-      //   });
-      // }
-      // console.log(subscription, "subscription");
-      // // subscription = await Subscriptions.findOne({
-      // //   where: { id: company.subscription_id },
-      // // });
-      // let isactive = null;
-      // if (subscription) {
-      //   if (subscription.isactive) {
-      //     isactive = true;
-      //     const currentDate = new Date();
-      //     const expiryDate = new Date(subscription.expiry_date);
-      //     if (currentDate > expiryDate) {
-      //       subscription.isactive = false;
-      //       await subscription.update({ isactive: false });
-      //       isactive = subscription.isactive;
-      //     }
-      //   }
-      // } else {
-      //   isactive = false;
-      // }
+ 
 
       if (company) {
         subscription = await NewSubscriptions.findOne({
@@ -151,9 +128,14 @@ const UserController = {
       return false;
     }
     await invite.update({
-      is_accepted: true
+      is_accepted: true,
+      updated_at: new Date(),
     });
-    await user.update({ is_varified: true });
+    await user.update({
+      is_varified: true,
+      is_invited: true,
+      invited_by: invite.invitedBy,
+    });
     return invite;
   },
 
