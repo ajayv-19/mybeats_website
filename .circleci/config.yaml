@@ -1,0 +1,23 @@
+version: 2.1
+
+jobs:
+  test:
+    docker:
+      - image: cimg/node:20.8.0  # Use a Node.js image
+    steps:
+      - checkout  # Pull your repo code
+      - run:
+          name: Install Dependencies
+          command: npm install
+      - run:
+          name: Start the App in the Background
+          command: npm start & sleep 10  # Run the app and wait for it to start
+      - run:
+          name: Check If App is Running
+          command: curl -f http://localhost:3000 || exit 1  # Fail if the app is not running
+
+workflows:
+  version: 2
+  test-app:
+    jobs:
+      - test
