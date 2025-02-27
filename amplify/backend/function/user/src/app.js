@@ -11,6 +11,7 @@ const {
   PaymentController,
   CompanyController,
   ScheduleController,
+  EmailController,
 } = require("./controllers");
 const upload = require("./config/multer");
 // Declare a new express app
@@ -50,6 +51,7 @@ router.get("/canShowBilling", UserController.canShowBilling);
 PaymentController.setupRoutes(router);
 CompanyController.setupRoutes(router);
 ScheduleController.setupRoutes(router);
+EmailController.setupRoutes(router);
 // Use router for specific path
 app.use(API_PREFIX, router);
 

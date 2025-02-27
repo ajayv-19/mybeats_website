@@ -5,6 +5,7 @@ const {
   Subscriptions,
   NewSubscriptions,
   CustomerQueries,
+  UserInvites,
 } = require("../models");
 
 const UserController = {
@@ -30,30 +31,7 @@ const UserController = {
 
       let subscription = null;
 
-      // if (company) {
-      //   subscription = await Subscriptions.findOne({
-      //     where: { id: company.subscription_id },
-      //   });
-      // }
-      // console.log(subscription, "subscription");
-      // // subscription = await Subscriptions.findOne({
-      // //   where: { id: company.subscription_id },
-      // // });
-      // let isactive = null;
-      // if (subscription) {
-      //   if (subscription.isactive) {
-      //     isactive = true;
-      //     const currentDate = new Date();
-      //     const expiryDate = new Date(subscription.expiry_date);
-      //     if (currentDate > expiryDate) {
-      //       subscription.isactive = false;
-      //       await subscription.update({ isactive: false });
-      //       isactive = subscription.isactive;
-      //     }
-      //   }
-      // } else {
-      //   isactive = false;
-      // }
+ 
 
       if (company) {
         subscription = await NewSubscriptions.findOne({
@@ -144,16 +122,33 @@ const UserController = {
     }
   },
 
+  async syncMyInvites(user) {
+    const invite = await UserInvites.findOne({ where: { email: user.email } });
+    if (!invite) {
+      return false;
+    }
+    await invite.update({
+      is_accepted: true,
+      updated_at: new Date(),
+    });
+    await user.update({
+      is_varified: true,
+      is_invited: true,
+      invited_by: invite.invitedBy,
+    });
+    return invite;
+  },
+
   async addOrUpdateUserDetails(req, res) {
     try {
       const {
         email,
-        username,
         role_id,
         Customer_Name,
         usertype,
         image,
         removedByAdmin,
+        invited_by = 0,
       } = req.body;
 
       if (!email || !Customer_Name) {
@@ -172,7 +167,7 @@ const UserController = {
       // If the user exists, update only the fields that are not null
       if (existingUser) {
         const updatedUser = await existingUser.update({
-          username: username !== null ? username : existingUser.username,
+          username: (existingUser.username != req?.cognitoUser?.username) ? req?.cognitoUser?.username : existingUser.username,
           role_id: role_id !== null ? role_id : existingUser.role_id,
           Customer_Name:
             Customer_Name !== null ? Customer_Name : existingUser.Customer_Name,
@@ -187,6 +182,7 @@ const UserController = {
               ? removedByAdmin
               : existingUser.removedByAdmin,
         });
+        await this.syncMyInvites(updatedUser);
         return res.json({
           success: true,
           message: "User updated successfully",
@@ -202,7 +198,7 @@ const UserController = {
       // If the user does not exist, create a new user
       const newUser = await User.create({
         email,
-        username,
+        username: req?.cognitoUser?.username || username,
         role_id,
         Customer_Name,
         usertype,
@@ -210,11 +206,13 @@ const UserController = {
         image,
         domain,
         removedByAdmin,
-        is_varified: 1,
-        is_invited: 0,
-        invited_by: 0,
+        is_varified: false,
+        is_invited: invited_by ? 1 : 0,
+        invited_by,
         ...(company_id && { company_id }),
       });
+
+      await this.syncMyInvites(newUser);
 
       res.json({
         success: true,

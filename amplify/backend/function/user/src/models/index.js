@@ -1,3 +1,4 @@
+const { create } = require("lodash");
 const { sequelize, DataTypes } = require("../lib/sequelize");
 
 // Authenticate database connection
@@ -268,6 +269,7 @@ const NewSubscriptions = sequelize.define(
     timestamps: false, // Set to true if your table includes createdAt/updatedAt fields
   }
 );
+
 const CustomerQueries = sequelize.define(
   "CustomerQueries",
   {
@@ -300,6 +302,56 @@ const CustomerQueries = sequelize.define(
     timestamps: false, // Assuming there are no createdAt/updatedAt fields
   }
 );
+
+const UserInvites = sequelize.define(
+  "UserInvites",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    invitedBy: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    company_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    is_accepted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    invited_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "UserInvites",
+    tableName: "user_invites", // Explicitly specify the table name
+    timestamps: false, // Assuming there are no createdAt/updatedAt fields
+  }
+);
+
 module.exports = {
   User,
   Company,
@@ -308,6 +360,7 @@ module.exports = {
   Payment,
   Subscriptions,
   NewSubscriptions,
+  UserInvites,
   sequelize,
   CustomerQueries,
 };
