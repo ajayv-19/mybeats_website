@@ -23,7 +23,7 @@ import LanguageSwitcher from "../../shared-components/LanguageSwitcher";
 import NavigationShortcuts from "../../shared-components/navigation/NavigationShortcuts";
 import NavigationSearch from "../../shared-components/navigation/NavigationSearch";
 import QuickPanelToggleButton from "../../shared-components/quickPanel/QuickPanelToggleButton";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import useAuth from "src/app/auth/useAuth";
 import {
   fetchAccountDetails,
@@ -33,6 +33,7 @@ import {
 } from "src/app/features/account/accountSlice";
 import { useDispatch, useSelector } from "react-redux";
 import { useState, ReactNode, useEffect } from "react";
+import { useModal } from "src/app/context/dashboardmodelcontext";
 
 type ToolbarLayout1Props = {
   className?: string;
@@ -42,9 +43,12 @@ type ToolbarLayout1Props = {
  * The toolbar layout 1.
  */
 function ToolbarLayout1(props: ToolbarLayout1Props) {
+  // const [qaModel, setQaModel] = useState(false);
+  const { qaModal, setQaModal } = useModal();
+  const location = useLocation();
   const account = useSelector(selectAccount);
   console.log({ account }, "account");
-  const [showDemo, setShowDemo] = useState(false);
+  const [showDemo, setShowDemo] = useState<boolean>();
 
   useEffect(() => {
     if (account) {
@@ -138,7 +142,25 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
                 View Demo
               </Button>
             )}
+             {location.pathname === "/dashboards/analytics" &&<Button
+            variant="contained"
+            // onClick={handleButtonClick}
+            size="small"
+            color="secondary"
+             className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
+            // className="m-6 z-10 rounded p-0 text-md min-h-0 h-32 w-auto min-w-0 px-24 !mt-0 "
+            // style={{ width: '200px' }}
+            classes={{ startIcon: "mr-4" }}
+            onClick={() => setQaModal(true)}
+            // startIcon={
+            //   <FuseSvgIcon size={20}>heroicons-solid:envelope</FuseSvgIcon>
+            // }
+          >
+            Ask FINN
+          </Button>}
           </div>
+           
+         
 
           {config.navbar.display && config.navbar.position === "right" && (
             <>

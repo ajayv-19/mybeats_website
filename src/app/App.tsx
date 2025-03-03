@@ -14,6 +14,7 @@ import { useSelector } from 'react-redux';
 import { useMemo } from 'react';
 import AuthenticationProvider from './auth/AuthenticationProvider';
 import withAppProviders from './withAppProviders';
+import { ModalProvider } from './context/dashboardmodelcontext';
 
 Sentry.init({
 	dsn: 'https://11d7ede021fda5d9ef5448ded0a7f88e@o1064605.ingest.us.sentry.io/4508641995390976',
@@ -53,6 +54,7 @@ function App() {
 	);
 
 	return (
+		<ModalProvider>
 		<MockAdapterProvider>
 			<CacheProvider value={cacheProviderValue}>
 				<FuseTheme
@@ -76,6 +78,7 @@ function App() {
 				</FuseTheme>
 			</CacheProvider>
 		</MockAdapterProvider>
+		</ModalProvider>
 	);
 }
 
