@@ -63,40 +63,41 @@ app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
     `Email: ${email}, JWT Token: ${jwtToken}, PayloadSub: ${payloadSub}`
   );
 
-  // const emaildomain = getDomainFromEmail(email);
-  // const companyQuery =
-  //   'SELECT c FROM "public"."Subscribed_Companies" WHERE domain = $1';
-  // const selectResult = await client.query(companyQuery, [emaildomain]);
+  const emaildomain = getDomainFromEmail(email);
+  const companyQuery =
+    'SELECT subscription_id FROM "public"."Subscribed_Companies" WHERE domain = $1';
+  const selectResult = await client.query(companyQuery, [emaildomain]);
 
-  // const company = selectResult.rows.length
-  //   ? selectResult.rows[0].company
-  //   : null;
+  const company = selectResult.rows.length
+    ? selectResult.rows[0].company
+    : null;
 
-  // const subscriptionId = selectResult.rows.length
-  //   ? selectResult.rows[0].subscription_id
-  //   : null;
+  const subscriptionId = selectResult.rows.length
+    ? selectResult.rows[0].subscription_id
+    : null;
 
-  // if (!company || !subscriptionId) {
-  //   return res.status(400).json({
-  //     message: "User not subscribed",
-  //   });
-  // }
+  if (!company || !subscriptionId) {
+    return res.status(400).json({
+      message: "User not subscribed",
+    });
+  }
 
-  // Fetch subscription details
-  // const subscriptionQuery =
-  //   'SELECT isActive FROM "public"."New_Subscriptions" WHERE id = $1';
-  // const subscriptionResult = await client.query(subscriptionQuery, [
-  //   subscriptionId,
-  // ]);
-  // const isActive = subscriptionResult.rows.length
-  //   ? subscriptionResult.rows[0].isActive
-  //   : null;
+  //Fetch subscription details
+  const subscriptionQuery =
+    'SELECT isActive FROM "public"."New_Subscriptions" WHERE id = $1';
+  const subscriptionResult = await client.query(subscriptionQuery, [
+    subscriptionId,
+  ]);
+  const isActive = subscriptionResult.rows.length
+    ? subscriptionResult.rows[0].isActive
+    : null;
 
-  // if (isActive !== "Active") {
-  //   return res.status(400).json({
-  //     message: "User not subscribed",
-  //   });
-  // }
+  if (isActive !== "Active") {
+    return res.status(400).json({
+      message: "User not subscribed",
+    });
+  }
+
 
   const roleArn =
     "arn:aws:iam::185329004895:role/amplify-amplifyquicksightdas-dev-dd445-authRole";

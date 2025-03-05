@@ -8,6 +8,19 @@ class EmailController {
     setupRoutes(app) {
         app.post("/email/send", (req, res) => this.sendEmail(req, res));
         app.post("/email/invite", (req, res) => this.invite(req, res));
+        // app.post("/email/invite/accept", (req, res) => this.acceptInvite(req, res));
+        app.post("/email/invite/cancel", (req, res) => this.cancelInvite(req, res));
+    }
+
+    async cancelInvite(req, res) {
+        const { inviteId } = req.body;
+        const invite = await UserInvites.findByPk(inviteId);
+        if (!invite) {
+            return res.status(400).json({ message: "Invite not found" });
+        }
+        await invite.destroy(); // Soft delete
+        await this.syncMyInvites(req, res, { in_call: true });
+        return res.status(200).json({ message: "Invite cancelled successfully" });
     }
 
     async hasInviteLimit(req, res, { in_call = false }) {
@@ -57,6 +70,13 @@ class EmailController {
             return res.status(400).json({ message: "Invite limit reached" });
         }
         const { to, templateName = "invite" } = req.body;
+        // let loogedInUser = req.user;
+        // console.log(loogedInUser,"loogedInUser");
+        // let role = loogedInUser.getRole();
+        // console.log(role,"role");
+        // if (role.name.toLowerCase() !== "admin") {
+        //     return res.status(401).json({ message: "Unauthorized" });
+        // }
         let invite = await UserInvites.findOne({ where: { email: to } });
         if (!invite) {
             invite = await UserInvites.create({
@@ -99,10 +119,13 @@ class EmailController {
     }
 
     sendEmail(req, res) {
+
         this.request = req;
+
         if (!req.isAuthenticated) {
             return res.status(401).json({ message: "Unauthorized" });
         }
+
         const { to, templateName = "welcome" } = req.body;
         const { replacements, subject } = this.getTemplateAttributes(templateName);
         const emailService = new EmailService();

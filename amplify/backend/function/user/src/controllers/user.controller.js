@@ -31,7 +31,7 @@ const UserController = {
 
       let subscription = null;
 
- 
+
 
       if (company) {
         subscription = await NewSubscriptions.findOne({
@@ -57,6 +57,14 @@ const UserController = {
       } else {
         isactive = false;
       }
+      /**
+       * {
+       * status: "success", // or "error"
+       * message: "User fetched successfully",
+       * data: [],
+       * error: true, // or false
+       * }
+       */
 
       const userdata = { user, company, isactive };
       res.json({ success: true, userdata });
@@ -311,6 +319,92 @@ const UserController = {
       });
     }
   },
+
+  async listInvitedUsers(req, res) {
+    const { company_id } = req.body;
+    if (!company_id) {
+      return res.status(400).json({
+        success: false,
+        message: "Company ID is required",
+      });
+    }
+    try {
+      // First fetch all invited users for the company
+      const invitedUsers = await UserInvites.findAll({
+        where: { company_id },
+      });
+
+      // Get user details for accepted invites
+      const formattedUsers = await Promise.all(
+        invitedUsers.map(async (invite) => {
+          const inviteData = invite.toJSON();
+
+          if (invite.is_accepted) {
+            const userDetails = await User.findOne({
+              where: {
+                email: invite.email,
+                is_varified: true,
+              },
+              attributes: [
+                "Customer_Name",
+                "email",
+                "role_id",
+                "image",
+                "usertype",
+              ],
+            });
+            return {
+              ...inviteData,
+              userDetails: userDetails || null,
+            };
+          }
+
+          return {
+            ...inviteData,
+            userDetails: null,
+          };
+        })
+      );
+
+      return res.json({
+        success: true,
+        invitedUsers: formattedUsers,
+        message: "Invited users listed successfully",
+      });
+    } catch (error) {
+      console.error("Error listing invited users:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to list invited users",
+        error: error.message,
+      });
+    }
+  },
+
+  async InvitedUserAccess(req, res) {
+    const { email, company_id, access_type } = req.body;
+    try {
+      const invitedUser = await UserInvites.findOne({ where: { email, company_id } });
+      if (!invitedUser) {
+        return res.status(404).json({
+          message: "Invited user not found",
+        });
+      }
+      if (access_type == "READER") {
+        await invitedUser.update({ is_granted: true, role_id: 2 });
+      } else if (access_type == "ADMIN") {
+        await invitedUser.update({ is_granted: true, role_id: 1 });
+      }
+      return res.json({ success: true, message: "Access granted successfully" });
+    } catch (error) {
+      console.error("Error granting access to invited user:", error);
+      return res.status(500).json({
+        success: false,
+        message: "Failed to grant access to invited user",
+        error: error.message,
+      });
+    }
+  }
 };
 
 module.exports = UserController;

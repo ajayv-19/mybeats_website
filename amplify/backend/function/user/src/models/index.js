@@ -28,7 +28,7 @@ const User = sequelize.define(
     is_varified: { type: DataTypes.BOOLEAN, allowNull: true },
     is_invited: { type: DataTypes.BOOLEAN, allowNull: true },
     invited_by: { type: DataTypes.INTEGER, allowNull: true },
-    company_id: { type: DataTypes.INTEGER, allowNull: true },
+    company_id: { type: DataTypes.INTEGER, allowNull: true }
   },
   { tableName: "RLS", timestamps: false } // Assuming table name is "RLS" and timestamps are not auto-managed
 );
@@ -343,14 +343,24 @@ const UserInvites = sequelize.define(
       allowNull: false,
       defaultValue: DataTypes.NOW,
     },
+    deletedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     sequelize,
+    paranoid: true,
     modelName: "UserInvites",
     tableName: "user_invites", // Explicitly specify the table name
     timestamps: false, // Assuming there are no createdAt/updatedAt fields
   }
 );
+
+User.belongsTo(Role, { foreignKey: "role_id" });
+User.belongsTo(Company, { foreignKey: "company_id" });
+User.hasMany(UserInvites, { foreignKey: "invitedBy", as: "Invitations" });
+UserInvites.belongsTo(User, { foreignKey: "invitedBy", as: "Inviter" });
 
 module.exports = {
   User,
