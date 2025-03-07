@@ -198,9 +198,9 @@ const handleFailedInvoive = async (invoice) => {
   }
 };
 
-const pauseSubscription = async () => {};
+const pauseSubscription = async () => { };
 
-const removeAccessQ = async () => {};
+const removeAccessQ = async () => { };
 
 class PaymentController {
   setupRoutes(router) {

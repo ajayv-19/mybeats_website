@@ -6,7 +6,17 @@ const {
   NewSubscriptions,
   CustomerQueries,
   UserInvites,
+  Role,
 } = require("../models");
+
+const { QuickSightClient, UpdateUserCommand, ListUsersCommand, DeleteUserCommand } = require('@aws-sdk/client-quicksight');
+const { CognitoIdentityClient, GetIdCommand, GetOpenIdTokenCommand } = require('@aws-sdk/client-cognito-identity');
+const { STSClient, AssumeRoleWithWebIdentityCommand } = require('@aws-sdk/client-sts');
+
+
+const cognitoClient = new CognitoIdentityClient({ region: "us-east-1" });
+const stsClient = new STSClient({ region: "us-east-1" });
+
 
 const UserController = {
   async getUserById(req, res) {
@@ -321,11 +331,11 @@ const UserController = {
   },
 
   async listInvitedUsers(req, res) {
-    const { company_id } = req.body;
-    if (!company_id) {
+    const { company_id, user_id } = req.query;
+    if (!company_id || !user_id) {
       return res.status(400).json({
         success: false,
-        message: "Company ID is required",
+        message: "Company ID and user ID is required",
       });
     }
     try {
@@ -404,9 +414,174 @@ const UserController = {
         error: error.message,
       });
     }
+  },
+
+  async assumeRoleWithJWT(jwtToken, payloadSub) {
+    console.log("Step 1: Fetching Cognito Identity ID...");
+    const COGNITO_IDENTITY_POOL_ID = "us-east-1:3bed750a-a8a0-4866-b823-8f474cea8e6f";
+    const IAM_ROLE_ARN = "arn:aws:iam::185329004895:role/amplify-amplifyquicksightdas-dev-dd445-authRole";
+    const COGNITO_PROVIDER = "cognito-idp.us-east-1.amazonaws.com/us-east-1_O4uSMgJop";
+
+    const idResponse = await cognitoClient.send(
+      new GetIdCommand({
+        IdentityPoolId: COGNITO_IDENTITY_POOL_ID,
+        Logins: {
+          [COGNITO_PROVIDER]: jwtToken,
+        },
+      })
+    );
+    console.log("Cognito Identity ID response:", idResponse);
+
+    console.log("Step 2: Fetching OpenID Token...");
+    const openIdTokenResponse = await cognitoClient.send(
+      new GetOpenIdTokenCommand({
+        IdentityId: idResponse.IdentityId,
+        Logins: {
+          [COGNITO_PROVIDER]: jwtToken,
+        },
+      })
+    );
+    console.log("OpenID Token response:", openIdTokenResponse);
+
+    console.log("Step 3: Assuming IAM Role...");
+    const stsResponse = await stsClient.send(
+      new AssumeRoleWithWebIdentityCommand({
+        RoleSessionName: payloadSub,
+        WebIdentityToken: openIdTokenResponse.Token,
+        RoleArn: IAM_ROLE_ARN,
+      })
+    );
+    return stsResponse;
+  },
+
+  async DeActivateUserQs(req, res) {
+    const { email, jwtToken, payloadSub } = req.query;
+    const AWS_REGION = "us-east-1";
+    const AWS_ACCOUNT_ID = "185329004895";
+    if (!email) {
+      return res.status(400).json({ error: 'Missing required parameter: email' });
+    }
+
+    try {
+      // Assume role and get temporary credentials
+      const stsResponse = await this.assumeRoleWithJWT(jwtToken, payloadSub);
+      const quickSightClientWithCreds = new QuickSightClient({
+        region: AWS_REGION,
+        credentials: {
+          accessKeyId: stsResponse.Credentials.AccessKeyId,
+          secretAccessKey: stsResponse.Credentials.SecretAccessKey,
+          sessionToken: stsResponse.Credentials.SessionToken,
+        },
+      });
+
+      // Fetch the userName using the provided email
+      const listUsersParams = {
+        AwsAccountId: AWS_ACCOUNT_ID,
+        Namespace: 'default',
+      };
+
+      const usersListResponse = await quickSightClientWithCreds.send(
+        new ListUsersCommand(listUsersParams)
+      );
+      const users = usersListResponse.UserList;
+      console.log("Users list:", users);
+      const registeredUser = users.find(user => user.Email === email);
+
+      if (!registeredUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      console.log("Registered user:", registeredUser);
+      if (registeredUser.Role == "AUTHOR_PRO") {
+        return res.status(404).json({ error: 'Unauthorized to deactivate user' });
+      }
+      const userName = registeredUser.UserName;
+      const params = {
+        AwsAccountId: AWS_ACCOUNT_ID,
+        Namespace: 'default',
+        UserName: userName,
+        Role: registeredUser.Role,
+        Email: registeredUser.Email,
+        Active: false, // Deactivates the user
+      };
+      console.log("Update user params:", params);
+      const command = new UpdateUserCommand(params);
+      console.log("Update user command:", command);
+      const response = await quickSightClientWithCreds.send(command);
+      console.log("Update user response:", response);
+      res.status(200).json({ message: 'User deactivated successfully', data: response });
+    } catch (error) {
+      console.error('Error deactivating user:', error);
+      res.status(500).json({ error: 'Failed to deactivate user', details: error.message });
+    }
+  },
+
+  async DeleteUserQs(req, res) {
+    const { email, jwtToken, payloadSub } = req.query;
+    const AWS_REGION = "us-east-1";
+    const AWS_ACCOUNT_ID = "185329004895";
+
+    if (!email) {
+      return res.status(400).json({ error: 'Missing required parameter: email' });
+    }
+
+    try {
+      // Assume role and get temporary credentials
+      const stsResponse = await this.assumeRoleWithJWT(jwtToken, payloadSub);
+      const quickSightClientWithCreds = new QuickSightClient({
+        region: AWS_REGION,
+        credentials: {
+          accessKeyId: stsResponse.Credentials.AccessKeyId,
+          secretAccessKey: stsResponse.Credentials.SecretAccessKey,
+          sessionToken: stsResponse.Credentials.SessionToken,
+        },
+      });
+
+      // Fetch the userName using the provided email
+      const listUsersParams = {
+        AwsAccountId: AWS_ACCOUNT_ID,
+        Namespace: 'default',
+      };
+
+      const usersListResponse = await quickSightClientWithCreds.send(
+        new ListUsersCommand(listUsersParams)
+      );
+      const users = usersListResponse.UserList;
+      console.log("Users list:", users);
+      const registeredUser = users.find(user => user.Email === email);
+
+      if (!registeredUser) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      console.log("Registered user:", registeredUser);
+
+      const userName = registeredUser.UserName;
+      const params = {
+        AwsAccountId: AWS_ACCOUNT_ID,
+        Namespace: 'default',
+        UserName: userName,
+        Email: registeredUser.Email,
+        Role: registeredUser.Role,
+      };
+
+      console.log("Delete user params:", params);
+      const command = new DeleteUserCommand(params);
+      console.log("Delete user command:", command);
+
+      const response = await quickSightClientWithCreds.send(command);
+      console.log("Delete user response:", response);
+
+      res.status(200).json({ message: 'User deleted successfully', data: response });
+
+    } catch (error) {
+      console.error('Error deleting user:', error);
+      res.status(500).json({ error: 'Failed to delete user', details: error.message });
+    }
   }
+
+
 };
 
 module.exports = UserController;
 
-// Bank, Apple pay, Card, G-pay.
+// Bank, Apple pay

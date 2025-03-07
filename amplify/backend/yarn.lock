@@ -90,9 +90,9 @@
     aws-cdk-lib "~2.177.0"
 
 "@aws-amplify/graphql-transformer-interfaces@^3.10.2":
-  version "3.11.1"
-  resolved "https://registry.yarnpkg.com/@aws-amplify/graphql-transformer-interfaces/-/graphql-transformer-interfaces-3.11.1.tgz#4099bac736656e4a9e55fbf6907226388b2d3642"
-  integrity sha512-xNoovK5ZlvWNr7em+uyGoopIh2MWTboqXpuvQu9GlvRWojCI1VdBenF4FEVoYDFqqgyibe0glooGm78D7nCNxw==
+  version "3.12.0"
+  resolved "https://registry.yarnpkg.com/@aws-amplify/graphql-transformer-interfaces/-/graphql-transformer-interfaces-3.12.0.tgz#377c55fac147f9f37ae0f8643fee102f0f6cba80"
+  integrity sha512-uWR6L48kLWla4jKY8QTtOq+QNzRS/+73llKG6kVw/R7bfnpDZo60Ga1GrbWKwS4c7ud3BMcqLaJM8QKk2OZMww==
   dependencies:
     graphql "^15.5.0"
 
@@ -249,9 +249,9 @@ acorn-walk@^8.1.1:
     acorn "^8.11.0"
 
 acorn@^8.11.0, acorn@^8.4.1:
-  version "8.14.0"
-  resolved "https://registry.yarnpkg.com/acorn/-/acorn-8.14.0.tgz#063e2c70cac5fb4f6467f0b11152e04c682795b0"
-  integrity sha512-cl669nCJTZBsL97OF4kUQm5g5hC2uihk0NxY3WENAC0TYdILVkAyHymAntgxGkl7K+t0cXIrH5siy5S4XkFycA==
+  version "8.14.1"
+  resolved "https://registry.yarnpkg.com/acorn/-/acorn-8.14.1.tgz#721d5dc10f7d5b5609a891773d47731796935dfb"
+  integrity sha512-OvQ/2pUDKmgfCg++xsTX1wGxfTaszcHVcTctW4UJB4hibJx2HXxxO5UmVgyjMa+ZDsiaf5wWLXYpRWMmBI0QHg==
 
 agent-base@^7.1.0, agent-base@^7.1.2:
   version "7.1.3"

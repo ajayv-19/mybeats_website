@@ -47,9 +47,11 @@ router.post(
   UserController.addOrUpdateUserDetails
 )
 
-router.post("/listInvitedUsers", UserController.listInvitedUsers);
+router.get("/listInvitedUsers", UserController.listInvitedUsers);
 router.post("/invitedUserAccess", UserController.InvitedUserAccess);
 router.get("/canShowBilling", UserController.canShowBilling);
+router.post("/deactivate-user", (...args) => UserController.DeActivateUserQs(...args));
+router.post("/delete-user", (...args) => UserController.DeleteUserQs(...args));
 
 PaymentController.setupRoutes(router);
 CompanyController.setupRoutes(router);

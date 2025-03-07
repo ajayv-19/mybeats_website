@@ -63,40 +63,40 @@ app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
     `Email: ${email}, JWT Token: ${jwtToken}, PayloadSub: ${payloadSub}`
   );
 
-  const emaildomain = getDomainFromEmail(email);
-  const companyQuery =
-    'SELECT subscription_id FROM "public"."Subscribed_Companies" WHERE domain = $1';
-  const selectResult = await client.query(companyQuery, [emaildomain]);
+  // const emaildomain = getDomainFromEmail(email);
+  // const companyQuery =
+  //   'SELECT subscription_id FROM "public"."Subscribed_Companies" WHERE domain = $1';
+  // const selectResult = await client.query(companyQuery, [emaildomain]);
 
-  const company = selectResult.rows.length
-    ? selectResult.rows[0].company
-    : null;
+  // const company = selectResult.rows.length
+  //   ? selectResult.rows[0].company
+  //   : null;
 
-  const subscriptionId = selectResult.rows.length
-    ? selectResult.rows[0].subscription_id
-    : null;
+  // const subscriptionId = selectResult.rows.length
+  //   ? selectResult.rows[0].subscription_id
+  //   : null;
 
-  if (!company || !subscriptionId) {
-    return res.status(400).json({
-      message: "User not subscribed",
-    });
-  }
+  // if (!company || !subscriptionId) {
+  //   return res.status(400).json({
+  //     message: "User not subscribed",
+  //   });
+  // }
 
-  //Fetch subscription details
-  const subscriptionQuery =
-    'SELECT isActive FROM "public"."New_Subscriptions" WHERE id = $1';
-  const subscriptionResult = await client.query(subscriptionQuery, [
-    subscriptionId,
-  ]);
-  const isActive = subscriptionResult.rows.length
-    ? subscriptionResult.rows[0].isActive
-    : null;
+  // //Fetch subscription details
+  // const subscriptionQuery =
+  //   'SELECT isActive FROM "public"."New_Subscriptions" WHERE id = $1';
+  // const subscriptionResult = await client.query(subscriptionQuery, [
+  //   subscriptionId,
+  // ]);
+  // const isActive = subscriptionResult.rows.length
+  //   ? subscriptionResult.rows[0].isActive
+  //   : null;
 
-  if (isActive !== "Active") {
-    return res.status(400).json({
-      message: "User not subscribed",
-    });
-  }
+  // if (isActive !== "Active") {
+  //   return res.status(400).json({
+  //     message: "User not subscribed",
+  //   });
+  // }
 
 
   const roleArn =
@@ -155,6 +155,7 @@ app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
     console.log("Step 4: Registering user in QuickSight...");
     const registerUserParams = {
       AwsAccountId: "185329004895",
+
       Email: email,
       IdentityType: "IAM",
       Namespace: "default",
@@ -279,6 +280,58 @@ app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
   } catch (err) {
     console.error("Error occurred:", err);
     res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/deactivate-user', async (req, res) => {
+  const { email, jwtToken, payloadSub } = req.query;
+  const AWS_REGION = "us-east-1";
+  const AWS_ACCOUNT_ID = "185329004895";
+  if (!email) {
+    return res.status(400).json({ error: 'Missing required parameter: email' });
+  }
+
+  try {
+    // Assume role and get temporary credentials
+    const stsResponse = await assumeRoleWithJWT(jwtToken, payloadSub);
+    const quickSightClientWithCreds = new QuickSightClient({
+      region: AWS_REGION,
+      credentials: {
+        accessKeyId: stsResponse.Credentials.AccessKeyId,
+        secretAccessKey: stsResponse.Credentials.SecretAccessKey,
+        sessionToken: stsResponse.Credentials.SessionToken,
+      },
+    });
+
+    // Fetch the userName using the provided email
+    const listUsersParams = {
+      AwsAccountId: AWS_ACCOUNT_ID,
+      Namespace: 'default',
+    };
+
+    const usersListResponse = await quickSightClientWithCreds.send(new ListUsersCommand(listUsersParams));
+    const users = usersListResponse.UserList;
+    const registeredUser = users.find(user => user.Email === email);
+
+    if (!registeredUser) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const userName = registeredUser.UserName;
+    const params = {
+      AwsAccountId: AWS_ACCOUNT_ID,
+      Namespace: 'default',
+      UserName: userName,
+      Active: false, // Deactivates the user
+    };
+
+    const command = new UpdateUserCommand(params);
+    const response = await quickSightClientWithCreds.send(command);
+
+    res.status(200).json({ message: 'User deactivated successfully', data: response });
+  } catch (error) {
+    console.error('Error deactivating user:', error);
+    res.status(500).json({ error: 'Failed to deactivate user', details: error.message });
   }
 });
 

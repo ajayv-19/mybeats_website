@@ -19,7 +19,7 @@
       "function": {
         "getQuickSightDashboardEmbedURL": {
           "deploymentBucketName": "amplify-amplifyquicksightdas-dev-dd445-deployment",
-          "s3Key": "amplify-builds/getQuickSightDashboardEmbedURL-676e4a2b665a524f3854-build.zip"
+          "s3Key": "amplify-builds/getQuickSightDashboardEmbedURL-77506873363838673944-build.zip"
         },
         "companyname": {},
         "getcompanyofuser": {
@@ -28,7 +28,7 @@
         },
         "user": {
           "deploymentBucketName": "amplify-amplifyquicksightdas-dev-dd445-deployment",
-          "s3Key": "amplify-builds/user-4267655235387a547a76-build.zip"
+          "s3Key": "amplify-builds/user-49785277327079624577-build.zip"
         }
       },
       "api": {

@@ -15,6 +15,11 @@ import {
   useGetTeamMembersSettingsQuery,
   useUpdateTeamMemberSettingsMutation,
 } from "../SettingsApi";
+import { useEffect, useState } from "react";
+import { getTeamMembers } from "../apis/Teamapis";
+import { useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
+import { fetchAccountDetails, selectAccount } from "src/app/features/account/accountSlice";
 
 const roles = [
   {
@@ -37,13 +42,75 @@ const roles = [
   },
 ];
 
-function TeamTab() {
-  const { data: teamMembers } = useGetTeamMembersSettingsQuery();
-  const [updateTeamMembers] = useUpdateTeamMemberSettingsMutation();
+// Add interface for the API response
+interface UserDetails {
+  Customer_Name: string;
+  email: string;
+  role_id: number;
+  image: string;
+  usertype: string;
+}
 
-  function handleRemoveMember(email: string) {
-    updateTeamMembers(teamMembers?.filter((member) => member.email !== email));
-  }
+interface InvitedUser {
+  id: number;
+  email: string;
+  invitedBy: number;
+  company_id: number;
+  is_accepted: boolean;
+  invited_at: string;
+  userDetails: UserDetails | null;
+}
+
+interface ApiResponse {
+  success: boolean;
+  invitedUsers: InvitedUser[];
+  message: string;
+}
+
+function TeamTab() {
+  const dispatch = useDispatch();
+
+  const accountData = useSelector(selectAccount);
+  console.log("accountData", accountData);
+  const [data, setData] = useState<ApiResponse | null>(null);
+  console.log("accountData", accountData);
+  useEffect(() => {
+    dispatch(fetchAccountDetails() as any);
+  }, [dispatch])
+  
+  useEffect(() => {
+  getTeamMembers(accountData?.company?.id, accountData?.user?.id).then((response) => {
+    console.log("response", response);
+    setData(response.data);
+  });
+  }, [])
+  console.log("data", data);
+
+  // Transform API data to match component's expected format
+  const teamMembers = data?.invitedUsers?.map((user) => ({
+    email: user.email,
+    name: user.userDetails?.Customer_Name || user.email,
+    avatar: user.userDetails?.image || "",
+    role: user.userDetails?.usertype?.toLowerCase() || "read",
+  }));
+
+  const handleRemoveMember = (email: string) => {
+    if (teamMembers) {
+      updateTeamMembers(teamMembers.filter((member) => member.email !== email));
+    }
+  };
+
+  // Convert role_id to role string for Select component
+  const getRoleLabel = (usertype: string) => {
+    switch (usertype?.toUpperCase()) {
+      case "ADMIN":
+        return "admin";
+      case "WRITE":
+        return "write";
+      default:
+        return "read";
+    }
+  };
 
   return (
     <div>
@@ -72,7 +139,7 @@ function TeamTab() {
         }}
       />
       <Divider />
-      {teamMembers?.length === 0 && (
+      {(!teamMembers || teamMembers.length === 0) && (
         <Typography className="text-center my-32" color="textSecondary">
           No team members found.
         </Typography>
@@ -83,7 +150,7 @@ function TeamTab() {
             divider
             key={member.email}
             disablePadding
-            className="py-12 flex flex-col items-start sm:items-center  sm:flex-row space-y-16 sm:space-y-0"
+            className="py-12 flex flex-col items-start sm:items-center sm:flex-row space-y-16 sm:space-y-0"
           >
             <div className="flex flex-1 items-center">
               <ListItemAvatar>
