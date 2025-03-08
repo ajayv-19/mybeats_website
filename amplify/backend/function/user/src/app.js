@@ -44,7 +44,7 @@ router.post("/addcomment", UserController.addComment);
 router.post(
   "/addOrUpdateUserDetails",
   upload.single("image"),
-  UserController.addOrUpdateUserDetails
+  (...args) => UserController.addOrUpdateUserDetails(...args)
 )
 
 router.get("/listInvitedUsers", UserController.listInvitedUsers);

@@ -54,6 +54,8 @@ const Company = sequelize.define(
     expiry_date: { type: DataTypes.DATE, allowNull: true },
     number_of_users_invited: { type: DataTypes.INTEGER, allowNull: true },
     number_of_users_accepted: { type: DataTypes.INTEGER, allowNull: true },
+    number_of_admins: { type: DataTypes.INTEGER, allowNull: true },
+    license_used: { type: DataTypes.INTEGER, allowNull: true },
     phone_number: { type: DataTypes.STRING, allowNull: true },
     policyholder_count: { type: DataTypes.INTEGER, allowNull: true },
     is_subscribed: {

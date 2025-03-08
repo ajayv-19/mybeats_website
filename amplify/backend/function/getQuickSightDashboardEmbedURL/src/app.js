@@ -151,10 +151,10 @@ app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
         sessionToken: stsResponse.Credentials.SessionToken,
       },
     });
-
+    //185329004895
     console.log("Step 4: Registering user in QuickSight...");
     const registerUserParams = {
-      AwsAccountId: "185329004895",
+      AwsAccountId: "1853290048",
 
       Email: email,
       IdentityType: "IAM",

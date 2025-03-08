@@ -1,6 +1,6 @@
 const { console } = require("inspector");
 const { APP_URL } = require("../globals.const");
-const { Company, User, NewSubscriptions, UserInvites, Plans } = require("../models");
+const { Company, User, NewSubscriptions, UserInvites, Plans, Role } = require("../models");
 const EmailService = require("../services/email.service");
 const { update } = require("lodash");
 class EmailController {
@@ -15,8 +15,21 @@ class EmailController {
     async cancelInvite(req, res) {
         const { inviteId } = req.body;
         const invite = await UserInvites.findByPk(inviteId);
+
         if (!invite) {
             return res.status(400).json({ message: "Invite not found" });
+        }
+        const user = await User.findOne({ where: { email: invite.email } });
+        if (user) {
+            await user.update({
+
+
+                is_invited: false,
+                invited_by: 0,
+                role_id: 3
+
+
+            });
         }
         await invite.destroy(); // Soft delete
         await this.syncMyInvites(req, res, { in_call: true });
@@ -27,12 +40,12 @@ class EmailController {
         const user = req.user;
         const company = await Company.findByPk(user.company_id);
         const plan = await Plans.findByPk(company.plan_id);
-        const invites = await UserInvites.count({ where: { company_id: user.company_id } });
+        // const invites = await UserInvites.count({ where: { company_id: user.company_id } });
         let message = "";
         let proceedFlag = false;
         if (!plan) {
             message = "Plan not found";
-        } else if (plan.team_size <= invites) {
+        } else if (plan.team_size <= company.license_used) {
             message = "Invite limit reached";
         } else {
             proceedFlag = true;
@@ -45,19 +58,87 @@ class EmailController {
         }
     }
 
+    // async syncMyInvites(req, res, { in_call = false }) {
+    //     console.log("Syncing invites");
+    //     try {
+
+
+    //     const user = req.user;
+    //     const AdminRoleId = Role.findOne({ where: { name: "ADMIN" } }).id;
+    //     const adminUsers = await User.findAll({ where: { company_id: user.company_id, role_id: AdminRoleId } });
+    //     const invites = await UserInvites.findAll({ where: { company_id: user.company_id } });
+    //     const acceptedInvites = invites.filter((invite) => invite.is_accepted);
+    //     // remove admin from invites list
+    //     const invitesWithoutAdmin = invites.filter((invite) => invite.email !== user.email);
+    //     const acceptedInvitesWithoutAdmin = invitesWithoutAdmin.filter((invite) => invite.is_accepted);
+    //     const company = await Company.findByPk(user.company_id);
+    //     console.log("company", company);
+    //     await company.update({
+    //         number_of_admins: adminUsers.length,
+    //         number_of_users_invited: invites.length,
+    //         number_of_users_accepted: acceptedInvites.length,
+    //         license_used: acceptedInvitesWithoutAdmin.length + adminUsers.length
+    //     });
+    //     console.log("Company updated successfully");
+    //     if (!in_call) {
+    //         console.log("Not in call");
+    //         return res.status(200).json({ message: "Invites synced successfully" });
+    //     } else {
+    //         console.log("In call");
+    //         return true;
+    //     }
+    //     } catch (error) {
+    //         console.log("error", error);
+    //         return true;
+    //         //return res.status(500).json({ message: "Something went wrong", error });
+    //     }
+    // }
+
     async syncMyInvites(req, res, { in_call = false }) {
-        const user = req.user;
-        const invites = await UserInvites.findAll({ where: { company_id: user.company_id } });
-        const acceptedInvites = invites.filter((invite) => invite.is_accepted);
-        const company = await Company.findByPk(user.company_id);
-        await company.update({
-            number_of_users_invited: invites.length,
-            number_of_users_accepted: acceptedInvites.length
-        });
-        if (!in_call) {
-            return res.status(200).json({ message: "Invites synced successfully" });
-        } else {
-            return true;
+        console.log("Syncing invites");
+        try {
+            const user = req.user;
+
+            // Fix the Role query
+            const adminRole = await Role.findOne({ where: { name: "ADMIN" } });
+            if (!adminRole) {
+                throw new Error("Admin role not found");
+            }
+
+            const adminUsers = await User.findAll({
+                where: {
+                    company_id: user.company_id,
+                    role_id: adminRole.id
+                }
+            });
+
+            const invites = await UserInvites.findAll({
+                where: { company_id: user.company_id }
+            });
+
+            const acceptedInvites = invites.filter((invite) => invite.is_accepted);
+            const invitesWithoutAdmin = invites.filter((invite) => invite.email !== user.email);
+            const acceptedInvitesWithoutAdmin = invitesWithoutAdmin.filter((invite) => invite.is_accepted);
+
+            const company = await Company.findByPk(user.company_id);
+            if (!company) {
+                throw new Error("Company not found");
+            }
+
+            await company.update({
+                number_of_admins: adminUsers.length,
+                number_of_users_invited: invites.length,
+                number_of_users_accepted: acceptedInvites.length,
+                license_used: acceptedInvitesWithoutAdmin.length + adminUsers.length
+            });
+
+            return in_call ? true : res.status(200).json({ message: "Invites synced successfully" });
+        } catch (error) {
+            console.error("Sync invites error:", error);
+            if (in_call) {
+                throw error; // Propagate error when called from other functions
+            }
+            return res.status(500).json({ message: "Failed to sync invites", error: error.message });
         }
     }
 
@@ -97,21 +178,35 @@ class EmailController {
                 company_id: req.user.company_id,
                 is_varified: true,
                 is_invited: true,
-                invited_by: req.user.id
+                invited_by: req.user.id,
+                role_id: 2
+
 
             });
         }
         const { replacements, subject } = this.getTemplateAttributes(templateName);
         replacements["inviteUrl"] = APP_URL + `/invite?invite_id=${invite.id}`;
         const emailService = new EmailService();
+        console.log("email service instance", emailService);
         emailService
             .sendTemplateEmail(to, subject, templateName, replacements)
             .then(() => {
-                this.syncMyInvites(req, res, { in_call: true }).then(() => {
-                    res.status(200).json({ message: "Email sent successfully" })
-                }).catch((error) => {
-                    res.status(500).json({ message: "Failed to sync invites", error })
-                });
+                try {
+                    ///*
+                    this.syncMyInvites(req, res, { in_call: true }).then(() => {
+                        res.status(200).json({ message: "Email sent successfully OG" })
+                    }).catch((error) => {
+                        true
+                        console.log("error", error);
+                        //res.status(500).json({ message: "Failed to sync invites", error });
+                        res.status(200).json({ message: "Email sent successfully catch" });
+                    });
+                    //*/
+                } catch (error) {
+                    console.log("error", error);
+                    res.status(200).json({ message: "Email sent successfully try catch" });
+                }
+
             })
             .catch((error) =>
                 res.status(500).json({ message: "Failed to send email", error })

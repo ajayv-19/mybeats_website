@@ -217,7 +217,7 @@ const UserController = {
       const newUser = await User.create({
         email,
         username: req?.cognitoUser?.username || username,
-        role_id,
+        role_id: 3,
         Customer_Name,
         usertype,
         created_timestamp,
@@ -344,34 +344,20 @@ const UserController = {
         where: { company_id },
       });
 
+      const companyUsers = await UserInvites.findAll({
+        where: { company_id },
+      });
+
       // Get user details for accepted invites
       const formattedUsers = await Promise.all(
-        invitedUsers.map(async (invite) => {
-          const inviteData = invite.toJSON();
-
-          if (invite.is_accepted) {
-            const userDetails = await User.findOne({
-              where: {
-                email: invite.email,
-                is_varified: true,
-              },
-              attributes: [
-                "Customer_Name",
-                "email",
-                "role_id",
-                "image",
-                "usertype",
-              ],
-            });
-            return {
-              ...inviteData,
-              userDetails: userDetails || null,
-            };
-          }
-
+        companyUsers.map(async (user) => {
+          const invitedUser = await UserInvites.findOne({
+            where: { email: user.email, company_id },
+          });
           return {
-            ...inviteData,
-            userDetails: null,
+            ...user,
+            invite: invitedUser,
+            invite_accepted: invitedUser.is_accepted,
           };
         })
       );

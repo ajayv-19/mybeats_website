@@ -12,66 +12,70 @@ class CompanyController {
 
   async createCompany(req, res) {
     try {
-        const { name, address, phone_number, email, user_id, policyholder_count } = req.body;
-        
-        // Find the user and check if they exist
-        const user = await User.findOne({ where: { id: user_id } });
-        if (!user) {
-            return res.status(400).json({
-                message: "User not found"
-            });
-        }
+      const { name, address, phone_number, email, user_id, policyholder_count } = req.body;
 
-        // Find existing company by domain
-        const existingCompany = await Company.findOne({
-            where: { domain: user.domain }
+      // Find the user and check if they exist
+      const user = await User.findOne({ where: { id: user_id } });
+      if (!user) {
+        return res.status(400).json({
+          message: "User not found"
         });
+      }
 
-        let company;
-        if (existingCompany) {
-            // Update existing company
-            company = await existingCompany.update({
-                Company_Name: name,
-                address,
-                phone_number,
-                email,
-                policyholder_count,
-                // Keeping the original primary_user_id and domain
-            });
-        } else {
-            // Create new company
-            company = await Company.create({
-                Company_Name: name,
-                address,
-                phone_number,
-                email,
-                primary_user_id: user.id,
-                policyholder_count,
-                domain: user.domain,
-            });
-        }
+      // Find existing company by domain
+      const existingCompany = await Company.findOne({
+        where: { domain: user.domain }
+      });
 
-        // Update the creating user's company_id
-        await user.update({ company_id: company.id });
-
-        // Update company_id for all users with the same domain
-        const users = await User.findAll({ where: { domain: user.domain } });
-        await Promise.all(users.map(user => 
-            user.update({ company_id: company.id })
-        ));
-
-        return res.status(200).json({
-            message: existingCompany ? "Company updated successfully" : "Company created successfully",
-            company,
+      let company;
+      if (existingCompany) {
+        // Update existing company
+        company = await existingCompany.update({
+          Company_Name: name,
+          address,
+          phone_number,
+          email,
+          policyholder_count,
+          // Keeping the original primary_user_id and domain
         });
+      } else {
+        // Create new company
+        company = await Company.create({
+          Company_Name: name,
+          address,
+          phone_number,
+          email,
+          primary_user_id: user.id,
+          policyholder_count,
+          domain: user.domain,
+          number_of_admins: 1,
+          number_of_users_invited: 0,
+          number_of_users_accepted: 0,
+          license_used: 0
+        });
+      }
+
+      // Update the creating user's company_id
+      await user.update({ company_id: company.id });
+
+      // Update company_id for all users with the same domain
+      const users = await User.findAll({ where: { domain: user.domain } });
+      await Promise.all(users.map(user =>
+        user.update({ company_id: company.id })
+      ));
+
+      return res.status(200).json({
+        message: existingCompany ? "Company updated successfully" : "Company created successfully",
+        company,
+      });
 
     } catch (error) {
-        return res.status(500).json({
-            message: "An error occurred while processing your request",
-            error: error.message
-        });
+      return res.status(500).json({
+        message: "An error occurred while processing your request",
+        error: error.message
+      });
     }
-}
+  }
 
 
   async updateCompany(req, res) {

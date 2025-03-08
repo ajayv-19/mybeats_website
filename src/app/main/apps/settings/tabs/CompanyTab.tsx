@@ -243,7 +243,7 @@ function CompanyTab() {
             type="submit"
             disabled={_.isEmpty(dirtyFields) || !isValid}
           >
-            {user.role_id === 1 ? "Update" : "Next"}
+            {user?.role_id === 1 ? "Update" : "Next"}
           </Button>
         </div>
       </form>

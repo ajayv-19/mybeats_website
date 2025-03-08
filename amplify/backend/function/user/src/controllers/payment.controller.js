@@ -12,6 +12,7 @@ const {
   Payment,
   Subscriptions,
   NewSubscriptions,
+  UserInvites,
 } = require("../models/index.js");
 
 const datelib = require("../lib/date.js");
@@ -61,7 +62,10 @@ const addSubscription = async (customer_subscription_created) => {
     const user_id = metadata?.user_id ? Number(metadata.user_id) : null;
 
     const company = await Company.findByPk(company_id);
-    company.update({ is_subscribed: true });
+    company.update({
+      is_subscribed: true,
+      license_used: company.license_used == 0 ? 1 : company.license_used,
+    });
     const user = await User.findByPk(user_id);
     user.update({ role_id: 1 });
 
