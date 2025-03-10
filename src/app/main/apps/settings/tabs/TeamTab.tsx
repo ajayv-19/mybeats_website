@@ -71,15 +71,13 @@ interface ApiResponse {
 }
 
 function TeamTab() {
-
-  
   const dispatch = useDispatch();
   const [email, setEmail] = useState("");
-  const [emailError, setEmailError] = useState('');  
+  const [emailError, setEmailError] = useState('');
   const accountData = useSelector(selectAccount);
   const ALLOWED_DOMAIN = accountData?.user?.email.split('@')[1];
-  
-    console.log("accountData", accountData);
+
+  console.log("accountData", accountData);
   const [data, setData] = useState<ApiResponse | null>({ success: false, invitedUsers: [], message: "" });
   console.log("accountData", accountData);
   useEffect(() => {
@@ -88,7 +86,7 @@ function TeamTab() {
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
-    
+
     if (!email) {
       return 'Email is required';
     }
@@ -106,7 +104,7 @@ function TeamTab() {
   };
 
   const fetchData = () => {
-    if(accountData?.company?.id && accountData?.user?.id) {
+    if (accountData?.company?.id && accountData?.user?.id) {
       getTeamMembers(accountData?.company?.id, accountData?.user?.id).then((response) => {
         console.log("response", response);
         setData(response.data);
@@ -115,25 +113,27 @@ function TeamTab() {
       console.log("No data");
     }
   };
-  
+
   useEffect(() => {
     fetchData();
   }, [accountData]);
 
-  // Transform API data to match component's expected format
-  const teamMembers = data?.invitedUsers?.map((user) => ({
-    email: user.email,
-    name: user.userDetails?.Customer_Name || user.email,
-    avatar: user.userDetails?.image || "",
-    role: user.userDetails?.role_id || 0,
-  }));
+  // Transform API data to match component's expected format and filter out the logged-in user
+  const teamMembers = data?.invitedUsers
+    ?.filter((user) => user.email !== accountData?.user?.email) // Filter out the logged-in user
+    .map((user) => ({
+      email: user.email,
+      name: user.userDetails?.Customer_Name || user.email,
+      avatar: user.userDetails?.image || "",
+      role: user.userDetails?.role_id || 0,
+    }));
 
   console.log("teamMembers", teamMembers);
 
   const handleRemoveMember = (email: string) => {
     if (teamMembers) {
       removeTeamMembers(email).then((response) => {
-        if(response.status === 200) {
+        if (response.status === 200) {
           fetchData();
         }
       });
@@ -143,51 +143,58 @@ function TeamTab() {
     }
   };
 
-
-
   const handleInviteMember = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
     setEmailError(validateEmail(e.target.value as string));
   }
-  
+
   const handleAddMember = () => {
     const error = validateEmail(email);
-    if(!error) {
-      inviteTeamMembers(email).then((response) => {
-        if(response.status === 200) {
-          fetchData();
-        }
-      });
-    }else{
+    if (error) {
       setEmailError(error);
-    
+      return;
     }
+
+    if (teamMembers?.some((member) => member.email === email)) {
+      setEmailError("User is already invited");
+      return;
+    }
+
+    inviteTeamMembers(email).then((response) => {
+      if (response.status === 200) {
+        fetchData();
+        setEmail("");
+        setEmailError("");
+      }
+    }).catch((error) => {
+      setEmailError("Failed to invite user");
+    });
+    console.log("Add member clicked", email);
   }
 
   const handleRoleChange = (email: string, newRole: number) => {
     // Call API to update team member role
-console.log("email", email, "newRole", newRole);
-const role = newRole === 1 ? "ADMIN" : newRole === 2 ? "READER" : "READER";
-updateUserPermission(email, role).then((response) => {
-  if(response.status === 200) {
-    fetchData();
-  }
-});
-
+    console.log("email", email, "newRole", newRole);
+    const role = newRole === 1 ? "ADMIN" : newRole === 2 ? "READER" : "READER";
+    updateUserPermission(email, role).then((response) => {
+      if (response.status === 200) {
+        fetchData();
+      }
+    });
   };
 
   console.log("teamMembers", teamMembers);
-  
-
 
   return (
     <div>
       <TextField
-      value={email}
-      onChange={handleInviteMember}
+        value={email}
+        onChange={handleInviteMember}
         className="w-full mb-24"
         label="Add team member"
         placeholder={`Enter email (example@${ALLOWED_DOMAIN})`}
+        error={!!emailError}
+        helperText={emailError}
         InputLabelProps={{
           shrink: true,
         }}
@@ -208,7 +215,6 @@ updateUserPermission(email, role).then((response) => {
           ),
         }}
       />
-      <div className="text-red-400">{emailError && emailError}</div>
       <Divider />
       {(!teamMembers || teamMembers.length === 0) && (
         <Typography className="text-center my-32" color="textSecondary">
@@ -254,7 +260,8 @@ updateUserPermission(email, role).then((response) => {
                   ))}
                 </Select>
               </div>
-              <IconButton onClick={() => handleRemoveMember(member.email)} disabled={member?.role_id === 1}>
+              <IconButton onClick={() => handleRemoveMember(member.email)} >
+              {/* disabled={member?.role_id === 1} */}
                 <FuseSvgIcon>heroicons-outline:trash</FuseSvgIcon>
               </IconButton>
             </div>

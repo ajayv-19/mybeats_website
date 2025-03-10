@@ -64,14 +64,10 @@ const addSubscription = async (customer_subscription_created) => {
     const company = await Company.findByPk(company_id);
     company.update({
       is_subscribed: true,
-      number_of_admins: company.number_of_admins == 0 ? 1 : number_of_admins,
       license_used: company.license_used == 0 ? 1 : company.license_used,
     });
     const user = await User.findByPk(user_id);
-    user.update({
-      role_id: 1,
-      is_varified: true,
-    });
+    user.update({ role_id: 1 });
 
     // Create a new row in the NewSubscriptions table
     const newSubscription = await NewSubscriptions.create({

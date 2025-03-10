@@ -9,7 +9,7 @@ const {
   Role,
 } = require("../models");
 
-const { QuickSightClient, UpdateUserCommand, ListUsersCommand, DeleteUserCommand, UpdateTopicPermissionsCommand } = require('@aws-sdk/client-quicksight');
+const { QuickSightClient, UpdateUserCommand, ListUsersCommand, DeleteUserCommand } = require('@aws-sdk/client-quicksight');
 const { CognitoIdentityClient, GetIdCommand, GetOpenIdTokenCommand } = require('@aws-sdk/client-cognito-identity');
 const { STSClient, AssumeRoleWithWebIdentityCommand } = require('@aws-sdk/client-sts');
 
@@ -217,7 +217,7 @@ const UserController = {
       const newUser = await User.create({
         email,
         username: req?.cognitoUser?.username || username,
-        role_id: 3,
+        role_id,
         Customer_Name,
         usertype,
         created_timestamp,
@@ -330,147 +330,6 @@ const UserController = {
     }
   },
 
-
-  // async listInvitedUsers(req, res) {
-  //   const { company_id, user_id } = req.query;
-  //   if (!company_id || !user_id) {
-  //     return res.status(400).json({
-  //       success: false,
-  //       message: "Company ID and user ID is required",
-  //     });
-  //   }
-  //   try {
-  //     // First fetch all invited users for the company
-  //     const invitedUsers = await UserInvites.findAll({
-  //       where: { company_id },
-  //     });
-
-  //     const companyUsers = await UserInvites.findAll({
-  //       where: { company_id },
-  //     });
-
-  //     // Get user details for accepted invites
-  //     const formattedUsers = await Promise.all(
-  //       companyUsers.map(async (user) => {
-  //         const invitedUser = await UserInvites.findOne({
-  //           where: { email: user.email, company_id },
-  //         });
-  //         return {
-  //           ...user,
-  //           invite: invitedUser,
-  //           invite_accepted: invitedUser.is_accepted,
-  //         };
-  //       })
-  //     );
-
-  //     return res.json({
-  //       success: true,
-  //       invitedUsers: formattedUsers,
-  //       message: "Invited users listed successfully",
-  //     });
-  //   } catch (error) {
-  //     console.error("Error listing invited users:", error);
-  //     return res.status(500).json({
-  //       success: false,
-  //       message: "Failed to list invited users",
-  //       error: error.message,
-  //     });
-  //   }
-  // },
-
-
-
-  // async listInvitedUsers(req, res) {
-  //   const { company_id, user_id } = req.query;
-  //   if (!company_id || !user_id) {
-  //     return res.status(400).json({
-  //       success: false,
-  //       message: "Company ID and user ID is required",
-  //     });
-  //   }
-  //   try {
-  //     // Fetch all invited users for the company
-  //     const invitedUsers = await UserInvites.findAll({
-  //       where: { company_id },
-  //     });
-
-  //     // Get admin users who are NOT in the invites table
-  //     const adminUsers = await User.findAll({
-  //       where: { company_id, role_id: 1 },
-  //       attributes: ["Customer_Name", "email", "role_id", "image", "usertype"], // Fetch necessary attributes
-  //     });
-
-  //     // Filter out admin users already in the invited list
-  //     const filteredAdminUsers = adminUsers.filter((adminUser) => {
-  //       return !invitedUsers.some(
-  //         (invitedUser) => invitedUser.email === adminUser.email
-  //       );
-  //     });
-
-  //     // Convert invited users to JSON
-  //     const invitedUsersData = invitedUsers.map((invite) => invite.toJSON());
-
-  //     // Format user details
-  //     const formattedUsers = await Promise.all(
-  //       [...invitedUsersData, ...filteredAdminUsers].map(async (invite) => {
-  //         if (invite.is_accepted) {
-  //           // If it's an invited user who accepted the invite
-  //           const userDetails = await User.findOne({
-  //             where: {
-  //               email: invite.email,
-  //               is_varified: true,
-  //             },
-  //             attributes: [
-  //               "Customer_Name",
-  //               "email",
-  //               "role_id",
-  //               "image",
-  //               "usertype",
-  //             ],
-  //           });
-  //           return {
-  //             ...invite,
-  //             userDetails: userDetails || null,
-  //           };
-  //         }
-
-  //         // If it's an admin, return their details directly
-  //         if (invite.role_id === 1) {
-  //           return {
-  //             ...invite,
-  //             userDetails: {
-  //               Customer_Name: invite.Customer_Name,
-  //               email: invite.email,
-  //               role_id: invite.role_id,
-  //               image: invite.image,
-  //               usertype: invite.usertype,
-  //             },
-  //           };
-  //         }
-
-  //         return {
-  //           ...invite,
-  //           userDetails: null,
-  //         };
-  //       })
-  //     );
-
-  //     return res.json({
-  //       success: true,
-  //       invitedUsers: formattedUsers,
-  //       message: "Invited users listed successfully",
-  //     });
-  //   } catch (error) {
-  //     console.error("Error listing invited users:", error);
-  //     return res.status(500).json({
-  //       success: false,
-  //       message: "Failed to list invited users",
-  //       error: error.message,
-  //     });
-  //   }
-  // },
-
-
   async listInvitedUsers(req, res) {
     const { company_id, user_id } = req.query;
     if (!company_id || !user_id) {
@@ -480,92 +339,25 @@ const UserController = {
       });
     }
     try {
-      // Fetch all invited users for the company
+      // First fetch all invited users for the company
       const invitedUsers = await UserInvites.findAll({
         where: { company_id },
       });
 
-      // Get admin users who are NOT in the invites table
-      const adminUsers = await User.findAll({
-        where: { company_id, role_id: 1 },
-        attributes: ["Customer_Name", "email", "role_id", "image", "usertype"], // Fetch necessary attributes
+      const companyUsers = await UserInvites.findAll({
+        where: { company_id },
       });
 
-      // Filter out admin users already in the invited list
-      const filteredAdminUsers = adminUsers.filter((adminUser) => {
-        return !invitedUsers.some(
-          (invitedUser) => invitedUser.email === adminUser.email
-        );
-      });
-
-      // Convert invited users to JSON
-      const invitedUsersData = invitedUsers.map((invite) => invite.toJSON());
-
-      // Format user details
+      // Get user details for accepted invites
       const formattedUsers = await Promise.all(
-        [...invitedUsersData, ...filteredAdminUsers].map(async (invite) => {
-          if (invite.is_accepted) {
-            // If it's an invited user who accepted the invite
-            const userDetails = await User.findOne({
-              where: {
-                email: invite.email,
-                is_varified: true,
-              },
-              attributes: [
-                "Customer_Name",
-                "email",
-                "role_id",
-                "image",
-                "usertype",
-              ],
-            });
-            return {
-              id: invite.id || null,
-              email: invite.email,
-              invitedBy: invite.invitedBy || null,
-              company_id: invite.company_id,
-              is_accepted: invite.is_accepted || null,
-              invited_at: invite.invited_at || null,
-              created_at: invite.created_at || null,
-              updated_at: invite.updated_at || null,
-              deletedAt: invite.deletedAt || null,
-              userDetails: userDetails || null,
-            };
-          }
-
-          // If it's an admin, return their details directly
-          if (invite.role_id === 1) {
-            return {
-              id: null,
-              email: invite.email,
-              invitedBy: null,
-              company_id: company_id,
-              is_accepted: null,
-              invited_at: null,
-              created_at: null,
-              updated_at: null,
-              deletedAt: null,
-              userDetails: {
-                Customer_Name: invite.Customer_Name,
-                email: invite.email,
-                role_id: invite.role_id,
-                image: invite.image,
-                usertype: invite.usertype,
-              },
-            };
-          }
-
+        companyUsers.map(async (user) => {
+          const invitedUser = await UserInvites.findOne({
+            where: { email: user.email, company_id },
+          });
           return {
-            id: invite.id || null,
-            email: invite.email,
-            invitedBy: invite.invitedBy || null,
-            company_id: invite.company_id,
-            is_accepted: invite.is_accepted || null,
-            invited_at: invite.invited_at || null,
-            created_at: invite.created_at || null,
-            updated_at: invite.updated_at || null,
-            deletedAt: invite.deletedAt || null,
-            userDetails: null,
+            ...user,
+            invite: invitedUser,
+            invite_accepted: invitedUser.is_accepted,
           };
         })
       );
@@ -584,7 +376,6 @@ const UserController = {
       });
     }
   },
-
 
   async InvitedUserAccess(req, res) {
     const { email, company_id, access_type } = req.body;
@@ -714,8 +505,6 @@ const UserController = {
     const { email, jwtToken, payloadSub } = req.query;
     const AWS_REGION = "us-east-1";
     const AWS_ACCOUNT_ID = "185329004895";
-    const topicId = "mKV8habamEDfLN80sBbVuqTpkVm1QV3M";
-    //const AWS_ROLE_TOKEN = "arn:aws:iam::185329004895:role/amplify-amplifyquicksightdas-dev-dd445-authRole";
 
     if (!email) {
       return res.status(400).json({ error: 'Missing required parameter: email' });
@@ -751,25 +540,8 @@ const UserController = {
       }
 
       console.log("Registered user:", registeredUser);
+
       const userName = registeredUser.UserName;
-
-      const revokeTopicPermissionParams = {
-        AwsAccountId: AWS_ACCOUNT_ID,
-        TopicId: topicId,
-        RevokePermissions: [
-          {
-            Principal: `arn:aws:quicksight:${AWS_REGION}:${AWS_ACCOUNT_ID}:user/default/${userName}`,
-            Actions: ["quicksight:DescribeTopic"],
-          },
-        ],
-      };
-
-      // Revoke permissions
-      await quickSightClientWithCreds.send(
-        new UpdateTopicPermissionsCommand(revokeTopicPermissionParams)
-      );
-
-      console.log("Permissions revoked successfully");
       const params = {
         AwsAccountId: AWS_ACCOUNT_ID,
         Namespace: 'default',
@@ -777,6 +549,7 @@ const UserController = {
         Email: registeredUser.Email,
         Role: registeredUser.Role,
       };
+
       console.log("Delete user params:", params);
       const command = new DeleteUserCommand(params);
       console.log("Delete user command:", command);
