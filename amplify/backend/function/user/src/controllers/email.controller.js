@@ -13,12 +13,24 @@ class EmailController {
     }
 
     async cancelInvite(req, res) {
-        const { inviteId } = req.body;
-        const invite = await UserInvites.findByPk(inviteId);
+        const { emailId } = req.body;
+        //const invite = await UserInvites.findByPk(inviteId);
+        const invite = await UserInvites.findOne({ where: { email: emailId } });
 
         if (!invite) {
+
+            const user = await User.findOne({ where: { email: emailId } });
+            if (user) {
+                await user.update({
+                    is_invited: false,
+                    invited_by: 0,
+                    role_id: 3
+                });
+                return res.status(200).json({ message: "Invite of Admin cancelled successfully" });
+            }
             return res.status(400).json({ message: "Invite not found" });
         }
+
         const user = await User.findOne({ where: { email: invite.email } });
         if (user) {
             await user.update({
@@ -180,8 +192,6 @@ class EmailController {
                 is_invited: true,
                 invited_by: req.user.id,
                 role_id: 2
-
-
             });
         }
         const { replacements, subject } = this.getTemplateAttributes(templateName);

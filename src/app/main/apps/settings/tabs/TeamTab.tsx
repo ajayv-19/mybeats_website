@@ -16,12 +16,13 @@ import {
   useUpdateTeamMemberSettingsMutation,
 } from "../SettingsApi";
 import { useEffect, useState } from "react";
-import { deleteQuickSightUser, getTeamMembers, inviteTeamMembers, removeTeamMembers } from "../apis/Teamapis";
+import { deleteQuickSightUser, getTeamMembers, inviteTeamMembers, removeTeamMembers, updateUserPermission } from "../apis/Teamapis";
 import { useDispatch } from "react-redux";
 import { useSelector } from "react-redux";
 import { fetchAccountDetails, selectAccount } from "src/app/features/account/accountSlice";
 import { log } from "console";
 import { ChangeEventHandler } from "preact/compat";
+import { set } from "lodash";
 
 const roles = [
   {
@@ -70,15 +71,39 @@ interface ApiResponse {
 }
 
 function TeamTab() {
+
+  
   const dispatch = useDispatch();
   const [email, setEmail] = useState("");
+  const [emailError, setEmailError] = useState('');  
   const accountData = useSelector(selectAccount);
-  console.log("accountData", accountData);
+  const ALLOWED_DOMAIN = accountData?.user?.email.split('@')[1];
+  
+    console.log("accountData", accountData);
   const [data, setData] = useState<ApiResponse | null>({ success: false, invitedUsers: [], message: "" });
   console.log("accountData", accountData);
   useEffect(() => {
     dispatch(fetchAccountDetails() as any);
   }, [dispatch])
+
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
+    
+    if (!email) {
+      return 'Email is required';
+    }
+    if (!emailRegex.test(email)) {
+      return 'Please enter a valid email address';
+    }
+
+    // Check if email belongs to allowed domain
+    const domain = email.split('@')[1];
+    if (domain.toLowerCase() !== ALLOWED_DOMAIN.toLowerCase()) {
+      return `Only ${ALLOWED_DOMAIN} email addresses are allowed`;
+    }
+
+    return '';
+  };
 
   const fetchData = () => {
     if(accountData?.company?.id && accountData?.user?.id) {
@@ -118,29 +143,38 @@ function TeamTab() {
     }
   };
 
-  // Convert role_id to role string for Select component
-  const getRoleLabel = (usertype: string) => {
-    switch (usertype?.toUpperCase()) {
-      case "ADMIN":
-        return "admin";
-      case "WRITE":
-        return "write";
-      default:
-        return "read";
-    }
-  };
+
 
   const handleInviteMember = (e: React.ChangeEvent<HTMLInputElement>) => {
     setEmail(e.target.value);
+    setEmailError(validateEmail(e.target.value as string));
   }
   
   const handleAddMember = () => {
-    inviteTeamMembers(email).then((response) => {
-      if(response.status === 200) {
-        fetchData();
-      }
-    });
+    const error = validateEmail(email);
+    if(!error) {
+      inviteTeamMembers(email).then((response) => {
+        if(response.status === 200) {
+          fetchData();
+        }
+      });
+    }else{
+      setEmailError(error);
+    
+    }
   }
+
+  const handleRoleChange = (email: string, newRole: number) => {
+    // Call API to update team member role
+console.log("email", email, "newRole", newRole);
+const role = newRole === 1 ? "ADMIN" : newRole === 2 ? "READER" : "READER";
+updateUserPermission(email, role).then((response) => {
+  if(response.status === 200) {
+    fetchData();
+  }
+});
+
+  };
 
   console.log("teamMembers", teamMembers);
   
@@ -153,7 +187,7 @@ function TeamTab() {
       onChange={handleInviteMember}
         className="w-full mb-24"
         label="Add team member"
-        placeholder="Enter email"
+        placeholder={`Enter email (example@${ALLOWED_DOMAIN})`}
         InputLabelProps={{
           shrink: true,
         }}
@@ -174,6 +208,7 @@ function TeamTab() {
           ),
         }}
       />
+      <div className="text-red-400">{emailError && emailError}</div>
       <Divider />
       {(!teamMembers || teamMembers.length === 0) && (
         <Typography className="text-center my-32" color="textSecondary">
@@ -190,7 +225,7 @@ function TeamTab() {
           >
             <div className="flex flex-1 items-center">
               <ListItemAvatar>
-                <Avatar src={member.avatar} alt={`Avatar °${member.name}`} />
+                <Avatar src={member.avatar} alt={`Avatar ${member.name}`} />
               </ListItemAvatar>
               <ListItemText
                 primary={member.name}
@@ -210,6 +245,7 @@ function TeamTab() {
                   value={member.role}
                   disabled={member.role === 0}
                   size="small"
+                  onChange={(e) => handleRoleChange(member.email, e.target.value as number)}
                 >
                   {roles.map((role) => (
                     <MenuItem key={role.value} value={role.value}>
