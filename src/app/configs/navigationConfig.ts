@@ -36,6 +36,9 @@ const navigationConfig: FuseNavItemType[] = [
         type: "item",
         icon: "heroicons-outline:chart-pie",
         url: "/dashboards/analytics",
+        permisssions: {
+          "isactive": true
+        },
       },
       // {
       // 	id: 'dashboards.finance',

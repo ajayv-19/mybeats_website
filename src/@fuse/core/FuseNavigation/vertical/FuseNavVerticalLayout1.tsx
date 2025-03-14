@@ -4,6 +4,8 @@ import clsx from 'clsx';
 import FuseNavItem from '../FuseNavItem';
 import { FuseNavigationProps } from '../FuseNavigation';
 import { FuseNavItemType } from '../types/FuseNavItemType';
+import { selectAccount } from "src/app/features/account/accountSlice";
+import { useDispatch, useSelector } from "react-redux";
 
 const StyledList = styled(List)(({ theme }) => ({
 	'& .fuse-list-item': {
@@ -43,6 +45,7 @@ const StyledList = styled(List)(({ theme }) => ({
  */
 function FuseNavVerticalLayout1(props: FuseNavigationProps) {
 	const { navigation, active, dense, className, onItemClick, checkPermission } = props;
+	const account = useSelector(selectAccount);
 
 	function handleItemClick(item: FuseNavItemType) {
 		onItemClick?.(item);

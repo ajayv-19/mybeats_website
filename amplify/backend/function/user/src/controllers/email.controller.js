@@ -47,19 +47,19 @@ class EmailController {
 
     async syncMyInvites(req, res, { in_call = false }) {
         const user = req.user;
-        const AdminRoleId = Role.findOne({ where: { name: "ADMIN" } }).id;
+        const AdminRoleId = await Role.findOne({ where: { name: "ADMIN" } }).id;
         const adminUsers = await User.findAll({ where: { company_id: user.company_id, role_id: AdminRoleId } });
         const invites = await UserInvites.findAll({ where: { company_id: user.company_id } });
         const acceptedInvites = invites.filter((invite) => invite.is_accepted);
         // remove admin from invites list
-        const invitesWithoutAdmin = invites.filter((invite) => invite.email !== user.email);
-        const acceptedInvitesWithoutAdmin = invitesWithoutAdmin.filter((invite) => invite.is_accepted);
+        const invitesWithoutAdmin = invites.filter((invite) => adminUsers.every((adminUser) => adminUser.email !== invite.email));
+        // const acceptedInvitesWithoutAdmin = invitesWithoutAdmin.filter((invite) => invite.is_accepted);
         const company = await Company.findByPk(user.company_id);
         await company.update({
             number_of_admins: adminUsers.length,
             number_of_users_invited: invites.length,
             number_of_users_accepted: acceptedInvites.length,
-            license_used: acceptedInvitesWithoutAdmin.length + adminUsers.length
+            license_used: invitesWithoutAdmin.length + adminUsers.length
         });
         if (!in_call) {
             return res.status(200).json({ message: "Invites synced successfully" });

@@ -92,18 +92,9 @@ export const deleteQuickSightUser = async (email: string) => {
 	
 
 	const getUserData = await axios.post(
-		`https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/delete-user`,
-		{
-			headers: {
-				Authorization: authToken
-			},
-			params:{
-				jwtToken: authToken,
-				payloadSub,
-				email,
-			}
-		},
-	);
+		`https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/delete-user?email=${email}&jwtToken=${authToken}&payloadSub=${payloadSub}`,{},{headers: {
+			Authorization: authToken
+		}});
 	return getUserData;
 }
 export const updateUserPermission = async (email: string, role: string) => {

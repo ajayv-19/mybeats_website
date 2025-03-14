@@ -154,7 +154,7 @@ app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
     //185329004895
     console.log("Step 4: Registering user in QuickSight...");
     const registerUserParams = {
-      AwsAccountId: "1853290048",
+      AwsAccountId: "185329004895",
 
       Email: email,
       IdentityType: "IAM",

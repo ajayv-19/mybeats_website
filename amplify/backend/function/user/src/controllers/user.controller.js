@@ -49,10 +49,17 @@ const UserController = {
         });
       }
       console.log(subscription, "subscription");
-
+      const AdminRoleId = await Role.findOne({ where: { name: "ADMIN" } }).id;
       let isactive = null;
       if (subscription) {
-        if (subscription.status == "ACTIVE") {
+        let hasActiveFlag = (
+          subscription.status == "ACTIVE" &&
+          (
+            user.role_id == AdminRoleId ||
+            user.is_invited == true
+          )
+        )
+        if (hasActiveFlag) {
           isactive = true;
           const currentDate = new Date();
           const expiryDate = new Date(subscription.bill_end);
