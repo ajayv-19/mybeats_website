@@ -65,6 +65,7 @@ const addSubscription = async (customer_subscription_created) => {
     company.update({
       is_subscribed: true,
       license_used: company.license_used == 0 ? 1 : company.license_used,
+      number_of_admins: company.number_of_admins == 0 ? 1 : company.number_of_admins,
     });
     const user = await User.findByPk(user_id);
     user.update({ role_id: 1 });
@@ -539,3 +540,4 @@ class PaymentController {
   }
 }
 module.exports = new PaymentController();
+// Changed

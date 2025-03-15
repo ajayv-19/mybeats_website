@@ -56,16 +56,18 @@ const UserController = {
         });
       }
       console.log(subscription, "subscription");
-      const AdminRoleId = await Role.findOne({ where: { name: "ADMIN" } }).id;
+
+      // const AdminRoleId = await Role.findOne({ where: { name: "ADMIN" } }).id;
       let isactive = null;
       if (subscription) {
         let hasActiveFlag = (
           subscription.status == "ACTIVE" &&
           (
-            user.role_id == AdminRoleId ||
+            user.role_id == 1 ||
             user.is_invited == true
           )
         )
+        console.log(hasActiveFlag, "hasActiveFlag");
         if (hasActiveFlag) {
           isactive = true;
           const currentDate = new Date();
@@ -232,7 +234,7 @@ const UserController = {
       const newUser = await User.create({
         email,
         username: req?.cognitoUser?.username || username,
-        role_id,
+        role_id: 3,
         Customer_Name,
         usertype,
         created_timestamp,
@@ -653,4 +655,4 @@ const UserController = {
 
 module.exports = UserController;
 
-// Bank, Apple pay
+// Changed

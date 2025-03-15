@@ -211,13 +211,11 @@ class EmailController {
             });
     }
 
-    async getTemplateReplacements(templateName) {
+    getTemplateReplacements(templateName) {
         console.log("getTemplateReplacements", { templateName, user: this.request.user });
         //get company name from company id
-        // need to add await here to get the company name
-        const company = await Company.findByPk(this.request.user.company_id);
-
-        // const company =  Company.findByPk(this.request.user.company_id);
+        // const company = Company.findByPk(this.request.user.company_id);
+        const company = "My Beats";
         console.log("company", company);
         switch (templateName) {
             case "welcome":
@@ -249,3 +247,5 @@ class EmailController {
 }
 
 module.exports = new EmailController();
+
+// Changed

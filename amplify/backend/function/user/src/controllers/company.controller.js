@@ -48,7 +48,7 @@ class CompanyController {
           primary_user_id: user.id,
           policyholder_count,
           domain: user.domain,
-          number_of_admins: 1,
+          number_of_admins: 0,
           number_of_users_invited: 0,
           number_of_users_accepted: 0,
           license_used: 0
@@ -146,3 +146,4 @@ class CompanyController {
 // TEST: See if the changes are being picked up
 
 module.exports = new CompanyController();
+// Changed

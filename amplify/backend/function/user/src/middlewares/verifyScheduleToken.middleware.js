@@ -8,46 +8,46 @@ const validateScheduleToken =
       cron: "0 0 * * ? *",
     }
   ) =>
-  (req, res, next) => {
-    try {
-      // Expected payload for validation
-      const payload = JSON.stringify({
-        invokedBy: "Amazon EventBridge Scheduler",
-        user: "firebeatsapp@gmail.com",
-        ...options, // Merge with provided options
-      });
+    (req, res, next) => {
+      try {
+        // Expected payload for validation
+        const payload = JSON.stringify({
+          invokedBy: "Amazon EventBridge Scheduler",
+          user: "firebeatsapp@gmail.com",
+          ...options, // Merge with provided options
+        });
 
-      // Generate the expected token
-      const base64EncodedPayload = Buffer.from(payload).toString("base64");
-      const expectedToken = crypto
-        .createHash("md5")
-        .update(base64EncodedPayload)
-        .digest("hex");
+        // Generate the expected token
+        const base64EncodedPayload = Buffer.from(payload).toString("base64");
+        const expectedToken = crypto
+          .createHash("md5")
+          .update(base64EncodedPayload)
+          .digest("hex");
 
-      // Extract Bearer token from headers
-      const authHeader = req.headers["authorization"];
-      if (!authHeader || !authHeader.startsWith("Bearer ")) {
-        return res
-          .status(401)
-          .json({ error: "Unauthorized: Bearer token missing or malformed" });
+        // Extract Bearer token from headers
+        const authHeader = req.headers["authorization"];
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+          return res
+            .status(401)
+            .json({ error: "Unauthorized: Bearer token missing or malformed" });
+        }
+
+        const bearerToken = authHeader.split(" ")[1];
+
+        // Compare the tokens
+        if (bearerToken !== expectedToken) {
+          return res
+            .status(401)
+            .json({ error: "Unauthorized: Invalid Bearer token" });
+        }
+
+        // Token is valid, proceed to the next middleware/route
+        next();
+      } catch (error) {
+        console.error("Error validating Bearer token:", error);
+        res.status(500).json({ error: "Internal Server Error" });
       }
-
-      const bearerToken = authHeader.split(" ")[1];
-
-      // Compare the tokens
-      if (bearerToken !== expectedToken) {
-        return res
-          .status(401)
-          .json({ error: "Unauthorized: Invalid Bearer token" });
-      }
-
-      // Token is valid, proceed to the next middleware/route
-      next();
-    } catch (error) {
-      console.error("Error validating Bearer token:", error);
-      res.status(500).json({ error: "Internal Server Error" });
-    }
-  };
+    };
 
 const generateToken = (options) => {
   const payload = JSON.stringify({
@@ -76,3 +76,4 @@ console.log(
 );// 39cff1248db2d00f678fb4421fc24813
 */
 module.exports = { validateScheduleToken, generateToken };
+// Changed
