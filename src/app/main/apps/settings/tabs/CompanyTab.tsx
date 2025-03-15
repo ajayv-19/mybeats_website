@@ -241,7 +241,7 @@ function CompanyTab() {
             variant="contained"
             color="secondary"
             type="submit"
-            disabled={_.isEmpty(dirtyFields) || !isValid}
+            // disabled={_.isEmpty(dirtyFields) || !isValid}
           >
             {user?.role_id === 1 ? "Update" : "Next"}
           </Button>

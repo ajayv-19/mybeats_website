@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { fetchAuthSession } from '@aws-amplify/auth';
+import { toast } from 'sonner';
 
 
 
@@ -18,6 +19,7 @@ export const getTeamMembers = async (company_id: number, user_id: number) => {
 			
 		},
 	);
+	
 	return getUserData;
 };
 
@@ -37,6 +39,7 @@ export const inviteTeamMembers = async (email: string) => {
 			}
 		},
 	);
+	
 	return getUserData;
 };
 
@@ -56,6 +59,7 @@ export const removeTeamMembers = async (email: string) => {
 			}
 		},
 	);
+	
 	return getUserData;
 };
 
@@ -95,8 +99,11 @@ export const deleteQuickSightUser = async (email: string) => {
 		`https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/delete-user?email=${email}&jwtToken=${authToken}&payloadSub=${payloadSub}`,{},{headers: {
 			Authorization: authToken
 		}});
+		
 	return getUserData;
 }
+
+
 export const updateUserPermission = async (email: string, role: string) => {
 	
 
@@ -112,6 +119,8 @@ export const updateUserPermission = async (email: string, role: string) => {
 			},
 		},
 	);
+
+	
 	return getUserData;
 }
 

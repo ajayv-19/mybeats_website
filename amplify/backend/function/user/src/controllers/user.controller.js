@@ -7,6 +7,7 @@ const {
   CustomerQueries,
   UserInvites,
   Role,
+  Plans,
 } = require("../models");
 
 const { QuickSightClient, UpdateUserCommand, ListUsersCommand, DeleteUserCommand } = require('@aws-sdk/client-quicksight');
@@ -19,6 +20,8 @@ const stsClient = new STSClient({ region: "us-east-1" });
 
 
 const UserController = {
+
+
   async getUserById(req, res) {
     try {
       const payload = req.query;
@@ -36,6 +39,10 @@ const UserController = {
         company = await Company.findOne({ where: { id: user.company_id } });
       } else {
         company = await Company.findOne({ where: { domain: user.domain } });
+      }
+      let plan = null;
+      if (company && company.plan_id) {
+        plan = await Plans.findOne({ where: { id: company.plan_id } });
       }
       console.log(company, "company");
 
@@ -83,13 +90,14 @@ const UserController = {
        * }
        */
 
-      const userdata = { user, company, isactive };
+      const userdata = { user, company, isactive, plan };
       res.json({ success: true, userdata });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ success: false, error: "Failed to fetch user" });
     }
   },
+
 
   async canShowBilling(req, res) {
     const payload = req.query;
@@ -346,25 +354,92 @@ const UserController = {
       });
     }
     try {
-      // First fetch all invited users for the company
+      // Fetch all invited users for the company
       const invitedUsers = await UserInvites.findAll({
         where: { company_id },
       });
 
-      const companyUsers = await UserInvites.findAll({
-        where: { company_id },
+      // Get admin users who are NOT in the invites table
+      const adminUsers = await User.findAll({
+        where: { company_id, role_id: 1 },
+        attributes: ["Customer_Name", "email", "role_id", "image", "usertype"], // Fetch necessary attributes
       });
 
-      // Get user details for accepted invites
+      // Filter out admin users already in the invited list
+      const filteredAdminUsers = adminUsers.filter((adminUser) => {
+        return !invitedUsers.some(
+          (invitedUser) => invitedUser.email === adminUser.email
+        );
+      });
+
+      // Convert invited users to JSON
+      const invitedUsersData = invitedUsers.map((invite) => invite.toJSON());
+
+      // Format user details
       const formattedUsers = await Promise.all(
-        companyUsers.map(async (user) => {
-          const invitedUser = await UserInvites.findOne({
-            where: { email: user.email, company_id },
-          });
+        [...invitedUsersData, ...filteredAdminUsers].map(async (invite) => {
+          if (invite.is_accepted) {
+            // If it's an invited user who accepted the invite
+            const userDetails = await User.findOne({
+              where: {
+                email: invite.email,
+                is_varified: true,
+              },
+              attributes: [
+                "Customer_Name",
+                "email",
+                "role_id",
+                "image",
+                "usertype",
+              ],
+            });
+            return {
+              id: invite.id || null,
+              email: invite.email,
+              invitedBy: invite.invitedBy || null,
+              company_id: invite.company_id,
+              is_accepted: invite.is_accepted || null,
+              invited_at: invite.invited_at || null,
+              created_at: invite.created_at || null,
+              updated_at: invite.updated_at || null,
+              deletedAt: invite.deletedAt || null,
+              userDetails: userDetails || null,
+            };
+          }
+
+          // If it's an admin, return their details directly
+          if (invite.role_id === 1) {
+            return {
+              id: null,
+              email: invite.email,
+              invitedBy: null,
+              company_id: company_id,
+              is_accepted: null,
+              invited_at: null,
+              created_at: null,
+              updated_at: null,
+              deletedAt: null,
+              userDetails: {
+                Customer_Name: invite.Customer_Name,
+                email: invite.email,
+                role_id: invite.role_id,
+                image: invite.image,
+                usertype: invite.usertype,
+              },
+            };
+          }
+
           return {
-            ...user,
-            invite: invitedUser,
-            invite_accepted: invitedUser.is_accepted,
+            id: invite.id || null,
+            email: invite.email,
+            invitedBy: invite.invitedBy || null,
+            company_id: invite.company_id,
+            is_accepted: invite.is_accepted || null,
+            invited_at: invite.invited_at || null,
+            created_at: invite.created_at || null,
+            updated_at: invite.updated_at || null,
+            deletedAt: invite.deletedAt || null,
+            userDetails: null,
           };
         })
       );
@@ -571,6 +646,7 @@ const UserController = {
       res.status(500).json({ error: 'Failed to delete user', details: error.message });
     }
   }
+
 
 
 };

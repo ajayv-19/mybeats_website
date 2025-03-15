@@ -19,10 +19,14 @@ import { useEffect, useState } from "react";
 import { deleteQuickSightUser, getTeamMembers, inviteTeamMembers, removeTeamMembers, updateUserPermission } from "../apis/Teamapis";
 import { useDispatch } from "react-redux";
 import { useSelector } from "react-redux";
+import { useAppDispatch, useAppSelector } from "app/store/hooks";
 import { fetchAccountDetails, selectAccount } from "src/app/features/account/accountSlice";
 import { log } from "console";
 import { ChangeEventHandler } from "preact/compat";
-import { set } from "lodash";
+import { has, set } from "lodash";
+import FuseLoading from "@fuse/core/FuseLoading";
+import SendIcon from '@mui/icons-material/Send';
+import { toast } from "sonner";
 
 const roles = [
   {
@@ -71,18 +75,45 @@ interface ApiResponse {
 }
 
 function TeamTab() {
-  const dispatch = useDispatch();
+  const dispatch = useAppDispatch();
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState('');
-  const accountData = useSelector(selectAccount);
+  const accountData = useSelector(selectAccount) as unknown as {
+    plan: any; user: {
+    id: any; email: string; role_id: number 
+}; company: {
+    id: any; license_used: number 
+} 
+};
+  const [loading, setLoading] = useState(false); // Add loading state
   const ALLOWED_DOMAIN = accountData?.user?.email.split('@')[1];
+  
+  const licenseUsed = accountData?.company?.license_used || 0;
+  const teamSize = accountData?.plan?.team_size || 0;
+  const isInputDisabled = licenseUsed >= teamSize;
 
   console.log("accountData", accountData);
   const [data, setData] = useState<ApiResponse | null>({ success: false, invitedUsers: [], message: "" });
   console.log("accountData", accountData);
+
+  // Fetch account details only once when the component mounts
+  // useEffect(() => {
+
+  //   dispatch(fetchAccountDetails() as any);
+
+  // }, [dispatch]);
+
   useEffect(() => {
-    dispatch(fetchAccountDetails() as any);
-  }, [dispatch])
+    const fetchAccount = async () => {
+      setLoading(true); // Start loading
+      try {
+        await dispatch(fetchAccountDetails() as any);
+      } finally {
+        setLoading(false); // Stop loading
+      }
+    };
+    fetchAccount();
+  }, [dispatch]);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
@@ -103,17 +134,28 @@ function TeamTab() {
     return '';
   };
 
-  const fetchData = () => {
+
+
+  const fetchData = async () => {
     if (accountData?.company?.id && accountData?.user?.id) {
-      getTeamMembers(accountData?.company?.id, accountData?.user?.id).then((response) => {
-        console.log("response", response);
+      try {
+        setLoading(true); // Start loading
+        const response = await getTeamMembers(accountData?.company?.id, accountData?.user?.id);
+        if (response.status !== 200) {
+          setData(response.data);
+        }
         setData(response.data);
-      });
+      } catch (error) {
+        console.error("Error fetching team members:", error);
+      }finally {
+        setLoading(false); // Stop loading
+      }
     } else {
       console.log("No data");
     }
   };
 
+  // Fetch team members when accountData changes
   useEffect(() => {
     fetchData();
   }, [accountData]);
@@ -128,18 +170,42 @@ function TeamTab() {
       role: user.userDetails?.role_id || 0,
     }));
 
-  console.log("teamMembers", teamMembers);
+  console.log("teamMembers", {teamMembers,accountData});
 
-  const handleRemoveMember = (email: string) => {
+  const handleRemoveMember = async (email: string) => {
+    
     if (teamMembers) {
-      removeTeamMembers(email).then((response) => {
-        if (response.status === 200) {
-          fetchData();
+      let hasError = false;
+      setLoading(true);
+      try {
+        const response = await removeTeamMembers(email);
+        if (!response) {
+          toast.error("Failed to remove member");
+          hasError = true;
         }
-      });
-      deleteQuickSightUser(email);
+        if (response.status === 200) {
+          await fetchData(); // Update team members state
+          dispatch(fetchAccountDetails()); // Fetch updated license_used
+        }
+      } catch (error) {
+        console.log("Failed to remove member", error);
+        if (!hasError) {
+          toast.error("Failed to remove member");
+          hasError = true;
+        }
+      }finally {
+        setLoading(false); // Stop loading
+      }
+
+      try {
+        await deleteQuickSightUser(email);
+      } catch (error) {
+        // if (!hasError) {
+        //   alert("Failed to remove member");
+        //   hasError = true;
+        // }
+      }
       console.log("Remove member", email);
-      //updateTeamMembers(teamMembers.filter((member) => member.email !== email));
     }
   };
 
@@ -148,7 +214,7 @@ function TeamTab() {
     setEmailError(validateEmail(e.target.value as string));
   }
 
-  const handleAddMember = () => {
+  const handleAddMember = async () => {
     const error = validateEmail(email);
     if (error) {
       setEmailError(error);
@@ -159,33 +225,55 @@ function TeamTab() {
       setEmailError("User is already invited");
       return;
     }
-
-    inviteTeamMembers(email).then((response) => {
+    setLoading(true);
+    try {
+      const response = await inviteTeamMembers(email);
+      if (!response || response.status !== 200) {
+       toast.error("Failed to invite user");
+        return;
+      }
       if (response.status === 200) {
-        fetchData();
+        await fetchData();
+        dispatch(fetchAccountDetails());
         setEmail("");
         setEmailError("");
       }
-    }).catch((error) => {
+    } catch (error) {
       setEmailError("Failed to invite user");
-    });
+    }finally {
+      setLoading(false); // Stop loading
+    }
     console.log("Add member clicked", email);
-  }
+  };
 
-  const handleRoleChange = (email: string, newRole: number) => {
-    // Call API to update team member role
+  const handleRoleChange = async (email: string, newRole: number) => {
     console.log("email", email, "newRole", newRole);
     const role = newRole === 1 ? "ADMIN" : newRole === 2 ? "READER" : "READER";
-    updateUserPermission(email, role).then((response) => {
+    try {
+      const response = await updateUserPermission(email, role);
+      console.log("response------>", response);
+      
+      if (!response || response.status !== 200) {
+        toast.error("Failed to update user role");
+        return;
+      }
       if (response.status === 200) {
         fetchData();
       }
-    });
+    } catch (error) {
+
+      toast.error("Failed to update user role");
+      console.error("Failed to update user role:", error);
+    }
   };
 
   console.log("teamMembers", teamMembers);
 
-  return (
+  const isUserAdmin = accountData?.user?.role_id === 1;
+  //raplace with actual isUserAdmin check
+
+
+  return loading ? <FuseLoading/> :(
     <div>
       <TextField
         value={email}
@@ -198,6 +286,7 @@ function TeamTab() {
         InputLabelProps={{
           shrink: true,
         }}
+        disabled={!isUserAdmin|| isInputDisabled}
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
@@ -206,15 +295,32 @@ function TeamTab() {
           ),
           endAdornment: (
             <InputAdornment position="end">
-              <IconButton onClick={handleAddMember}>
-                <FuseSvgIcon size={20}>
-                  heroicons-outline:plus-circle
-                </FuseSvgIcon>
+              <IconButton onClick={handleAddMember}
+              disabled={!isUserAdmin || isInputDisabled}
+              >
+              <SendIcon color={!isUserAdmin || isInputDisabled ? "disabled" : "primary"} />
               </IconButton>
             </InputAdornment>
           ),
         }}
+        sx={{
+          "& .MuiOutlinedInput-root": {
+            ...(isInputDisabled && {
+              backgroundColor: "#f5f5f5", // Light gray background when disabled
+              "& fieldset": {
+                borderColor: "red", // Red border when disabled
+              },
+            }),
+          },
+        }}
+
       />
+<Typography variant="h6" className="mb-16">
+  Team Size: {accountData?.company?.license_used || 0}/{accountData?.plan?.team_size || 0}
+  {isInputDisabled && (
+    <span style={{ color: "red", marginLeft: "8px" }}> (Invite limit is reached)</span>
+  )}
+</Typography>
       <Divider />
       {(!teamMembers || teamMembers.length === 0) && (
         <Typography className="text-center my-32" color="textSecondary">
@@ -253,15 +359,20 @@ function TeamTab() {
                   size="small"
                   onChange={(e) => handleRoleChange(member.email, e.target.value as number)}
                 >
-                  {roles.map((role) => (
-                    <MenuItem key={role.value} value={role.value}>
-                      {role.label}
-                    </MenuItem>
-                  ))}
+                  {member.role === 0 ? (
+                    <MenuItem value={0}>Not-Defined</MenuItem>
+                  ) : (
+                    roles
+                      .filter(role => role.value === 1 || role.value === 2)
+                      .map((role) => (
+                        <MenuItem key={role.value} value={role.value} disabled={!isUserAdmin}>
+                          {role.label}
+                        </MenuItem>
+                      ))
+                  )}
                 </Select>
               </div>
-              <IconButton onClick={() => handleRemoveMember(member.email)} >
-              {/* disabled={member?.role_id === 1} */}
+              <IconButton disabled={!isUserAdmin} onClick={() => handleRemoveMember(member.email)} >
                 <FuseSvgIcon>heroicons-outline:trash</FuseSvgIcon>
               </IconButton>
             </div>

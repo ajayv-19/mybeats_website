@@ -8,6 +8,7 @@ import { CompanyFormInput } from "src/app/main/apps/settings/types/CompanyTypes.
 type CompanyReduxType = {
   localCompanyData: CompanyFormInput;
   subscription: any; // Add proper type based on your subscription data structure
+  number_of_users_invited?: number; // Optional field if needed
   loading: boolean;
   error: any;
 };
@@ -15,6 +16,7 @@ type CompanyReduxType = {
 const initialState: CompanyReduxType = {
   localCompanyData: null,
   subscription: null,
+  number_of_users_invited: 0,
   loading: false,
   error: null,
 };

@@ -79,40 +79,43 @@ function FuseNavVerticalItem(props: FuseNavItemComponentProps) {
 	if(keys.reduce((col,[key, value]) => col && (account[key] == value), true) == false ) {
 		return null;
 	}
+	const ReturnComponent = () => (
+		<Root
+			component={component}
+			className={clsx('fuse-list-item', item.active && 'active')}
+			onClick={() => onItemClick && onItemClick(item)}
+			itempadding={itempadding}
+			sx={item.sx}
+			{...itemProps}
+		>
+			{item.icon && (
+				<FuseSvgIcon
+					className={clsx('fuse-list-item-icon shrink-0', item.iconClass)}
+					color="action"
+				>
+					{item.icon}
+				</FuseSvgIcon>
+			)}
 
+			<ListItemText
+				className="fuse-list-item-text"
+				primary={item.title}
+				secondary={item.subtitle}
+				classes={{
+					primary: 'text-md font-medium fuse-list-item-text-primary truncate',
+					secondary: 'text-sm font-medium fuse-list-item-text-secondary leading-normal truncate'
+				}}
+			/>
+			{item.badge && <FuseNavBadge badge={item.badge} />}
+		</Root>
+	);
+	return <ReturnComponent />;
+	/*
 	return useMemo(
-		() => (
-			<Root
-				component={component}
-				className={clsx('fuse-list-item', item.active && 'active')}
-				onClick={() => onItemClick && onItemClick(item)}
-				itempadding={itempadding}
-				sx={item.sx}
-				{...itemProps}
-			>
-				{item.icon && (
-					<FuseSvgIcon
-						className={clsx('fuse-list-item-icon shrink-0', item.iconClass)}
-						color="action"
-					>
-						{item.icon}
-					</FuseSvgIcon>
-				)}
-
-				<ListItemText
-					className="fuse-list-item-text"
-					primary={item.title}
-					secondary={item.subtitle}
-					classes={{
-						primary: 'text-md font-medium fuse-list-item-text-primary truncate',
-						secondary: 'text-sm font-medium fuse-list-item-text-secondary leading-normal truncate'
-					}}
-				/>
-				{item.badge && <FuseNavBadge badge={item.badge} />}
-			</Root>
-		),
+		ReturnComponent,
 		[item, itempadding, onItemClick]
 	);
+	*/
 }
 
 const NavVerticalItem = FuseNavVerticalItem;
