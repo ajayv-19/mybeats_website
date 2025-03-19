@@ -3,8 +3,10 @@ import AppBar from "@mui/material/AppBar";
 import Hidden from "@mui/material/Hidden";
 import Toolbar from "@mui/material/Toolbar";
 import clsx from "clsx";
-import { memo } from "react";
+import { memo, useEffect, useState } from "react";
 import Button from "@mui/material/Button";
+import Avatar from "@mui/material/Avatar";
+import Typography from "@mui/material/Typography";
 import {
   selectFuseCurrentLayoutConfig,
   selectToolbarTheme,
@@ -14,25 +16,14 @@ import NotificationPanelToggleButton from "src/app/main/apps/notifications/Notif
 import NavbarToggleButton from "app/theme-layouts/shared-components/navbar/NavbarToggleButton";
 import { selectFuseNavbar } from "app/theme-layouts/shared-components/navbar/navbarSlice";
 import { useAppSelector } from "app/store/hooks";
-import LightDarkModeToggle from "app/shared-components/LightDarkModeToggle";
-import themeOptions from "app/configs/themeOptions";
-import _ from "@lodash";
 import AdjustFontSize from "../../shared-components/AdjustFontSize";
 import FullScreenToggle from "../../shared-components/FullScreenToggle";
-import LanguageSwitcher from "../../shared-components/LanguageSwitcher";
-import NavigationShortcuts from "../../shared-components/navigation/NavigationShortcuts";
-import NavigationSearch from "../../shared-components/navigation/NavigationSearch";
-import QuickPanelToggleButton from "../../shared-components/quickPanel/QuickPanelToggleButton";
 import { useLocation, useNavigate } from "react-router-dom";
 import useAuth from "src/app/auth/useAuth";
 import {
-  fetchAccountDetails,
   selectAccount,
-  selectAccountLoading,
-  submitAccountDetails,
 } from "src/app/features/account/accountSlice";
-import { useDispatch, useSelector } from "react-redux";
-import { useState, ReactNode, useEffect } from "react";
+import { useSelector } from "react-redux";
 import { useModal } from "src/app/context/dashboardmodelcontext";
 
 type ToolbarLayout1Props = {
@@ -43,16 +34,18 @@ type ToolbarLayout1Props = {
  * The toolbar layout 1.
  */
 function ToolbarLayout1(props: ToolbarLayout1Props) {
-  // const [qaModel, setQaModel] = useState(false);
   const { qaModal, setQaModal } = useModal();
   const location = useLocation();
   const account = useSelector(selectAccount);
-  console.log({ account }, "account");
   const [showDemo, setShowDemo] = useState<boolean>();
+  const [fullName, setFullName] = useState<string>("");
+  const [profileImage, setProfileImage] = useState<string>("");
 
   useEffect(() => {
     if (account) {
       setShowDemo(account.isactive);
+      setFullName(account.user?.Customer_Name || "Guest");
+      setProfileImage(account.user?.image || "");
     }
   }, [account]);
 
@@ -72,6 +65,7 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
       navigate("/sign-in?demo=true"), window.location.reload();
     }, 1000);
   };
+
   return (
     <ThemeProvider theme={toolbarTheme}>
       <AppBar
@@ -88,7 +82,26 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
         elevation={0}
       >
         <Toolbar className="min-h-48 p-0 md:min-h-64">
-          <div className="flex flex-1 px-8 md:px-16 space-x-8 ">
+          {/* Left Section: Image and Name */}
+          <div className="flex items-center space-x-8 px-8 md:px-16">
+            <Avatar
+              sx={{
+                background: (theme) => theme.palette.background.default,
+                color: (theme) => theme.palette.text.secondary,
+              }}
+              className="w-40 h-40"
+              alt="User Photo"
+              src={profileImage}
+            >
+              {fullName?.[0]} {/* Show the first letter of the name if no image */}
+            </Avatar>
+            <Typography className="text-lg font-semibold truncate">
+            Welcome back,{fullName} !
+            </Typography>
+          </div>
+
+          {/* Navbar Toggle and Shortcuts */}
+          <div className="flex flex-1 px-8 md:px-16 space-x-8">
             {config.navbar.display && config.navbar.position === "left" && (
               <>
                 <Hidden lgDown>
@@ -109,27 +122,14 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
             )}
 
             <Hidden lgDown>
-              <NavigationShortcuts />
+              {/* Navigation Shortcuts */}
             </Hidden>
           </div>
 
+          {/* Right Section: Buttons and Toggles */}
           <div className="flex items-center overflow-x-auto px-8 md:px-16 space-x-6">
-            {/* <LanguageSwitcher /> */}
             <AdjustFontSize />
             <FullScreenToggle />
-            {/* <LightDarkModeToggle
-              lightTheme={_.find(themeOptions, { id: "Default" })}
-              darkTheme={_.find(themeOptions, { id: "Default Dark" })}
-            /> */}
-            {/* <NavigationSearch /> */}
-            {/* <QuickPanelToggleButton />
-            <NotificationPanelToggleButton /> */}
-            {/* <button
-              onClick={handleFreeTrial}
-              className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0 h-auto w-auto min-w-0 px-8 py-4"
-            >
-              View Demo
-            </button> */}
             {!showDemo && (
               <Button
                 variant="contained"
@@ -142,25 +142,19 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
                 View Demo
               </Button>
             )}
-             {location.pathname === "/dashboards/analytics" &&<Button
-            variant="contained"
-            // onClick={handleButtonClick}
-            size="small"
-            color="secondary"
-             className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
-            // className="m-6 z-10 rounded p-0 text-md min-h-0 h-32 w-auto min-w-0 px-24 !mt-0 "
-            // style={{ width: '200px' }}
-            classes={{ startIcon: "mr-4" }}
-            onClick={() => setQaModal(true)}
-            // startIcon={
-            //   <FuseSvgIcon size={20}>heroicons-solid:envelope</FuseSvgIcon>
-            // }
-          >
-            Ask FINN
-          </Button>}
+            {location.pathname === "/dashboards/analytics" && (
+              <Button
+                variant="contained"
+                size="small"
+                color="secondary"
+                className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
+                classes={{ startIcon: "mr-4" }}
+                onClick={() => setQaModal(true)}
+              >
+                Ask FINN
+              </Button>
+            )}
           </div>
-           
-         
 
           {config.navbar.display && config.navbar.position === "right" && (
             <>

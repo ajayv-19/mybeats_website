@@ -1,5 +1,4 @@
-import _ from "lodash";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useSelector, useDispatch } from "react-redux";
 import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,91 +6,102 @@ import { z } from "zod";
 import TextField from "@mui/material/TextField";
 import { Button, Divider, InputAdornment } from "@mui/material";
 import FuseSvgIcon from "@fuse/core/FuseSvgIcon";
+import FuseLoading from "@fuse/core/FuseLoading";
 import { AppDispatch } from "app/store/store";
 import {
   selectAccount,
   submitCompanyDetails,
 } from "src/app/features/account/accountSlice";
-import { setCompanyDataLocally } from "src/app/features/company/companySlice";
 import AuthorityForm from "../tabcomponents/AuthorityForm";
-import { CompanyFormInput } from "../types/CompanyTypes.types";
 import { useNavigate } from "react-router";
 
-// Get the form type of the settings company
-type FormType = CompanyFormInput;
+// Define the form schema using Zod
+const schema = z.object({
+  companyName: z.string().min(1, "Company Name is required"),
+  phoneNumber: z
+    .string()
+    .min(1, "Phone number is required")
+    .regex(/^\d{10}$/, "Phone number must be exactly 10 digits"),
+  website: z.string().url("Invalid website URL").optional(),
+  policyholderCount: z.coerce
+    .number()
+    .min(1, "Enter the amount of policyholders"),
+});
 
-// Default values for the company
-const defaultValues: FormType = {
+// Default form values
+const defaultValues = {
   companyName: null,
   phoneNumber: null,
   website: null,
   policyholderCount: null,
 };
 
-/**
- * Form Validation Schema
- */
-const schema = z.object({
-  companyName: z.string().min(1, "Company Name is required"), //  Company name is required
-  phoneNumber: z
-    .string()
-    .min(1, "Phone number is required") // Phone number is required
-    .regex(/^\d{10}$/, "Phone number must be exactly 10 digits"), // Ensure phone number is exactly 10 digits
-  website: z.string().url("Invalid website URL").optional(), //  Website should be in the format of the url
-  policyholderCount: z.coerce
-    .number()
-    .min(1, "Enter the amount of policyholders"), // Policy Holder count should be greater than 1
-});
-
 function CompanyTab() {
-  const dispatch = useDispatch<AppDispatch>(); // declare dispatch
+  const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
 
-  const { company, user } = useSelector(selectAccount); // get company from the account
+  const { company } = useSelector(selectAccount);
 
-  // Use Form for the company information form
-  const { control, reset, handleSubmit, formState } = useForm<FormType>({
+  const { control, reset, handleSubmit, formState } = useForm({
     defaultValues,
     mode: "all",
     resolver: zodResolver(schema),
   });
 
-  const { isValid, dirtyFields, errors } = formState; // unpack the form state
+  const { isValid, dirtyFields, errors } = formState;
 
-  // STATES
-  const [userIsAuthorized, setUserIsAuthorized] = useState(!!company);
+  // States
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (company) {
-      // When there is company information in the redux
-      // set the default values for the company form
+      // Populate form fields with company data
       reset({
         companyName: company.Company_Name ?? null,
         phoneNumber: company.phone_number ?? null,
         website: company.website ?? null,
         policyholderCount: company.policyholder_count ?? null,
       });
-    }
-  }, [company, reset]); // Trigger reset whenever `company` data changes
 
-  /**
-   * Handling submission of the company form
-   * @param formData
-   */
-  const onSubmit = (formData: FormType) => {
+      // Set authorization state based on subscription status
+      setIsAuthorized(!!company.is_subscribed);
+      setLoading(false); // Stop loading once data is fetched
+    } else {
+      setLoading(false); // Stop loading even if no company data is available
+    }
+  }, [company, reset]);
+
+  const onSubmit = (formData) => {
+    if (!isValid) {
+      return; // Prevent submission if the form is invalid
+    }
+
     dispatch(submitCompanyDetails({ formData }));
     navigate("/apps/settings/plan-billing");
   };
 
-  // If user is not authorized to see the company form
-  // Show them the Authority Form
-  if (!userIsAuthorized)
+  // Show loading spinner while fetching data
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <FuseLoading />
+      </div>
+    );
+  }
+
+  // Show AuthorityForm if the user is not authorized
+  if (!isAuthorized) {
     return (
       <AuthorityForm
-        authorizeUser={(isAuthorized) => setUserIsAuthorized(isAuthorized)}
+        authorizeUser={(isAuthorized) => {
+          setIsAuthorized(isAuthorized);
+        }}
       />
     );
+  }
 
+  // Show the main form if the user is authorized
   return (
     <div className="w-full max-w-3xl">
       <form onSubmit={handleSubmit(onSubmit)}>
@@ -99,7 +109,6 @@ function CompanyTab() {
           {/* Company Name */}
           <div className="sm:col-span-2">
             <Controller
-              // disabled={!!company}
               control={control}
               name="companyName"
               render={({ field }) => (
@@ -131,15 +140,10 @@ function CompanyTab() {
           <div className="sm:col-span-2">
             <Controller
               control={control}
-              // disabled={!!company}
               name="phoneNumber"
               render={({ field }) => (
                 <TextField
                   {...field}
-                  // disabled={
-                  //   !company?.is_subscribed ||
-                  //   (company?.is_subscribed && user.role_id !== 1)
-                  // }
                   label="Phone Number"
                   placeholder="Phone"
                   id="phone"
@@ -164,14 +168,10 @@ function CompanyTab() {
         </div>
 
         <div className="mt-32 grid w-full gap-24 sm:grid-cols-4">
-          {/* Website of the company */}
+          {/* Website */}
           <div className="sm:col-span-2">
             <Controller
               control={control}
-              // disabled={
-              //   !company?.is_subscribed ||
-              //   (company?.is_subscribed && user.role_id !== 1)
-              // }
               name="website"
               render={({ field }) => (
                 <TextField
@@ -201,10 +201,6 @@ function CompanyTab() {
           <div className="sm:col-span-2">
             <Controller
               control={control}
-              // disabled={
-              //   !company?.is_subscribed ||
-              //   (company?.is_subscribed && user.role_id !== 1)
-              // }
               name="policyholderCount"
               render={({ field }) => (
                 <TextField
@@ -221,7 +217,7 @@ function CompanyTab() {
                     startAdornment: (
                       <InputAdornment position="start">
                         <FuseSvgIcon size={20}>
-                          heroicons-solid:envelope
+                          heroicons-solid:users
                         </FuseSvgIcon>
                       </InputAdornment>
                     ),
@@ -234,16 +230,16 @@ function CompanyTab() {
 
         <Divider className="mb-40 mt-44 border-t" />
 
-        {/* Form Buttons  */}
+        {/* Form Buttons */}
         <div className="flex items-center justify-end space-x-8">
           <Button variant="outlined">Cancel</Button>
           <Button
             variant="contained"
             color="secondary"
             type="submit"
-            // disabled={_.isEmpty(dirtyFields) || !isValid}
+            disabled={!isValid || Object.keys(dirtyFields).length === 0} // Disable button if form is invalid or no fields are dirty
           >
-            {user?.role_id === 1 ? "Update" : "Next"}
+            {company?.is_subscribed ? "Update" : "Next"}
           </Button>
         </div>
       </form>

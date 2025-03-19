@@ -137,6 +137,7 @@ export const submitCompanyDetails = createAsyncThunk(
         email,
         user_id,
         policyholder_count: formData.policyholderCount,
+        website: formData.website,
       };
 
       const response = await axios.post(

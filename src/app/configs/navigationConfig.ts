@@ -1037,10 +1037,10 @@ const navigationConfig: FuseNavItemType[] = [
   // 	]
   // },
 
-  {
-    id: "divider-1",
-    type: "divider",
-  },
+  // {
+  //   id: "divider-1",
+  //   type: "divider",
+  // },
 
   // DocumentationNavigation,
   // {
@@ -1121,10 +1121,10 @@ const navigationConfig: FuseNavItemType[] = [
   // 	]
   // },
 
-  {
-    type: "divider",
-    id: "divider-2",
-  },
+  // {
+  //   type: "divider",
+  //   id: "divider-2",
+  // },
 
   // {
   // 	id: 'navigation-features',

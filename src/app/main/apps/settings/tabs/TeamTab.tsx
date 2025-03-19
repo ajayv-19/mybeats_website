@@ -42,7 +42,7 @@ const roles = [
       "Can read, clone, and push to this repository. Can also manage issues, pull requests, and repository settings, including adding collaborators.",
   },
   {
-    label: "Not-Defined",
+    label: "Invite-Pending",
     value: 0,
     description:
       "Can read, clone, and push to this repository. Can also manage issues, pull requests, and repository settings, including adding collaborators.",
@@ -79,7 +79,8 @@ function TeamTab() {
   const [email, setEmail] = useState("");
   const [emailError, setEmailError] = useState('');
   const accountData = useSelector(selectAccount) as unknown as {
-    plan: any; user: {
+    plan: any;
+   user: {
     id: any; email: string; role_id: number 
 }; company: {
     id: any; license_used: number 
@@ -349,9 +350,19 @@ function TeamTab() {
             <div className="flex items-center space-x-4">
               <div>
                 <Select
+                  // sx={{
+                  //   "& .MuiSelect-select": {
+                  //     minHeight: "0!important",
+                  //   },
+                  // }}
                   sx={{
                     "& .MuiSelect-select": {
                       minHeight: "0!important",
+                      backgroundColor: member.role === 0 ? "#f5f5f5" : "inherit", // Light gray background when disabled
+                      color: member.role === 0 ? "gray" : "inherit", // Gray text when disabled
+                    },
+                    "& .MuiOutlinedInput-notchedOutline": {
+                      borderColor: member.role === 0 ? "red" : "inherit", // Red border when disabled
                     },
                   }}
                   value={member.role}
@@ -360,7 +371,7 @@ function TeamTab() {
                   onChange={(e) => handleRoleChange(member.email, e.target.value as number)}
                 >
                   {member.role === 0 ? (
-                    <MenuItem value={0}>Not-Defined</MenuItem>
+                    <MenuItem value={0}>Invite-Pending</MenuItem>
                   ) : (
                     roles
                       .filter(role => role.value === 1 || role.value === 2)
