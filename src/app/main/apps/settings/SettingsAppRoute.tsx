@@ -26,17 +26,17 @@ const SettingsAppRoute: FuseRouteItemType = {
 			element: <CompanyTab />
 		},
 		{
-			path: 'security',
+			path: 'policyholders',
 			element: <SecurityTab />
 		},
 		{
 			path: 'plan-billing',
 			element: <PlanBillingTab />
 		},
-		{
-			path: 'security',
-			element: <SecurityTab />
-		},
+		// {
+		// 	path: 'security',
+		// 	element: <SecurityTab />
+		// },
 		{
 			path: 'notifications',
 			element: <NotificationsTab />

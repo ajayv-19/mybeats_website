@@ -1,233 +1,221 @@
-import { Controller, useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
-import FuseSvgIcon from '@fuse/core/FuseSvgIcon';
-import FormControlLabel from '@mui/material/FormControlLabel';
-import Switch from '@mui/material/Switch';
-import FormHelperText from '@mui/material/FormHelperText';
-import Divider from '@mui/material/Divider';
-import Button from '@mui/material/Button';
-import Typography from '@mui/material/Typography';
-import _ from '@lodash';
-import { useEffect } from 'react';
-import { AxiosError } from 'axios';
-import { SettingsSecurity, useGetSecuritySettingsQuery, useUpdateSecuritySettingsMutation } from '../SettingsApi';
+import React, { useState, useEffect } from "react";
+import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
+import Papa from "papaparse";
+import { fetchPolicyHolders, addPolicyHolders } from "../apis/Policyholdersapis"; // Replace with actual API service
 
-type FormType = SettingsSecurity;
+function PolicyHolders() {
+  const [existingPolicyHolders, setExistingPolicyHolders] = useState([]); // State for existing rows
+  const [csvData, setCsvData] = useState([]); // State for parsed CSV data
+  const [isDialogOpen, setIsDialogOpen] = useState(false); // State for dialog visibility
+  const [isSubmitting, setIsSubmitting] = useState(false); // State for submit button loading
+  const [uploadError, setUploadError] = useState(""); // State for upload error messages
 
-const defaultValues: FormType = {
-	currentPassword: '',
-	newPassword: '',
-	twoStepVerification: false,
-	askPasswordChange: false
-};
+  const requiredHeaders = ["PolicyID", "Department"]; // Required headers for validation
 
-/**
- * Form Validation Schema
- */
-const schema = z.object({
-	currentPassword: z.string(),
-	newPassword: z.string().min(6, 'Password must be at least 6 characters').or(z.literal('')).optional(),
-	twoStepVerification: z.boolean(),
-	askPasswordChange: z.boolean()
-});
+  // Fetch existing policyholders from the backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const response = await fetchPolicyHolders(); // Replace with actual API call
+        setExistingPolicyHolders(response.data || []);
+      } catch (error) {
+        console.error("Error fetching policyholders:", error);
+      }
+    };
+    fetchData();
+  }, []);
 
-function SecurityTab() {
-	const { data: securitySettings } = useGetSecuritySettingsQuery();
-	const [updateSecuritySettings, { error: updateError, isSuccess }] = useUpdateSecuritySettingsMutation<{
-		isSuccess: boolean;
-		error: AxiosError<
-			{
-				name: keyof FormType;
-				message: string;
-			}[]
-		>;
-	}>();
+  // Handle CSV file upload
+  const handleFileUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
 
-	const { control, setError, reset, handleSubmit, formState } = useForm<FormType>({
-		defaultValues,
-		mode: 'all',
-		resolver: zodResolver(schema)
-	});
+    Papa.parse(file, {
+      header: true, // Treat the first row as headers
+      skipEmptyLines: true,
+      complete: (result) => {
+        const headers = Object.keys(result.data[0] || {}).map((header) =>
+          header.trim().toLowerCase()
+        );
+		console.log("Extracted Headers:", headers);
+        const isValid = requiredHeaders.every((header) =>
+          headers.includes(header.toLowerCase())
+        );
+        console.log("Validation Result:", isValid);
+        if (!isValid) {
+          setUploadError(
+            "Wrong format CSV file uploaded. Please download the given template and try again."
+          );
+          setCsvData([]); // Clear any previously uploaded data
+        } else {
+          setUploadError(""); // Clear any previous errors
+          setCsvData(result.data); // Store parsed data
+        }
+      },
+      error: (error) => {
+        console.error("Error parsing CSV:", error);
+        setUploadError("Failed to parse CSV file. Please check the file format.");
+      },
+    });
+  };
 
-	const { isValid, dirtyFields, errors } = formState;
+  // Handle submitting CSV data to the backend
+  const handleSubmit = async () => {
+    if (csvData.length === 0) {
+      alert("No data to submit. Please upload a valid CSV file.");
+      return;
+    }
 
-	useEffect(() => {
-		reset(securitySettings);
-	}, [securitySettings, reset]);
+    setIsSubmitting(true);
+    try {
+      await addPolicyHolders(csvData); // Replace with actual API call
+      alert("Policy holders added successfully!");
+      setCsvData([]); // Clear the uploaded data
+      setIsDialogOpen(false); // Close the dialog
+      // Refresh existing policyholders
+      const response = await fetchPolicyHolders();
+      setExistingPolicyHolders(response.data || []);
+    } catch (error) {
+      console.error("Error adding policyholders:", error);
+      alert("Failed to add policyholders. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
-	useEffect(() => {
-		reset({ ...securitySettings, currentPassword: '', newPassword: '' });
-	}, [isSuccess]);
+  // Handle closing the dialog
+  const handleCloseDialog = () => {
+    setIsDialogOpen(false);
+    setUploadError(""); // Reset the error message
+    setCsvData([]); // Clear any previously uploaded data
+  };
 
-	useEffect(() => {
-		if (updateError) {
-			updateError?.response?.data?.map((err) => {
-				setError(err.name, { type: 'manual', message: err.message });
-				return undefined;
-			});
-		}
-	}, [updateError, setError]);
+  // Handle downloading the CSV template
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      ["PolicyID", "Department"], // Example headers
+    ];
+    const csvContent = Papa.unparse(templateData);
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.setAttribute("download", "policyholders_template.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
-	/**
-	 * Form Submit
-	 */
-	function onSubmit(formData: FormType) {
-		updateSecuritySettings(formData);
-	}
+  return (
+    <div>
+      {/* Header with Breadcrumbs */}
+      <Typography variant="h4" gutterBottom>
+        Policy Holders
+      </Typography>
 
-	return (
-		<div className="w-full max-w-3xl">
-			<form onSubmit={handleSubmit(onSubmit)}>
-				<div className="w-full">
-					<Typography className="text-xl">Change your password</Typography>
-					<Typography color="text.secondary">
-						You can only change your password twice within 24 hours!
-					</Typography>
-				</div>
-				<div className="mt-32 grid w-full gap-6 sm:grid-cols-4 space-y-32">
-					<div className="sm:col-span-4">
-						<Controller
-							name="currentPassword"
-							control={control}
-							render={({ field }) => (
-								<TextField
-									{...field}
-									label="Current password (default:changeme)"
-									type="password"
-									error={!!errors.currentPassword}
-									helperText={errors?.currentPassword?.message}
-									variant="outlined"
-									fullWidth
-									InputProps={{
-										startAdornment: (
-											<InputAdornment position="start">
-												<FuseSvgIcon size={20}>heroicons-solid:key</FuseSvgIcon>
-											</InputAdornment>
-										)
-									}}
-								/>
-							)}
-						/>
-					</div>
-					<div className="sm:col-span-4">
-						<Controller
-							name="newPassword"
-							control={control}
-							render={({ field }) => (
-								<TextField
-									{...field}
-									label="New password"
-									type="password"
-									error={!!errors.newPassword}
-									variant="outlined"
-									fullWidth
-									InputProps={{
-										startAdornment: (
-											<InputAdornment position="start">
-												<FuseSvgIcon size={20}>heroicons-solid:key</FuseSvgIcon>
-											</InputAdornment>
-										)
-									}}
-									helperText={errors?.newPassword?.message}
-								/>
-							)}
-						/>
-					</div>
-				</div>
+      {/* Download Template */}
+      <div className="mb-16">
+        <Typography variant="body1" display="inline">
+          Download template:
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleDownloadTemplate}
+          className="ml-8"
+        >
+          Download CSV Template
+        </Button>
+      </div>
 
-				<div className="my-40 border-t" />
-				<div className="w-full">
-					<Typography className="text-xl">Security preferences</Typography>
-					<Typography color="text.secondary">
-						Keep your account more secure with following preferences.
-					</Typography>
-				</div>
-				<div className="mt-32 grid w-full gap-6 sm:grid-cols-4 space-y-32">
-					<div className="flex items-center justify-between sm:col-span-4">
-						<Controller
-							name="twoStepVerification"
-							control={control}
-							render={({ field: { onChange, value } }) => (
-								<div className="flex flex-col w-full">
-									<FormControlLabel
-										classes={{ root: 'm-0', label: 'flex flex-1' }}
-										labelPlacement="start"
-										label="Enable 2-step authentication"
-										control={
-											<Switch
-												onChange={(ev) => {
-													onChange(ev.target.checked);
-												}}
-												checked={value}
-												name="twoStepVerification"
-											/>
-										}
-									/>
-									<FormHelperText>
-										Protects you against password theft by requesting an authentication code via SMS
-										on every login.
-									</FormHelperText>
-								</div>
-							)}
-						/>
-					</div>
-					<div className="flex items-center justify-between sm:col-span-4">
-						<Controller
-							name="askPasswordChange"
-							control={control}
-							render={({ field: { onChange, value } }) => (
-								<div className="flex flex-col w-full">
-									<FormControlLabel
-										classes={{
-											root: 'm-0',
-											label: 'flex flex-1'
-										}}
-										labelPlacement="start"
-										label="Ask to change password on every 6 months"
-										control={
-											<Switch
-												onChange={(ev) => {
-													onChange(ev.target.checked);
-												}}
-												checked={value}
-												name="askPasswordChange"
-											/>
-										}
-									/>
-									<FormHelperText>
-										A simple but an effective way to be protected against data leaks and password
-										theft.
-									</FormHelperText>
-								</div>
-							)}
-						/>
-					</div>
-				</div>
+      {/* Add Policy Holders */}
+      <div className="mb-16">
+        <Button
+          variant="contained"
+          color="secondary"
+          onClick={() => setIsDialogOpen(true)}
+        >
+          Add Policy Holders
+        </Button>
+      </div>
 
-				<Divider className="mb-40 mt-44 border-t" />
-				<div className="flex items-center justify-end space-x-8">
-					<Button
-						variant="outlined"
-						disabled={_.isEmpty(dirtyFields)}
-						onClick={() => reset(securitySettings)}
-					>
-						Cancel
-					</Button>
-					<Button
-						variant="contained"
-						color="secondary"
-						disabled={_.isEmpty(dirtyFields) || !isValid}
-						type="submit"
-					>
-						Save
-					</Button>
-				</div>
-			</form>
-		</div>
-	);
+      {/* Dialog for Uploading CSV */}
+      <Dialog
+        open={isDialogOpen}
+        onClose={handleCloseDialog}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle>Upload Policy Holders</DialogTitle>
+        <DialogContent>
+          <input type="file" accept=".csv" onChange={handleFileUpload} />
+          {uploadError && (
+            <Typography color="error" className="mt-8">
+              {uploadError}
+            </Typography>
+          )}
+          {csvData.length > 0 && (
+            <TableContainer component={Paper} className="mt-16">
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    {Object.keys(csvData[0]).map((key) => (
+                      <TableCell key={key}>{key}</TableCell>
+                    ))}
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {csvData.map((row, index) => (
+                    <TableRow key={index}>
+                      {Object.values(row).map((value, i) => (
+                        <TableCell key={i}>{String(value)}</TableCell>
+                      ))}
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDialog} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit} color="secondary" disabled={isSubmitting}>
+            {isSubmitting ? "Submitting..." : "Submit"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Existing Policy Holders Table */}
+      <TableContainer component={Paper}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>PolicyID</TableCell>
+              <TableCell>Department</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {existingPolicyHolders.length > 0 ? (
+              existingPolicyHolders.map((holder, index) => (
+                <TableRow key={index}>
+                  <TableCell>{holder.PolicyID}</TableCell>
+                  <TableCell>{holder.Department}</TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={2} align="center">
+                  No policy holders found.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </div>
+  );
 }
 
-export default SecurityTab;
+export default PolicyHolders;

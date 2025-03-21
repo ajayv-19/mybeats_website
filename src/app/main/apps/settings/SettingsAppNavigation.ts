@@ -38,7 +38,23 @@ const SettingsAppNavigation: FuseNavItemType = {
 			type: 'item',
 			url: '/apps/settings/team',
 			subtitle: 'Manage your existing team and change roles/permissions'
-		}
+		},
+		{
+			id: 'apps.settings.policyholders',
+			icon: 'heroicons-outline:lock-closed',
+			title: 'Polciyholders',
+			type: 'item',
+			url: '/apps/settings/policyholders',
+			subtitle: 'Manage your password and 2-step verification preferences'
+		},
+		// {
+		// 	id: 'apps.settings.notifications',
+		// 	icon: 'heroicons-outline:bell',
+		// 	title: 'Notifications',
+		// 	type: 'item',
+		// 	url: '/apps/settings/notifications',
+		// 	subtitle: "Manage when you'll be notified on which channels"
+		// }
 	]
 };
 
