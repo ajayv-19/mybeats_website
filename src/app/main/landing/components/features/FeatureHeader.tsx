@@ -19,10 +19,13 @@ const FeatureHeader = () => {
             Despite the risks of burns/smoke inhalation and other myriad
             physical dangers inherent in firefighting, cardiovascular diseases
             are a leading cause of firefighter morbidity and on- duty deaths.
-            Our AI models continuously monitor data through various health
-            trackers, identifying critical health risks (e.g. arrhythmia,
-            hypertension, sleep apnea, etc.), helping you safeguard the health
-            of your policyholders.
+            Our AI models continuously monitors real-time physiological data
+            recorded by policyholders’ health trackers (Fitbit, Garmin, Apple,
+            etc.) and provide instant personalized insights for improving
+            health, helping you safeguard the health of your policyholders. Our
+            AI-dashboard transforms this health data into real-time risk
+            assessments, claims forecasting, and other predictive analytics for
+            insurance companies.
           </Text>
         </div>
       </FadeText>

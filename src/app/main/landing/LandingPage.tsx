@@ -61,7 +61,7 @@ function LandingPage() {
       )}
 
       <div className="bg-gray-200 flex flex-col items-center">
-        <div className="w-full flex flex-col space-y-80 md:w-[1050px] px-20">
+        <div className="w-full flex flex-col space-y-80 md:w-[1100px] px-20">
           <div ref={showcaseRef}>
             <Showcase openModal={openModal} />
           </div>

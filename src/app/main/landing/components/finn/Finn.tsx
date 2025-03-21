@@ -11,7 +11,7 @@ const Finn = () => {
         <div className="flex-1">
           <FadeAnimatedContainer direction="left">
             <div className="flex flex-col space-y-20 ">
-              <Text variant="caption">AI CHATBOT</Text>
+              <Text variant="caption">AI INSURANCE AGENT</Text>
               <Text variant="h2">
                 Finn (Firefighter Insurance Navigator) - your AI Friend!
               </Text>

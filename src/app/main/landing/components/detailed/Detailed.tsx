@@ -62,6 +62,11 @@ function Detailed({ scrollToContactUs }: DetailedProps) {
               <Text variant="body2">
                 Our AI-powered dashboard transforms real-time wearable data of
                 firefighters into actionable insurance insights and analytics.
+                Traditionally, insurance companies rely on retrospective claims
+                data and annual medical evaluations to assess their risks.
+                However, this conventional approach fails to provide the
+                proactive real-time insights needed for early intervention, risk
+                mitigation, and predictive analytics.
               </Text>
 
               <Button onClick={() => navigate("/sign-in")} variant="contained">
