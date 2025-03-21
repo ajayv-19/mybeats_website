@@ -7,6 +7,9 @@ import { ListItemButton, ListItemButtonProps } from '@mui/material';
 import FuseNavBadge from '../../FuseNavBadge';
 import FuseSvgIcon from '../../../FuseSvgIcon';
 import { FuseNavItemComponentProps } from '../../FuseNavItem';
+import { selectAccount } from "src/app/features/account/accountSlice";
+import { useDispatch, useSelector } from "react-redux";
+
 
 type ListItemButtonStyleProps = ListItemButtonProps & {
 	itempadding: number;
@@ -51,6 +54,7 @@ const Root = styled(ListItemButton)<ListItemButtonStyleProps>(({ theme, ...props
  * FuseNavVerticalItem is a React component used to render FuseNavItem as part of the Fuse navigational component.
  */
 function FuseNavVerticalItem(props: FuseNavItemComponentProps) {
+	const account = useSelector(selectAccount);
 	const { item, nestedLevel = 0, onItemClick, checkPermission } = props;
 
 	const itempadding = nestedLevel > 0 ? 38 + nestedLevel * 16 : 16;
@@ -71,40 +75,47 @@ function FuseNavVerticalItem(props: FuseNavItemComponentProps) {
 	if (checkPermission && !item?.hasPermission) {
 		return null;
 	}
+	const keys = Object.entries(item?.permisssions || {});
+	if(keys.reduce((col,[key, value]) => col && (account[key] == value), true) == false ) {
+		return null;
+	}
+	const ReturnComponent = () => (
+		<Root
+			component={component}
+			className={clsx('fuse-list-item', item.active && 'active')}
+			onClick={() => onItemClick && onItemClick(item)}
+			itempadding={itempadding}
+			sx={item.sx}
+			{...itemProps}
+		>
+			{item.icon && (
+				<FuseSvgIcon
+					className={clsx('fuse-list-item-icon shrink-0', item.iconClass)}
+					color="action"
+				>
+					{item.icon}
+				</FuseSvgIcon>
+			)}
 
+			<ListItemText
+				className="fuse-list-item-text"
+				primary={item.title}
+				secondary={item.subtitle}
+				classes={{
+					primary: 'text-md font-medium fuse-list-item-text-primary truncate',
+					secondary: 'text-sm font-medium fuse-list-item-text-secondary leading-normal truncate'
+				}}
+			/>
+			{item.badge && <FuseNavBadge badge={item.badge} />}
+		</Root>
+	);
+	return <ReturnComponent />;
+	/*
 	return useMemo(
-		() => (
-			<Root
-				component={component}
-				className={clsx('fuse-list-item', item.active && 'active')}
-				onClick={() => onItemClick && onItemClick(item)}
-				itempadding={itempadding}
-				sx={item.sx}
-				{...itemProps}
-			>
-				{item.icon && (
-					<FuseSvgIcon
-						className={clsx('fuse-list-item-icon shrink-0', item.iconClass)}
-						color="action"
-					>
-						{item.icon}
-					</FuseSvgIcon>
-				)}
-
-				<ListItemText
-					className="fuse-list-item-text"
-					primary={item.title}
-					secondary={item.subtitle}
-					classes={{
-						primary: 'text-md font-medium fuse-list-item-text-primary truncate',
-						secondary: 'text-sm font-medium fuse-list-item-text-secondary leading-normal truncate'
-					}}
-				/>
-				{item.badge && <FuseNavBadge badge={item.badge} />}
-			</Root>
-		),
+		ReturnComponent,
 		[item, itempadding, onItemClick]
 	);
+	*/
 }
 
 const NavVerticalItem = FuseNavVerticalItem;

@@ -14,6 +14,7 @@ import { themeLayoutsType } from 'app/theme-layouts/themeLayouts';
 import { PartialDeep } from 'type-fest';
 import { getFuseRouteParamUtil } from '@fuse/hooks/useFuseRouteParameter';
 import FuseLoading from '../FuseLoading';
+import { Toaster } from 'sonner';
 
 export type FuseRouteObjectType = RouteObject & {
 	settings?: FuseSettingsConfigType;
@@ -99,6 +100,7 @@ function FuseLayout(props: FuseLayoutProps) {
 				return (
 					<React.Fragment key={key}>
 						<Layout>{children}</Layout>
+						<Toaster/>
 					</React.Fragment>
 				);
 			}

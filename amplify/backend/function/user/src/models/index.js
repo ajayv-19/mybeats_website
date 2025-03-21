@@ -1,3 +1,4 @@
+const { create } = require("lodash");
 const { sequelize, DataTypes } = require("../lib/sequelize");
 
 // Authenticate database connection
@@ -27,7 +28,7 @@ const User = sequelize.define(
     is_varified: { type: DataTypes.BOOLEAN, allowNull: true },
     is_invited: { type: DataTypes.BOOLEAN, allowNull: true },
     invited_by: { type: DataTypes.INTEGER, allowNull: true },
-    company_id: { type: DataTypes.INTEGER, allowNull: true },
+    company_id: { type: DataTypes.INTEGER, allowNull: true }
   },
   { tableName: "RLS", timestamps: false } // Assuming table name is "RLS" and timestamps are not auto-managed
 );
@@ -53,6 +54,8 @@ const Company = sequelize.define(
     expiry_date: { type: DataTypes.DATE, allowNull: true },
     number_of_users_invited: { type: DataTypes.INTEGER, allowNull: true },
     number_of_users_accepted: { type: DataTypes.INTEGER, allowNull: true },
+    number_of_admins: { type: DataTypes.INTEGER, allowNull: true },
+    license_used: { type: DataTypes.INTEGER, allowNull: true },
     phone_number: { type: DataTypes.STRING, allowNull: true },
     policyholder_count: { type: DataTypes.INTEGER, allowNull: true },
     is_subscribed: {
@@ -268,6 +271,7 @@ const NewSubscriptions = sequelize.define(
     timestamps: false, // Set to true if your table includes createdAt/updatedAt fields
   }
 );
+
 const CustomerQueries = sequelize.define(
   "CustomerQueries",
   {
@@ -300,6 +304,66 @@ const CustomerQueries = sequelize.define(
     timestamps: false, // Assuming there are no createdAt/updatedAt fields
   }
 );
+
+const UserInvites = sequelize.define(
+  "UserInvites",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    invitedBy: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    company_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    is_accepted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
+    invited_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    deletedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+  },
+  {
+    sequelize,
+    paranoid: true,
+    modelName: "UserInvites",
+    tableName: "user_invites", // Explicitly specify the table name
+    timestamps: false, // Assuming there are no createdAt/updatedAt fields
+  }
+);
+
+User.belongsTo(Role, { foreignKey: "role_id" });
+User.belongsTo(Company, { foreignKey: "company_id" });
+User.hasMany(UserInvites, { foreignKey: "invitedBy", as: "Invitations" });
+UserInvites.belongsTo(User, { foreignKey: "invitedBy", as: "Inviter" });
+
 module.exports = {
   User,
   Company,
@@ -308,6 +372,8 @@ module.exports = {
   Payment,
   Subscriptions,
   NewSubscriptions,
+  UserInvites,
   sequelize,
   CustomerQueries,
 };
+// Changed

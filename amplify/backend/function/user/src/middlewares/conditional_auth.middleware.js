@@ -8,6 +8,7 @@ const {
   COGNITO_JWT_JSON,
   COGNITO_ISSUER,
 } = require("../globals.const");
+const { User } = require("../models");
 const client = jwksClient({
   jwksUri: COGNITO_JWT_JSON,
 });
@@ -54,11 +55,19 @@ const conditionalAuthMiddleware = async (req, res, next) => {
     // Skip AWS Serverless Middleware for these routes
     return next();
   }
-  const user = await validateUser(req, res, next);
-  if (user) req.user = user;
-  else return res.status(401).json({ message: "Unauthorized" });
+  const cuser = await validateUser(req, res, next);
+  cuser.username = cuser.username || cuser["cognito:username"];
+  const user = await User.findOne({ where: { username: cuser.username } });
+  const hasUser = !!user || !!cuser;
+  console.log({ user, cuser, hasUser });
+  if (hasUser) {
+    req.isAuthenticated = true;
+    req.user = user;
+    req.cognitoUser = cuser;
+  } else return res.status(401).json({ message: "Unauthorized" });
   next();
   // Apply AWS Serverless Middleware for all other routes
 };
 
 module.exports = conditionalAuthMiddleware;
+// Changed

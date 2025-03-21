@@ -94,6 +94,7 @@
         "redoc": "2.1.4",
         "redux-logger": "4.0.0",
         "reselect": "5.1.1",
+        "sonner": "^2.0.1",
         "styled-components": "6.1.11",
         "stylis": "4.3.2",
         "stylis-plugin-rtl": "2.1.1",

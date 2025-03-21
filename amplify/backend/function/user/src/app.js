@@ -11,6 +11,7 @@ const {
   PaymentController,
   CompanyController,
   ScheduleController,
+  EmailController,
 } = require("./controllers");
 const upload = require("./config/multer");
 // Declare a new express app
@@ -38,18 +39,24 @@ router.get("/users", UserController.getUserById);
 router.put("/updateUser", UserController.updateUser);
 router.post("/updaterole", UserController.updateUserRole);
 router.post("/addcomment", UserController.addComment);
+
 // router.post("/addOrUpdateUserDetails", UserController.addOrUpdateUserDetails);
 router.post(
   "/addOrUpdateUserDetails",
   upload.single("image"),
   UserController.addOrUpdateUserDetails
-);
+)
 
+router.get("/listInvitedUsers", UserController.listInvitedUsers);
+router.post("/invitedUserAccess", UserController.InvitedUserAccess);
 router.get("/canShowBilling", UserController.canShowBilling);
+router.post("/deactivate-user", (...args) => UserController.DeActivateUserQs(...args));
+router.post("/delete-user", (...args) => UserController.DeleteUserQs(...args));
 
 PaymentController.setupRoutes(router);
 CompanyController.setupRoutes(router);
 ScheduleController.setupRoutes(router);
+EmailController.setupRoutes(router);
 // Use router for specific path
 app.use(API_PREFIX, router);
 
@@ -60,3 +67,4 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+// Changed

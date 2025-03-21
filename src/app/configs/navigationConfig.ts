@@ -36,6 +36,9 @@ const navigationConfig: FuseNavItemType[] = [
         type: "item",
         icon: "heroicons-outline:chart-pie",
         url: "/dashboards/analytics",
+        permisssions: {
+          "isactive": true
+        },
       },
       // {
       // 	id: 'dashboards.finance',
@@ -1034,10 +1037,10 @@ const navigationConfig: FuseNavItemType[] = [
   // 	]
   // },
 
-  {
-    id: "divider-1",
-    type: "divider",
-  },
+  // {
+  //   id: "divider-1",
+  //   type: "divider",
+  // },
 
   // DocumentationNavigation,
   // {
@@ -1118,10 +1121,10 @@ const navigationConfig: FuseNavItemType[] = [
   // 	]
   // },
 
-  {
-    type: "divider",
-    id: "divider-2",
-  },
+  // {
+  //   type: "divider",
+  //   id: "divider-2",
+  // },
 
   // {
   // 	id: 'navigation-features',
