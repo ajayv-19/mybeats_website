@@ -8,26 +8,27 @@ import ReceiptLongOutlinedIcon from "@mui/icons-material/ReceiptLongOutlined";
 
 const cardsData = [
   {
-    title: "Early detection of health risks reduces unforeseen claims",
+    title: "Early interventions reduce health issues and unforeseen claims",
     description: "Proactive Risk Management",
     delay: 0,
     icon: <GppGoodOutlinedIcon className="text-orange-400" />,
   },
   {
-    title: "Premium pricing based on real-time physiological data",
-    description: "Data-driven Premiums",
+    title: "Using real-time health data improves risk assessment",
+    description: "Data-driven Analytics & Decisions",
     delay: 0.3,
     icon: <AutoGraphOutlinedIcon className="text-orange-400" />,
   },
   {
-    title: "Early interventions help lower medical costs and claims",
+    title:
+      "Promoting health reduces claim frequency, severity, and medical expenses",
     description: "Cost Reduction and More Profits",
     delay: 0.6,
     icon: <MonetizationOnOutlinedIcon className="text-orange-400" />,
   },
   {
-    title: "AI-driven insights improve accuracy in risk assessment",
-    description: "Improved Underwriting",
+    title: "Our AI-Insurance agent boosts accuracy &efficiency",
+    description: "Improved Underwriting & Administration",
     delay: 0.9,
     icon: <ReceiptLongOutlinedIcon className="text-orange-400" />,
   },

@@ -11,20 +11,20 @@ const faqData = [
   {
     question: "How can our platform help reduce insurance claims?",
     answer:
-      "Our platform uses real-time data from wearables to detect early signs of health risks enabling preventative action before serious medical conditions arise, thereby reducing high-cost claims.",
+      "By leveraging real-time health data of policyholders, our application provides personalized insights to improve health, thereby reducing high-cost claims.",
     delay: 0.2,
   },
   {
     question: "What types of health data do you collect from wearables?",
     answer:
-      "We collect heart rate, sleep patterns, activity levels, and other physiological data from wearable devices. This data is processed through our AI models to assess potential health risks.",
+      "We collect heart rate, sleep patterns, activity levels, and other physiological data from wearable devices.",
     delay: 0.4,
   },
   {
     question:
-      "Some random question that needs answering by anyone or it can be commonly?",
+      "How does your platform ensure data privacy and security?",
     answer:
-      "Some random answer that was for the question which is answered by anyone or it can be commonly answered by someone possible some random words?",
+      "We implement end-to-end encryption for data in transit and at rest. In addition, we conduct regular compliance checks to protect sensitive health information.",
     delay: 0.6,
   },
 
@@ -37,7 +37,7 @@ const faqData = [
   {
     question: "How frequently is data updated on the platform?",
     answer:
-      "Data is updated in real-time, allowing insurers to view the most recent health metrics and risk assessments for their policyholders.",
+      "We leverage real-time physiological data recorded by policyholders' wearables, allowing insurers to view the most recent health metrics and risk assessments for their policyholders.",
     delay: 1,
   },
 ];
