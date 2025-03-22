@@ -20,7 +20,6 @@
         "getQuickSightDashboardEmbedURL": {
           "deploymentBucketName": "amplify-amplifyquicksightdas-dev-dd445-deployment",
           "s3Key": "amplify-builds/getQuickSightDashboardEmbedURL-37705643366c70675653-build.zip"
-          
         },
         "companyname": {},
         "getcompanyofuser": {
@@ -29,7 +28,6 @@
         },
         "user": {
           "deploymentBucketName": "amplify-amplifyquicksightdas-dev-dd445-deployment",
-          "s3Key": "amplify-builds/user-57496f67696a4c623562-build.zip"
           "s3Key": "amplify-builds/user-426e376344796a632f45-build.zip"
         }
       },

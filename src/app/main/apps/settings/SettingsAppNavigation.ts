@@ -42,7 +42,7 @@ const SettingsAppNavigation: FuseNavItemType = {
 		{
 			id: 'apps.settings.policyholders',
 			icon: 'heroicons-outline:lock-closed',
-			title: 'Polciyholders',
+			title: 'Policyholders',
 			type: 'item',
 			url: '/apps/settings/policyholders',
 			subtitle: 'Manage your password and 2-step verification preferences'

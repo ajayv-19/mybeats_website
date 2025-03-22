@@ -2,6 +2,8 @@ import React, { useState, useEffect } from "react";
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
 import Papa from "papaparse";
 import { fetchPolicyHolders, addPolicyHolders } from "../apis/Policyholdersapis"; // Replace with actual API service
+import { useSelector } from "react-redux";
+import { selectAccount } from "src/app/features/account/accountSlice";
 
 function PolicyHolders() {
   const [existingPolicyHolders, setExistingPolicyHolders] = useState([]); // State for existing rows
@@ -10,7 +12,12 @@ function PolicyHolders() {
   const [isSubmitting, setIsSubmitting] = useState(false); // State for submit button loading
   const [uploadError, setUploadError] = useState(""); // State for upload error messages
 
-  const requiredHeaders = ["PolicyID", "Department"]; // Required headers for validation
+  const requiredHeaders = ["PolicyID", "Employer"]; // Required headers for validation
+  const accountData = useSelector(selectAccount) as unknown as {
+    company: {
+      id: any;
+    };
+  };
 
   // Fetch existing policyholders from the backend
   useEffect(() => {
@@ -37,14 +44,14 @@ function PolicyHolders() {
         const headers = Object.keys(result.data[0] || {}).map((header) =>
           header.trim().toLowerCase()
         );
-		console.log("Extracted Headers:", headers);
+        console.log("Extracted Headers:", headers);
         const isValid = requiredHeaders.every((header) =>
           headers.includes(header.toLowerCase())
         );
         console.log("Validation Result:", isValid);
         if (!isValid) {
           setUploadError(
-            "Wrong format CSV file uploaded. Please download the given template and try again."
+            "The format of this CSV file is not compatible. Please provide PolicyIDs and the Employers of policyholders using the template provided."
           );
           setCsvData([]); // Clear any previously uploaded data
         } else {
@@ -68,13 +75,35 @@ function PolicyHolders() {
 
     setIsSubmitting(true);
     try {
-      await addPolicyHolders(csvData); // Replace with actual API call
-      alert("Policy holders added successfully!");
-      setCsvData([]); // Clear the uploaded data
-      setIsDialogOpen(false); // Close the dialog
+      const data = {
+        policyData: csvData,
+        companyId: accountData?.company?.id,
+      };
+      console.log("data", data);
+      await addPolicyHolders(data)
+        .then((res) => {
+          console.log("res", res);
+          if (res.status === 200) {
+            alert("Policy holders added successfully!");
+            setCsvData([]); // Clear the uploaded data
+            fetchPolicyHolders()
+              .then((response) => {
+                setExistingPolicyHolders(response.data || []);
+              })
+              .catch((error) => {
+                console.error("Error fetching updated policyholders:", error);
+              });
+          }
+        })
+        .catch((error) => {
+          console.error("Error adding policyholders:", error);
+          alert("Failed to add policyholders. Please try again.");
+        })
+        .finally(() => {
+          setIsSubmitting(false);
+          setIsDialogOpen(false); // Close the dialog
+        }); // Replace with actual API call
       // Refresh existing policyholders
-      const response = await fetchPolicyHolders();
-      setExistingPolicyHolders(response.data || []);
     } catch (error) {
       console.error("Error adding policyholders:", error);
       alert("Failed to add policyholders. Please try again.");
@@ -93,7 +122,7 @@ function PolicyHolders() {
   // Handle downloading the CSV template
   const handleDownloadTemplate = () => {
     const templateData = [
-      ["PolicyID", "Department"], // Example headers
+      ["PolicyID", "Employer"], // Example headers
     ];
     const csvContent = Papa.unparse(templateData);
     const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
@@ -108,21 +137,18 @@ function PolicyHolders() {
 
   return (
     <div>
-      {/* Header with Breadcrumbs */}
-      <Typography variant="h4" gutterBottom>
-        Policy Holders
-      </Typography>
-
       {/* Download Template */}
       <div className="mb-16">
-        <Typography variant="body1" display="inline">
-          Download template:
+        <Typography variant="body1">
+          Download the template below and provide PolicyIDs and the Employers of policyholders
         </Typography>
         <Button
           variant="contained"
-          color="primary"
+          size="small"
+          color="secondary"
+          className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
+          classes={{ startIcon: "mr-4" }}
           onClick={handleDownloadTemplate}
-          className="ml-8"
         >
           Download CSV Template
         </Button>
@@ -132,7 +158,10 @@ function PolicyHolders() {
       <div className="mb-16">
         <Button
           variant="contained"
+          size="small"
           color="secondary"
+          className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
+          classes={{ startIcon: "mr-4" }}
           onClick={() => setIsDialogOpen(true)}
         >
           Add Policy Holders
@@ -146,7 +175,7 @@ function PolicyHolders() {
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle>Upload Policy Holders</DialogTitle>
+        <DialogTitle>Upload Policyholders Information </DialogTitle>
         <DialogContent>
           <input type="file" accept=".csv" onChange={handleFileUpload} />
           {uploadError && (
@@ -178,10 +207,25 @@ function PolicyHolders() {
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseDialog} color="primary">
+          <Button
+            variant="contained"
+            size="small"
+            color="secondary"
+            className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
+            classes={{ startIcon: "mr-4" }}
+            onClick={handleCloseDialog}
+          >
             Cancel
           </Button>
-          <Button onClick={handleSubmit} color="secondary" disabled={isSubmitting}>
+          <Button
+            variant="contained"
+            size="small"
+            color="secondary"
+            className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
+            classes={{ startIcon: "mr-4" }}
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
             {isSubmitting ? "Submitting..." : "Submit"}
           </Button>
         </DialogActions>
@@ -193,15 +237,15 @@ function PolicyHolders() {
           <TableHead>
             <TableRow>
               <TableCell>PolicyID</TableCell>
-              <TableCell>Department</TableCell>
+              <TableCell>Employer</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {existingPolicyHolders.length > 0 ? (
               existingPolicyHolders.map((holder, index) => (
                 <TableRow key={index}>
-                  <TableCell>{holder.PolicyID}</TableCell>
-                  <TableCell>{holder.Department}</TableCell>
+                  <TableCell>{holder["PolicyID"]}</TableCell>
+                  <TableCell>{holder.Employer}</TableCell>
                 </TableRow>
               ))
             ) : (

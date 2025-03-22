@@ -82,7 +82,8 @@ function TeamTab() {
     plan: any;
    user: {
     id: any; email: string; role_id: number 
-}; company: {
+}; 
+company: {
     id: any; license_used: number 
 } 
 };
