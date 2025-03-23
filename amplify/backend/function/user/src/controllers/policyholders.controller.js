@@ -1,30 +1,52 @@
-const db = require("../database");
+const db = require("../database"); // Firestore database
+const { Company } = require("../models"); // PostgreSQL models
 
-const PolicyholdersController = {
-    policyHolderListUpload: async (req, res) => {
+class PolicyholdersController {
+    setupRoutes(app) {
+        app.post("/policyholders", this.policyHolderListUpload.bind(this));
+        app.get("/getpolicyholders/:company_id", this.getPolicyHoldersByCompanyId.bind(this));
+    }
+
+    async policyHolderListUpload(req, res) {
         try {
-            const { company_id, company_name, policyData: records } = req.body;
+            const { company_id, policyData: records } = req.body;
             console.log("company_id:", company_id);
-
 
             if (!company_id) {
                 return res.status(400).json({ error: "company_id is required" });
             }
 
-            if (records.length > 200) {
-                return res
-                    .status(400)
-                    .json({ error: "File exceeds 200 records limit" });
+            // Fetch company details from PostgreSQL
+            const company = await Company.findByPk(company_id);
+            if (!company) {
+                return res.status(404).json({ error: "Company not found" });
             }
 
-            const companyRef = db.collection("insuranceCompanies").doc(company_id.toString());
+            const { domain, Company_Name: company_name, policyholder_count } = company;
+
+            if (!domain) {
+                return res.status(400).json({ error: "Domain not found for the company" });
+            }
+
+            console.log("Domain:", domain);
+            console.log("Policyholder Count Limit:", policyholder_count);
+
+            // Check if the number of records exceeds the policyholder_count limit
+            if (records.length > policyholder_count) {
+                return res.status(400).json({
+                    error: `File exceeds the allowed limit of ${policyholder_count} records for this company.`,
+                });
+            }
+
+            // Use the domain to interact with Firestore
+            const companyRef = db.collection("insuranceCompanies").doc(domain);
             const companyDoc = await companyRef.get();
 
             // If company document does not exist, create it
             if (!companyDoc.exists) {
                 await companyRef.set({
                     name: company_name || "Unknown Company",
-                    createdAt: new Date()
+                    createdAt: new Date(),
                 });
             }
 
@@ -52,28 +74,15 @@ const PolicyholdersController = {
 
             res.status(200).json({
                 message: "Data uploaded successfully",
-                skippedDuplicates: existingPolicyIds
+                skippedDuplicates: existingPolicyIds,
             });
-
         } catch (err) {
-            console.error("Error processing CSV:", err);
+            console.error("Error processing policyholder upload:", err);
             res.status(500).json({ error: "Internal Server Error" });
         }
-    },
+    }
 
-    healthCheck: async (req, res) => {
-        try {
-            const data = await db.collection("insuranceCompanies").limit(1).get();
-            res.status(200).json({ status: "ok", message: "Firestore connected", data });
-        } catch (error) {
-            res.status(500).json({
-                status: "error",
-                message: "Firestore not connected",
-                error: error.message,
-            });
-        }
-    },
-    getPolicyHoldersByCompanyId: async (req, res) => {
+    async getPolicyHoldersByCompanyId(req, res) {
         try {
             const { company_id } = req.params;
 
@@ -81,29 +90,41 @@ const PolicyholdersController = {
                 return res.status(400).json({ error: "company_id is required in path parameters" });
             }
 
-            const companyRef = db.collection("insuranceCompanies").doc(company_id);
+            // Fetch company details from PostgreSQL
+            const company = await Company.findByPk(company_id);
+            if (!company) {
+                return res.status(404).json({ error: "Company not found" });
+            }
+
+            const { domain } = company;
+
+            if (!domain) {
+                return res.status(400).json({ error: "Domain not found for the company" });
+            }
+
+            console.log("Domain:", domain);
+
+            // Use the domain to fetch policyholders from Firestore
+            const companyRef = db.collection("insuranceCompanies").doc(domain);
             const companyDoc = await companyRef.get();
 
             if (!companyDoc.exists) {
-                return res.status(404).json({ error: "Company not found" });
+                return res.status(404).json({ error: "Company not found in Firestore" });
             }
 
             const policySnapshot = await companyRef.collection("policyHolders").get();
 
             const policyHolders = [];
-            policySnapshot.forEach(doc => {
+            policySnapshot.forEach((doc) => {
                 policyHolders.push({ id: doc.id, ...doc.data() });
             });
 
             return res.status(200).json({ policyHolders });
-
         } catch (err) {
             console.error("Error fetching policyholders:", err);
             return res.status(500).json({ error: "Internal Server Error" });
         }
     }
+}
 
-
-};
-
-module.exports = PolicyholdersController;
+module.exports = new PolicyholdersController();

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { fetchAuthSession } from '@aws-amplify/auth';
+import { co } from '@fullcalendar/core/internal-common';
 
 /**
  * Fetch existing policyholders for a specific company.
@@ -7,6 +8,7 @@ import { fetchAuthSession } from '@aws-amplify/auth';
  * @returns {Promise<any>} A promise that resolves to the list of policyholders.
  */
 export const getPolicyHolders = async (company_id: string) => {
+  console.log("company_id", company_id);
   const session = await fetchAuthSession();
   const authToken = session.tokens?.accessToken?.toString();
 
@@ -51,21 +53,21 @@ export const addPolicyHolders = async (data: { policyData: any; company_id: stri
  * @param {string} policyID - The ID of the policyholder to remove.
  * @returns {Promise<any>} A promise that resolves when the policyholder is removed.
  */
-export const removePolicyHolder = async (policyID: string) => {
-  const session = await fetchAuthSession();
-  const authToken = session.tokens?.accessToken?.toString();
+// export const removePolicyHolder = async (policyID: string) => {
+//   const session = await fetchAuthSession();
+//   const authToken = session.tokens?.accessToken?.toString();
 
-  const response = await axios.delete(
-    `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/policyholders/${policyID}`,
-    {
-      headers: {
-        Authorization: authToken,
-      },
-    }
-  );
+//   const response = await axios.delete(
+//     `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/policyholders/${policyID}`,
+//     {
+//       headers: {
+//         Authorization: authToken,
+//       },
+//     }
+//   );
 
-  return response;
-};
+//   return response;
+// };
 
 /**
  * Update a specific policyholder's details.
@@ -73,19 +75,20 @@ export const removePolicyHolder = async (policyID: string) => {
  * @param {Object} data - The updated data for the policyholder.
  * @returns {Promise<any>} A promise that resolves when the policyholder is updated.
  */
-export const updatePolicyHolder = async (policyID: string, data: { Employer: string }) => {
-  const session = await fetchAuthSession();
-  const authToken = session.tokens?.accessToken?.toString();
 
-  const response = await axios.put(
-    `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/policyholders/${policyID}`,
-    data,
-    {
-      headers: {
-        Authorization: authToken,
-      },
-    }
-  );
+// export const updatePolicyHolder = async (policyID: string, data: { Employer: string }) => {
+//   const session = await fetchAuthSession();
+//   const authToken = session.tokens?.accessToken?.toString();
 
-  return response;
-};
+//   const response = await axios.put(
+//     `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/policyholders/${policyID}`,
+//     data,
+//     {
+//       headers: {
+//         Authorization: authToken,
+//       },
+//     }
+//   );
+
+//   return response;
+// };
