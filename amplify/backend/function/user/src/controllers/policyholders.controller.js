@@ -5,6 +5,7 @@ class PolicyholdersController {
     setupRoutes(app) {
         app.post("/policyholders", this.policyHolderListUpload.bind(this));
         app.get("/getpolicyholders/:company_id", this.getPolicyHoldersByCompanyId.bind(this));
+        app.delete("/deletepolicyholder/:company_id/:policyId", this.deletePolicyHolder.bind(this));
     }
 
     async policyHolderListUpload(req, res) {
@@ -123,6 +124,47 @@ class PolicyholdersController {
         } catch (err) {
             console.error("Error fetching policyholders:", err);
             return res.status(500).json({ error: "Internal Server Error" });
+        }
+    }
+    async deletePolicyHolder(req, res) {
+        try {
+            const { company_id, policyId } = req.params;
+
+            if (!company_id || !policyId) {
+                return res.status(400).json({ error: "company_id and policyId are required in path parameters" });
+            }
+
+            // Fetch company details from PostgreSQL
+            const company = await Company.findByPk(company_id);
+            if (!company) {
+                return res.status(404).json({ error: "Company not found" });
+            }
+
+            const { domain } = company;
+
+            if (!domain) {
+                return res.status(400).json({ error: "Domain not found for the company" });
+            }
+
+            console.log("Domain:", domain);
+
+            // Use the domain to locate the policyholder in Firestore
+            const companyRef = db.collection("insuranceCompanies").doc(domain);
+            const policyRef = companyRef.collection("policyHolders").doc(policyId);
+
+            // Check if the policyholder exists
+            const policyDoc = await policyRef.get();
+            if (!policyDoc.exists) {
+                return res.status(404).json({ error: "Policyholder not found" });
+            }
+
+            // Delete the policyholder
+            await policyRef.delete();
+
+            res.status(200).json({ message: "Policyholder deleted successfully" });
+        } catch (err) {
+            console.error("Error deleting policyholder:", err);
+            res.status(500).json({ error: "Internal Server Error" });
         }
     }
 }

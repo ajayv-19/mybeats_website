@@ -1,7 +1,23 @@
 import React, { useState, useEffect } from "react";
-import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
+import {
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  Typography,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
+  Paper,
+  TablePagination,
+  TextField,
+} from "@mui/material";
 import Papa from "papaparse";
-import { addPolicyHolders, getPolicyHolders } from "../apis/Policyholdersapis"; // Replace with actual API service
+import { addPolicyHolders, getPolicyHolders, deletePolicyHolder } from "../apis/Policyholdersapis"; // Replace with actual API service
 import { useSelector } from "react-redux";
 import { selectAccount } from "src/app/features/account/accountSlice";
 import { toast } from "sonner"; // Toast library
@@ -9,11 +25,15 @@ import FuseLoading from "@fuse/core/FuseLoading"; // Loading spinner
 
 function PolicyHolders() {
   const [existingPolicyHolders, setExistingPolicyHolders] = useState([]); // State for existing rows
+  const [filteredPolicyHolders, setFilteredPolicyHolders] = useState([]); // State for filtered rows
   const [csvData, setCsvData] = useState([]); // State for parsed CSV data
   const [isDialogOpen, setIsDialogOpen] = useState(false); // State for dialog visibility
   const [isSubmitting, setIsSubmitting] = useState(false); // State for submit button loading
   const [uploadError, setUploadError] = useState(""); // State for upload error messages
   const [loading, setLoading] = useState(false); // State for loading spinner
+  const [searchQuery, setSearchQuery] = useState(""); // State for search query
+  const [page, setPage] = useState(0); // State for pagination page
+  const [rowsPerPage, setRowsPerPage] = useState(5); // State for rows per page
 
   const requiredHeaders = ["PolicyID", "Employer"]; // Required headers for validation
   const accountData = useSelector(selectAccount) as unknown as {
@@ -24,14 +44,15 @@ function PolicyHolders() {
   };
 
   console.log(accountData?.company?.policyholder_count, "policyholder_count");
+
   // Fetch existing policyholders by company
   const fetchPolicyByCompany = async () => {
     setLoading(true); // Show loading spinner
     try {
       const response = await getPolicyHolders(accountData?.company?.id); // Fetch existing policyholders from the backend
-      
       console.log("Fetched Policyholders:", response);
       setExistingPolicyHolders(response.data.policyHolders || []);
+      setFilteredPolicyHolders(response.data.policyHolders || []); // Initialize filtered data
     } catch (error) {
       console.error("Error fetching policyholders:", error);
       toast.error("Failed to fetch policyholders. Please try again.");
@@ -43,6 +64,45 @@ function PolicyHolders() {
   useEffect(() => {
     fetchPolicyByCompany();
   }, []);
+
+  // Handle search input change
+  const handleSearchChange = (event) => {
+    const query = event.target.value.toLowerCase();
+    setSearchQuery(query);
+
+    const filtered = existingPolicyHolders.filter(
+      (holder) =>
+        holder.PolicyID.toLowerCase().includes(query) ||
+        holder.Employer.toLowerCase().includes(query)
+    );
+    setFilteredPolicyHolders(filtered);
+  };
+
+  // Handle pagination change
+  const handleChangePage = (event, newPage) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  // Handle delete policyholder
+  const handleDelete = async (policyId) => {
+    try {
+      const response = await deletePolicyHolder(accountData?.company?.id, policyId); // Call API to delete policyholder
+      if (response.status === 200) {
+        toast.success("Policyholder deleted successfully!");
+        await fetchPolicyByCompany(); // Refresh the table after deletion
+      } else {
+        toast.error("Failed to delete policyholder. Please try again.");
+      }
+    } catch (error) {
+      console.error("Error deleting policyholder:", error);
+      toast.error("Failed to delete policyholder. Please try again.");
+    }
+  };
 
   // Handle CSV file upload
   const handleFileUpload = (event) => {
@@ -157,9 +217,8 @@ function PolicyHolders() {
               Download CSV Template
             </Button>
           </div>
-
-          {/* Add Policy Holders */}
-          <div className="mb-16">
+            {/* Add Policy Holders */}
+           <div className="mb-16">
             <Button
               variant="contained"
               size="small"
@@ -235,6 +294,18 @@ function PolicyHolders() {
             </DialogActions>
           </Dialog>
 
+          {/* Search Bar */}
+          <div className="mb-16">
+            <TextField
+              label="Search by PolicyID or Employer"
+              variant="outlined"
+              size="small"
+              fullWidth
+              value={searchQuery}
+              onChange={handleSearchChange}
+            />
+          </div>
+
           {/* Existing Policy Holders Table */}
           <TableContainer component={Paper}>
             <Table>
@@ -242,19 +313,32 @@ function PolicyHolders() {
                 <TableRow>
                   <TableCell>PolicyID</TableCell>
                   <TableCell>Employer</TableCell>
+                  <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {existingPolicyHolders.length > 0 ? (
-                  existingPolicyHolders.map((holder, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{holder["PolicyID"]}</TableCell>
-                      <TableCell>{holder.Employer}</TableCell>
-                    </TableRow>
-                  ))
+                {filteredPolicyHolders.length > 0 ? (
+                  filteredPolicyHolders
+                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                    .map((holder, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{holder.PolicyID}</TableCell>
+                        <TableCell>{holder.Employer}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="contained"
+                            color="secondary"
+                            size="small"
+                            onClick={() => handleDelete(holder.PolicyID)}
+                          >
+                            Delete
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={2} align="center">
+                    <TableCell colSpan={3} align="center">
                       No policy holders found.
                     </TableCell>
                   </TableRow>
@@ -262,6 +346,16 @@ function PolicyHolders() {
               </TableBody>
             </Table>
           </TableContainer>
+
+          {/* Pagination */}
+          <TablePagination
+            component="div"
+            count={filteredPolicyHolders.length}
+            page={page}
+            onPageChange={handleChangePage}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={handleChangeRowsPerPage}
+          />
         </>
       )}
     </div>

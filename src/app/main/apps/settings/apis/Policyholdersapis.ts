@@ -51,23 +51,30 @@ export const addPolicyHolders = async (data: { policyData: any; company_id: stri
 /**
  * Remove a specific policyholder by their PolicyID.
  * @param {string} policyID - The ID of the policyholder to remove.
+ *  @param {string} company_id - The ID of the company to which the policyholder belongs.
  * @returns {Promise<any>} A promise that resolves when the policyholder is removed.
  */
-// export const removePolicyHolder = async (policyID: string) => {
-//   const session = await fetchAuthSession();
-//   const authToken = session.tokens?.accessToken?.toString();
+export const deletePolicyHolder = async (company_id: string, policyId: string) => {
+  const session = await fetchAuthSession();
+  const authToken = session.tokens?.accessToken?.toString();
+  console.log("company_id", company_id);
+  console.log("policyId", policyId);
+try{
+  const response = await axios.delete(
+    `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/deletepolicyholder/${company_id}/${policyId}`,
+    {
+      headers: {
+        Authorization: authToken,
+      },
+    }
+  );
 
-//   const response = await axios.delete(
-//     `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/policyholders/${policyID}`,
-//     {
-//       headers: {
-//         Authorization: authToken,
-//       },
-//     }
-//   );
-
-//   return response;
-// };
+  return response;
+}catch (error) {
+  console.error("Error deleting policyholder:", error);
+  throw error;
+}
+};
 
 /**
  * Update a specific policyholder's details.
@@ -76,19 +83,3 @@ export const addPolicyHolders = async (data: { policyData: any; company_id: stri
  * @returns {Promise<any>} A promise that resolves when the policyholder is updated.
  */
 
-// export const updatePolicyHolder = async (policyID: string, data: { Employer: string }) => {
-//   const session = await fetchAuthSession();
-//   const authToken = session.tokens?.accessToken?.toString();
-
-//   const response = await axios.put(
-//     `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/policyholders/${policyID}`,
-//     data,
-//     {
-//       headers: {
-//         Authorization: authToken,
-//       },
-//     }
-//   );
-
-//   return response;
-// };
