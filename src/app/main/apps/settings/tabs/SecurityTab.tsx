@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper } from "@mui/material";
 import Papa from "papaparse";
-import { fetchPolicyHolders, addPolicyHolders } from "../apis/Policyholdersapis"; // Replace with actual API service
+import { addPolicyHolders, getPolicyHolders } from "../apis/Policyholdersapis"; // Replace with actual API service
 import { useSelector } from "react-redux";
 import { selectAccount } from "src/app/features/account/accountSlice";
 
@@ -19,17 +19,19 @@ function PolicyHolders() {
     };
   };
 
-  // Fetch existing policyholders from the backend
+  // Fetch existing policyholders by company
+  const fetchPolicyByCompany = async () => {
+    try {
+      const response = await getPolicyHolders(accountData?.company?.id); // Fetch existing policyholders from the backend
+      console.log("Fetched Policyholders:", response);
+      setExistingPolicyHolders(response.data.policyHolders || []);
+    } catch (error) {
+      console.error("Error fetching policyholders:", error);
+    }
+  };
+
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetchPolicyHolders(); // Replace with actual API call
-        setExistingPolicyHolders(response.data || []);
-      } catch (error) {
-        console.error("Error fetching policyholders:", error);
-      }
-    };
-    fetchData();
+    fetchPolicyByCompany();
   }, []);
 
   // Handle CSV file upload
@@ -77,33 +79,20 @@ function PolicyHolders() {
     try {
       const data = {
         policyData: csvData,
-        companyId: accountData?.company?.id,
+        company_id: accountData?.company?.id,
       };
-      console.log("data", data);
-      await addPolicyHolders(data)
-        .then((res) => {
-          console.log("res", res);
-          if (res.status === 200) {
-            alert("Policy holders added successfully!");
-            setCsvData([]); // Clear the uploaded data
-            fetchPolicyHolders()
-              .then((response) => {
-                setExistingPolicyHolders(response.data || []);
-              })
-              .catch((error) => {
-                console.error("Error fetching updated policyholders:", error);
-              });
-          }
-        })
-        .catch((error) => {
-          console.error("Error adding policyholders:", error);
-          alert("Failed to add policyholders. Please try again.");
-        })
-        .finally(() => {
-          setIsSubmitting(false);
-          setIsDialogOpen(false); // Close the dialog
-        }); // Replace with actual API call
-      // Refresh existing policyholders
+
+      const response = await addPolicyHolders(data);
+      console.log("Add PolicyHolders Response:", response);
+
+      if (response.status === 200) {
+        alert("Policy holders added successfully!");
+        setCsvData([]); // Clear the uploaded data
+        await fetchPolicyByCompany(); // Refresh the existing policyholders
+        setIsDialogOpen(false); // Close the dialog
+      } else {
+        alert("Failed to add policyholders. Please try again.");
+      }
     } catch (error) {
       console.error("Error adding policyholders:", error);
       alert("Failed to add policyholders. Please try again.");
