@@ -15,8 +15,10 @@ import {
   Paper,
   TablePagination,
   TextField,
+  IconButton,
 } from "@mui/material";
 import Papa from "papaparse";
+import DeleteIcon from "@mui/icons-material/Delete"; // Import Delete Icon
 import { addPolicyHolders, getPolicyHolders, deletePolicyHolder } from "../apis/Policyholdersapis"; // Replace with actual API service
 import { useSelector } from "react-redux";
 import { selectAccount } from "src/app/features/account/accountSlice";
@@ -49,6 +51,10 @@ function PolicyHolders() {
   const fetchPolicyByCompany = async () => {
     setLoading(true); // Show loading spinner
     try {
+      if (!accountData?.company?.id) {
+       
+        return;
+      }
       const response = await getPolicyHolders(accountData?.company?.id); // Fetch existing policyholders from the backend
       console.log("Fetched Policyholders:", response);
       setExistingPolicyHolders(response.data.policyHolders || []);
@@ -63,7 +69,7 @@ function PolicyHolders() {
 
   useEffect(() => {
     fetchPolicyByCompany();
-  }, []);
+  }, [accountData?.company?.id]); // Fetch policyholders when the component mounts or company ID changes
 
   // Handle search input change
   const handleSearchChange = (event) => {
@@ -325,14 +331,13 @@ function PolicyHolders() {
                         <TableCell>{holder.PolicyID}</TableCell>
                         <TableCell>{holder.Employer}</TableCell>
                         <TableCell>
-                          <Button
-                            variant="contained"
+                        <IconButton
                             color="secondary"
                             size="small"
                             onClick={() => handleDelete(holder.PolicyID)}
                           >
-                            Delete
-                          </Button>
+                            <DeleteIcon />
+                          </IconButton>
                         </TableCell>
                       </TableRow>
                     ))
