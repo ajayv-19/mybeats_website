@@ -82,6 +82,7 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
         elevation={0}
       >
         <Toolbar className="min-h-48 p-0 md:min-h-64">
+
           {/* Left Section: Image and Name */}
           <div className="flex items-center space-x-8 px-8 md:px-16">
             <Avatar
@@ -99,6 +100,7 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
             Welcome back,{fullName} !
             </Typography>
           </div>
+       
 
           {/* Navbar Toggle and Shortcuts */}
           <div className="flex flex-1 px-8 md:px-16 space-x-8">
@@ -125,6 +127,9 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
               {/* Navigation Shortcuts */}
             </Hidden>
           </div>
+
+
+          
 
           {/* Right Section: Buttons and Toggles */}
           <div className="flex items-center overflow-x-auto px-8 md:px-16 space-x-6">
@@ -174,6 +179,7 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
               </Hidden>
             </>
           )}
+
         </Toolbar>
       </AppBar>
     </ThemeProvider>

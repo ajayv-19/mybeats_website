@@ -15,6 +15,7 @@ import { useMemo } from 'react';
 import AuthenticationProvider from './auth/AuthenticationProvider';
 import withAppProviders from './withAppProviders';
 import { ModalProvider } from './context/dashboardmodelcontext';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 Sentry.init({
 	dsn: 'https://11d7ede021fda5d9ef5448ded0a7f88e@o1064605.ingest.us.sentry.io/4508641995390976',
@@ -40,7 +41,7 @@ const emotionCacheOptions = {
 		insertionPoint: document.getElementById('emotion-insertion-point')
 	}
 };
-
+const queryClient = new QueryClient()
 /**
  * The main App component.
  */
@@ -54,6 +55,7 @@ function App() {
 	);
 
 	return (
+		<QueryClientProvider client={queryClient}>
 		<ModalProvider>
 		<MockAdapterProvider>
 			<CacheProvider value={cacheProviderValue}>
@@ -79,6 +81,7 @@ function App() {
 			</CacheProvider>
 		</MockAdapterProvider>
 		</ModalProvider>
+		</QueryClientProvider>
 	);
 }
 

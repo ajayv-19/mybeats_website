@@ -10,11 +10,11 @@ export const addTagTypes = [
   "settings_team_member",
 ] as const;
 
-const authToken = (
-  await fetchAuthSession()
-).tokens?.accessToken?.toString();
+// const authToken = (
+//   await fetchAuthSession()
+// ).tokens?.accessToken?.toString();
 
-console.log("authTokeninteam", authToken);
+// console.log("authTokeninteam", authToken);
 
 const injectedRtkApi = api
   .enhanceEndpoints({
@@ -99,9 +99,9 @@ const injectedRtkApi = api
         GetTeamMembersSettingsApiArg
       >({
         query: () => ({ url: `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/listInvitedUsers/137`, 
-          headers: {
-            Authorization: authToken,
-          },
+          // headers: {
+          //   Authorization: authToken,
+          // },
         }),
         providesTags: ["settings_team"],
       }),

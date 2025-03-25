@@ -10,13 +10,18 @@ const {
   Plans,
 } = require("../models");
 
+
 const { QuickSightClient, UpdateUserCommand, ListUsersCommand, DeleteUserCommand } = require('@aws-sdk/client-quicksight');
 const { CognitoIdentityClient, GetIdCommand, GetOpenIdTokenCommand } = require('@aws-sdk/client-cognito-identity');
 const { STSClient, AssumeRoleWithWebIdentityCommand } = require('@aws-sdk/client-sts');
 
 
+
+
 const cognitoClient = new CognitoIdentityClient({ region: "us-east-1" });
 const stsClient = new STSClient({ region: "us-east-1" });
+
+
 
 
 const UserController = {
@@ -28,6 +33,7 @@ const UserController = {
       const user = await User.findOne({ where: payload });
       console.log(payload, "payload");
       console.log(user, "user");
+
 
       if (!user) {
         return res
@@ -46,7 +52,11 @@ const UserController = {
       }
       console.log(company, "company");
 
+
       let subscription = null;
+
+
+
 
 
 
@@ -56,6 +66,7 @@ const UserController = {
         });
       }
       console.log(subscription, "subscription");
+
 
       // const AdminRoleId = await Role.findOne({ where: { name: "ADMIN" } }).id;
       let isactive = null;
@@ -92,6 +103,7 @@ const UserController = {
        * }
        */
 
+
       const userdata = { user, company, isactive, plan };
       res.json({ success: true, userdata });
     } catch (error) {
@@ -99,6 +111,8 @@ const UserController = {
       res.status(500).json({ success: false, error: "Failed to fetch user" });
     }
   },
+
+
 
 
   async canShowBilling(req, res) {
@@ -116,19 +130,23 @@ const UserController = {
     res.json({ success: true, flag });
   },
 
+
   async checkUserById(req, res) {
     try {
       const payload = req.query;
       payload.is_varified = true;
       const user = await User.findOne({ where: payload });
 
+
       // user.company = company;
+
 
       if (!user) {
         return res
           .status(404)
           .json({ success: false, error: "User not found" });
       }
+
 
       res.status(200).json({ success: true, user });
     } catch (error) {
@@ -137,6 +155,7 @@ const UserController = {
     }
   },
 
+
   async updateUser(req, res) {
     try {
       const userData = req.body;
@@ -144,11 +163,13 @@ const UserController = {
         where: { email: userData.email },
       });
 
+
       if (!updated) {
         return res
           .status(404)
           .json({ success: false, error: "User not found" });
       }
+
 
       res.json({ success: true, message: "User updated successfully" });
     } catch (error) {
@@ -156,6 +177,7 @@ const UserController = {
       res.status(500).json({ success: false, error: "Failed to update user" });
     }
   },
+
 
   async syncMyInvites(user) {
     const invite = await UserInvites.findOne({ where: { email: user.email } });
@@ -174,6 +196,7 @@ const UserController = {
     return invite;
   },
 
+
   async addOrUpdateUserDetails(req, res) {
     try {
       const {
@@ -186,6 +209,7 @@ const UserController = {
         invited_by = 0,
       } = req.body;
 
+
       if (!email || !Customer_Name) {
         return res.status(400).json({
           success: false,
@@ -195,7 +219,9 @@ const UserController = {
       const domain = email.split("@")[1];
       let company_id;
 
+
       const created_timestamp = new Date().toISOString();
+
 
       // Find the existing user by email
       const existingUser = await User.findOne({ where: { email } });
@@ -225,10 +251,12 @@ const UserController = {
         });
       }
 
+
       const company = await Company.findOne({ where: { domain } });
       if (company) {
         company_id = company.id;
       }
+
 
       // If the user does not exist, create a new user
       const newUser = await User.create({
@@ -247,7 +275,9 @@ const UserController = {
         ...(company_id && { company_id }),
       });
 
+
       await this.syncMyInvites(newUser);
+
 
       res.json({
         success: true,
@@ -262,8 +292,10 @@ const UserController = {
     }
   },
 
+
   async updateUserRole(req, res) {
     const { email, role } = req.body;
+
 
     // Determine role_id based on the role
     let role_id;
@@ -278,9 +310,11 @@ const UserController = {
       });
     }
 
+
     try {
       // Find the user by email
       const user = await User.findOne({ where: { email } });
+
 
       if (!user) {
         return res.status(404).json({
@@ -289,9 +323,11 @@ const UserController = {
         });
       }
 
+
       // Update the user's role_id
       user.role_id = role_id;
       await user.save();
+
 
       return res.json({
         success: true,
@@ -308,14 +344,18 @@ const UserController = {
     }
   },
 
+
   async addComment(req, res) {
     const { email, firstName, lastName, message } = req.body;
 
+
     // Determine role_id based on the role
+
 
     try {
       // Find the user by email
       // const user = await User.findOne({ where: { email } });
+
 
       // if (!user) {
       //   return res.status(404).json({
@@ -324,6 +364,7 @@ const UserController = {
       //   });
       // }
 
+
       // Create a new comment
       const newComment = await CustomerQueries.create({
         email,
@@ -331,6 +372,7 @@ const UserController = {
         lastName,
         message,
       });
+
 
       return res.json({
         success: true,
@@ -347,6 +389,7 @@ const UserController = {
     }
   },
 
+
   async listInvitedUsers(req, res) {
     const { company_id, user_id } = req.query;
     if (!company_id || !user_id) {
@@ -360,23 +403,19 @@ const UserController = {
       const invitedUsers = await UserInvites.findAll({
         where: { company_id },
       });
-
       // Get admin users who are NOT in the invites table
       const adminUsers = await User.findAll({
         where: { company_id, role_id: 1 },
         attributes: ["Customer_Name", "email", "role_id", "image", "usertype"], // Fetch necessary attributes
       });
-
       // Filter out admin users already in the invited list
       const filteredAdminUsers = adminUsers.filter((adminUser) => {
         return !invitedUsers.some(
           (invitedUser) => invitedUser.email === adminUser.email
         );
       });
-
       // Convert invited users to JSON
       const invitedUsersData = invitedUsers.map((invite) => invite.toJSON());
-
       // Format user details
       const formattedUsers = await Promise.all(
         [...invitedUsersData, ...filteredAdminUsers].map(async (invite) => {
@@ -408,7 +447,6 @@ const UserController = {
               userDetails: userDetails || null,
             };
           }
-
           // If it's an admin, return their details directly
           if (invite.role_id === 1) {
             return {
@@ -430,7 +468,6 @@ const UserController = {
               },
             };
           }
-
           return {
             id: invite.id || null,
             email: invite.email,
@@ -445,7 +482,6 @@ const UserController = {
           };
         })
       );
-
       return res.json({
         success: true,
         invitedUsers: formattedUsers,
@@ -460,6 +496,7 @@ const UserController = {
       });
     }
   },
+
 
   async InvitedUserAccess(req, res) {
     const { email, company_id, access_type } = req.body;
@@ -486,11 +523,13 @@ const UserController = {
     }
   },
 
+
   async assumeRoleWithJWT(jwtToken, payloadSub) {
     console.log("Step 1: Fetching Cognito Identity ID...");
     const COGNITO_IDENTITY_POOL_ID = "us-east-1:3bed750a-a8a0-4866-b823-8f474cea8e6f";
     const IAM_ROLE_ARN = "arn:aws:iam::185329004895:role/amplify-amplifyquicksightdas-dev-dd445-authRole";
     const COGNITO_PROVIDER = "cognito-idp.us-east-1.amazonaws.com/us-east-1_O4uSMgJop";
+
 
     const idResponse = await cognitoClient.send(
       new GetIdCommand({
@@ -501,6 +540,7 @@ const UserController = {
       })
     );
     console.log("Cognito Identity ID response:", idResponse);
+
 
     console.log("Step 2: Fetching OpenID Token...");
     const openIdTokenResponse = await cognitoClient.send(
@@ -513,6 +553,7 @@ const UserController = {
     );
     console.log("OpenID Token response:", openIdTokenResponse);
 
+
     console.log("Step 3: Assuming IAM Role...");
     const stsResponse = await stsClient.send(
       new AssumeRoleWithWebIdentityCommand({
@@ -524,6 +565,7 @@ const UserController = {
     return stsResponse;
   },
 
+
   async DeActivateUserQs(req, res) {
     const { email, jwtToken, payloadSub } = req.query;
     const AWS_REGION = "us-east-1";
@@ -531,6 +573,7 @@ const UserController = {
     if (!email) {
       return res.status(400).json({ error: 'Missing required parameter: email' });
     }
+
 
     try {
       // Assume role and get temporary credentials
@@ -544,11 +587,13 @@ const UserController = {
         },
       });
 
+
       // Fetch the userName using the provided email
       const listUsersParams = {
         AwsAccountId: AWS_ACCOUNT_ID,
         Namespace: 'default',
       };
+
 
       const usersListResponse = await quickSightClientWithCreds.send(
         new ListUsersCommand(listUsersParams)
@@ -556,6 +601,7 @@ const UserController = {
       const users = usersListResponse.UserList;
       console.log("Users list:", users);
       const registeredUser = users.find(user => user.Email === email);
+
 
       if (!registeredUser) {
         return res.status(404).json({ error: 'User not found' });
@@ -585,14 +631,17 @@ const UserController = {
     }
   },
 
+
   async DeleteUserQs(req, res) {
     const { email, jwtToken, payloadSub } = req.query;
     const AWS_REGION = "us-east-1";
     const AWS_ACCOUNT_ID = "185329004895";
 
+
     if (!email) {
       return res.status(400).json({ error: 'Missing required parameter: email' });
     }
+
 
     try {
       // Assume role and get temporary credentials
@@ -606,11 +655,13 @@ const UserController = {
         },
       });
 
+
       // Fetch the userName using the provided email
       const listUsersParams = {
         AwsAccountId: AWS_ACCOUNT_ID,
         Namespace: 'default',
       };
+
 
       const usersListResponse = await quickSightClientWithCreds.send(
         new ListUsersCommand(listUsersParams)
@@ -619,11 +670,14 @@ const UserController = {
       console.log("Users list:", users);
       const registeredUser = users.find(user => user.Email === email);
 
+
       if (!registeredUser) {
         return res.status(404).json({ error: 'User not found' });
       }
 
+
       console.log("Registered user:", registeredUser);
+
 
       const userName = registeredUser.UserName;
       const params = {
@@ -634,14 +688,18 @@ const UserController = {
         Role: registeredUser.Role,
       };
 
+
       console.log("Delete user params:", params);
       const command = new DeleteUserCommand(params);
       console.log("Delete user command:", command);
 
+
       const response = await quickSightClientWithCreds.send(command);
       console.log("Delete user response:", response);
 
+
       res.status(200).json({ message: 'User deleted successfully', data: response });
+
 
     } catch (error) {
       console.error('Error deleting user:', error);
@@ -651,8 +709,12 @@ const UserController = {
 
 
 
+
 };
+
 
 module.exports = UserController;
 
+
 // Changed
+
