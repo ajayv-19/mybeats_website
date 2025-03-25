@@ -3,12 +3,9 @@ import React from "react";
 function InsurancePrivacy() {
   return (
     <div className="py-6">
-      <h1 className="font-bold text-6xl mb-4">
-        Privacy Policy for Insurance Companies
-      </h1>
-      <p className="mb-4">Effective Date: March 18, 2025</p>
+      <p className="mb-20">Effective Date: March 18, 2025</p>
 
-      <p className="mb-4">
+      <p className="mb-20">
         This Privacy Policy (“Policy”) explains how Novel AI Technologies, Inc. (“Company,” “we,”
         “our,” or “us”) collects, processes, and discloses data through our Products and Services
         (“Products”) provided to our partner insurance companies (“Insurance Company,” “you,” or
@@ -18,10 +15,10 @@ function InsurancePrivacy() {
       </p>
 
       <h2 className="font-bold text-xl mb-2">1. Information Processed</h2>
-      <p className="mb-4">
+      <p className="mb-20">
         The Products provide data derived from policyholders. This includes:
       </p>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-20">
         <li>
           Health metrics such as heart rate, activity levels, sleep patterns, caloric intake, and other
           physiological data recorded by wearables.
@@ -33,22 +30,22 @@ function InsurancePrivacy() {
       </ul>
 
       <h2 className="font-bold text-xl mb-2">2. Use of Data</h2>
-      <p className="mb-4">
+      <p className="mb-20">
         We make the Products available to you for the purpose of:
       </p>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-20">
         <li>Supporting internal risk assessment and underwriting analysis.</li>
         <li>Enhancing product development and actuarial analysis.</li>
         <li>Generating insights and recommendations regarding health trends.</li>
       </ul>
-      <p className="mb-4">
+      <p className="mb-20">
         The analytics, insights, and recommendations provided are for informational purposes only and
         are not intended to substitute for your own risk assessments or professional advice. You
         acknowledge that any use of these insights is at your sole risk.
       </p>
 
       <h2 className="font-bold text-xl mb-2">3. Data Sharing and Restrictions</h2>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-20">
         <li>
           You agree not to attempt to re-identify or reverse-engineer any de-identified data provided by
           the Products.
@@ -61,20 +58,20 @@ function InsurancePrivacy() {
           Any additional sharing of data must be approved in writing by Novel AI Technologies, Inc.
         </li>
       </ul>
-      <p className="mb-4">
+      <p className="mb-20">
         Furthermore, you shall not use the data for any purpose beyond internal analysis without our
         prior consent.
       </p>
 
       <h2 className="font-bold text-xl mb-2">4. Data Security</h2>
-      <p className="mb-4">
+      <p className="mb-20">
         We employ industry-standard security measures to safeguard the data processed through the
         Products. While we strive to protect the data, we do not guarantee absolute security and are not
         liable for unauthorized access beyond our control.
       </p>
 
       <h2 className="font-bold text-xl mb-2">5. Data Retention</h2>
-      <p className="mb-4">
+      <p className="mb-20">
         We retain the data provided through the Products only as long as necessary to support your
         internal analysis and as required by law. Once data is no longer needed, it will be securely
         deleted or further anonymized. Retention periods may vary based on legal requirements and
@@ -82,7 +79,7 @@ function InsurancePrivacy() {
       </p>
 
       <h2 className="font-bold text-xl mb-2">6. Insurance Company Responsibilities</h2>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-20">
         <li>
           Ensuring that your use of the Products complies with all applicable laws and regulations,
           including those governing data protection and consumer rights.
@@ -99,13 +96,13 @@ function InsurancePrivacy() {
           Not attempting to re-identify de-identified data provided by the Products.
         </li>
       </ul>
-      <p className="mb-4">
+      <p className="mb-20">
         You acknowledge that any misuse of the data or deviation from these responsibilities is solely
         your responsibility.
       </p>
 
       <h2 className="font-bold text-xl mb-2">7. Disclaimers and Liability</h2>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-20">
         <li>
           The Products and its data are provided “as is” without any warranties, express or implied,
           including those of accuracy, completeness, merchantability, or fitness for a particular purpose.
@@ -124,20 +121,20 @@ function InsurancePrivacy() {
       </ul>
 
       <h2 className="font-bold text-xl mb-2">8. Changes to this Privacy Policy</h2>
-      <p className="mb-4">
+      <p className="mb-20">
         We reserve the right to modify this Privacy Policy at any time. Any changes will be effective
         immediately upon posting the updated Policy on our website or within the Products. Your
         continued use of the Products constitutes your acceptance of any changes to this Policy.
       </p>
 
       <h2 className="font-bold text-xl mb-2">9. Contact Information</h2>
-      <p className="mb-4">
+      <p className="mb-20">
         For any questions or concerns regarding this Privacy Policy, please contact us at:
         contact@mybeatshealth.com
       </p>
 
       <h2 className="font-bold text-xl mb-2">Conclusion</h2>
-      <p className="mb-4">
+      <p className="mb-20">
         By accessing and using the Products, you acknowledge that you have read, understood, and
         agree to be bound by the terms of this Privacy Policy.
       </p>

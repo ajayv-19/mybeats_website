@@ -45,10 +45,10 @@ const FooterLinks = ({ scrollToSection, refs }: FooterLinksProps) => {
       pathname: "/privacy",
     },
     {
-      name: "Terms of Service",
+      name: "Terms and Conditions",
       ref: null, // No section for Terms of Service, we'll navigate
-      linkTo: "/terms-of-service",
-      pathname: "/terms-of-service"
+      linkTo: "/terms-and-conditions",
+      pathname: "/terms-and-conditions"
     },
   ];
 

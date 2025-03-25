@@ -18,7 +18,7 @@ const ShowcaseHeader: React.FC<ShowcaseHeaderProps> = ({ openModal }) => {
       }}
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 1, ease: "easeOut" }}
-      className="flex flex-col md:w-[800px] items-center text-center space-y-20"
+      className="flex flex-col md:w-[1000px] items-center text-center space-y-20"
     >
       <Text variant="h2">
         AI-enabled Data Driven Analytics for Insurance Companies

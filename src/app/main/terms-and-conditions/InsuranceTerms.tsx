@@ -3,11 +3,9 @@ import React from "react";
 function InsuranceTerms() {
   return (
     <div className="py-6">
-      <h1 className="font-bold text-6xl mb-4">
-        Terms and Conditions for Insurance Companies
-      </h1>
-      <p className="mb-4">Effective Date: March 18, 2025</p>
-      <p className="mb-4">
+
+      <p className="mb-10">Effective Date: March 18, 2025</p>
+      <p className="mb-10">
         These Terms and Conditions (“Terms”) govern the access and use of our
         products and services for insurance companies (“Products”) provided by
         Novel AI Technologies, Inc. (“Company,” “we,” “our,” or “us”). By
@@ -15,7 +13,7 @@ function InsuranceTerms() {
       </p>
 
       <h2 className="font-bold text-xl mb-2">1. Acceptance of Terms</h2>
-      <p className="mb-4">
+      <p className="mb-10">
         By accessing or using the Products, you acknowledge that you have read,
         understood, and agree to be bound by these Terms. If you do not agree,
         you must not access or use the Products. These Terms govern only the use
@@ -24,7 +22,7 @@ function InsuranceTerms() {
       </p>
 
       <h2 className="font-bold text-xl mb-2">2. Changes to Terms</h2>
-      <p className="mb-4">
+      <p className="mb-10">
         We reserve the right to modify these Terms at any time. Changes will be
         effective upon publishing it on our website. Continued use after any
         modifications constitutes acceptance of the revised Terms. It is your
@@ -34,7 +32,7 @@ function InsuranceTerms() {
 
       <h2 className="font-bold text-xl mb-2">3. Access and Use of the Products</h2>
       <h3 className="font-bold mb-1">3.1 Permitted Use</h3>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-10">
         <li>
           The Products provide analytics and insights to support insurance risk
           assessment.
@@ -46,7 +44,7 @@ function InsuranceTerms() {
       </ul>
 
       <h3 className="font-bold mb-1">3.2 Prohibited Use</h3>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-10">
         <li>
           Disclose, distribute, sublicense, republish, upload, post, transmit,
           resell, or commercially exploit the Products or its outputs beyond
@@ -63,7 +61,7 @@ function InsuranceTerms() {
       </ul>
 
       <h3 className="font-bold mb-1">3.3 User Obligations and Restrictions</h3>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-10">
         <li>
           You will not attempt to gain unauthorized access to any portion of the
           Products or its underlying systems.
@@ -76,7 +74,7 @@ function InsuranceTerms() {
       </ul>
 
       <h2 className="font-bold text-xl mb-2">4. Data Ownership and Restrictions</h2>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-10">
         <li>
           Novel AI Technologies, Inc. retains all ownership rights over the
           Products, including its AI models, algorithms, and analytics
@@ -97,7 +95,7 @@ function InsuranceTerms() {
         5. Disclaimers and Limitation of Liability
       </h2>
       <h3 className="font-bold mb-1">5.1 No Warranties</h3>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-10">
         <li>
           The Products and their analytics are provided on an “as is” and “as
           available” basis, without warranties of any kind, either express or
@@ -112,7 +110,7 @@ function InsuranceTerms() {
       </ul>
 
       <h3 className="font-bold mb-1">5.2 Limitation of Liability</h3>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-10">
         <li>
           In no event shall Novel AI Technologies, Inc. be liable for indirect,
           incidental, special, consequential, or punitive damages, including lost
@@ -132,7 +130,7 @@ function InsuranceTerms() {
       </ul>
 
       <h3 className="font-bold mb-1">5.3 Disclaimer</h3>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-10">
         <li>
           The analytics provided are for informational purposes only and do not
           constitute professional advice or guarantees of future risk.
@@ -148,7 +146,7 @@ function InsuranceTerms() {
       <h2 className="font-bold text-xl mb-2">
         6. Compliance and Regulatory Responsibilities
       </h2>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-10">
         <li>
           The Insurance Company is solely responsible for ensuring that its use of
           the Products complies with applicable laws and regulations, including
@@ -161,7 +159,7 @@ function InsuranceTerms() {
       </ul>
 
       <h2 className="font-bold text-xl mb-2">7. Confidentiality</h2>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-10">
         <li>
           You acknowledge that the Products contain proprietary and confidential
           information. You agree not to disclose any proprietary information
@@ -177,13 +175,13 @@ function InsuranceTerms() {
       </ul>
 
       <h2 className="font-bold text-xl mb-2">8. Indemnification</h2>
-      <p className="mb-4">
+      <p className="mb-10">
         You agree to indemnify, defend, and hold harmless Novel AI Technologies,
         Inc. and its affiliates, officers, directors, employees, and agents from
         any claims, damages, liabilities, costs, or expenses (including legal
         fees) arising from:
       </p>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-10">
         <li>Your use or misuse of the Products.</li>
         <li>Any violations of laws or regulations due to your use of the Products.</li>
         <li>
@@ -197,7 +195,7 @@ function InsuranceTerms() {
       </ul>
 
       <h2 className="font-bold text-xl mb-2">9. Termination</h2>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-10">
         <li>We may terminate your access to the Products at any time if you breach these Terms.</li>
         <li>
           Upon termination, you must immediately cease using the Products and
@@ -212,7 +210,7 @@ function InsuranceTerms() {
       <h2 className="font-bold text-xl mb-2">
         10. Governing Law and Dispute Resolution
       </h2>
-      <ul className="list-disc ml-6 mb-4">
+      <ul className="list-disc ml-6 mb-10">
         <li>
           These Terms shall be governed by the laws of the State of Delaware,
           without regard to its conflict of laws principles.
@@ -230,7 +228,7 @@ function InsuranceTerms() {
       </ul>
 
       <h2 className="font-bold text-xl mb-2">11. Entire Agreement</h2>
-      <p className="mb-4">
+      <p className="mb-10">
         These Terms, along with any applicable agreements between Novel AI
         Technologies, Inc. and the Insurance Company, constitute the entire
         agreement governing your use of the Products and supersede all prior
@@ -243,7 +241,7 @@ function InsuranceTerms() {
       <h2 className="font-bold text-xl mb-2">
         12. Electronic Signatures and Acceptance
       </h2>
-      <p className="mb-4">
+      <p className="mb-10">
         By accessing and using the Products, you acknowledge and agree that these
         Terms are legally binding and enforceable.
       </p>

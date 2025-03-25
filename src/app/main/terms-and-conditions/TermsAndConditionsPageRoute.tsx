@@ -1,10 +1,10 @@
 import { FuseRouteItemType } from "@fuse/utils/FuseUtils";
 import authRoles from "../../auth/authRoles";
-import TermsOfServicePage from "./TermsOfServicePage";
+import TermsAndConditionsPage from "./TermsAndConditionsPage";
 
 const SignInPageRoute: FuseRouteItemType = {
-  path: "terms-of-service",
-  element: <TermsOfServicePage />,
+  path: "terms-and-conditions",
+  element: <TermsAndConditionsPage />,
   settings: {
     layout: {
       config: {
