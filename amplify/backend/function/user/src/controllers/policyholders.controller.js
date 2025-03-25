@@ -83,9 +83,53 @@ class PolicyholdersController {
         }
     }
 
+    // async getPolicyHoldersByCompanyId(req, res) {
+    //     try {
+    //         const { company_id } = req.params;
+
+    //         if (!company_id) {
+    //             return res.status(400).json({ error: "company_id is required in path parameters" });
+    //         }
+
+    //         // Fetch company details from PostgreSQL
+    //         const company = await Company.findByPk(company_id);
+    //         if (!company) {
+    //             return res.status(404).json({ error: "Company not found" });
+    //         }
+
+    //         const { domain } = company;
+
+    //         if (!domain) {
+    //             return res.status(400).json({ error: "Domain not found for the company" });
+    //         }
+
+    //         console.log("Domain:", domain);
+
+    //         // Use the domain to fetch policyholders from Firestore
+    //         const companyRef = db.collection("insuranceCompanies").doc(domain);
+    //         const companyDoc = await companyRef.get();
+
+    //         if (!companyDoc.exists) {
+    //             return res.status(404).json({ error: "Company not found in Firestore" });
+    //         }
+
+    //         const policySnapshot = await companyRef.collection("policyHolders").get();
+
+    //         const policyHolders = [];
+    //         policySnapshot.forEach((doc) => {
+    //             policyHolders.push({ id: doc.id, ...doc.data() });
+    //         });
+
+    //         return res.status(200).json({ policyHolders });
+    //     } catch (err) {
+    //         console.error("Error fetching policyholders:", err);
+    //         return res.status(500).json({ error: "Internal Server Error" });
+    //     }
+    // }
     async getPolicyHoldersByCompanyId(req, res) {
         try {
             const { company_id } = req.params;
+            const { page = 1, limit = 10, search = "" } = req.query; // Default values for pagination and search
 
             if (!company_id) {
                 return res.status(400).json({ error: "company_id is required in path parameters" });
@@ -113,19 +157,46 @@ class PolicyholdersController {
                 return res.status(404).json({ error: "Company not found in Firestore" });
             }
 
-            const policySnapshot = await companyRef.collection("policyHolders").get();
+            const policyHoldersRef = companyRef.collection("policyHolders");
 
-            const policyHolders = [];
+            // Fetch all policyholders
+            const policySnapshot = await policyHoldersRef.get();
+
+            let policyHolders = [];
             policySnapshot.forEach((doc) => {
                 policyHolders.push({ id: doc.id, ...doc.data() });
             });
 
-            return res.status(200).json({ policyHolders });
+            // Apply search filter
+            if (search) {
+                const searchLower = search.toLowerCase();
+                policyHolders = policyHolders.filter(
+                    (holder) =>
+                        holder.PolicyID?.toLowerCase().includes(searchLower) ||
+                        holder.Employer?.toLowerCase().includes(searchLower)
+                );
+            }
+
+            // Apply pagination
+            const total = policyHolders.length; // Total number of filtered results
+            const startIndex = (page - 1) * limit;
+            const endIndex = startIndex + parseInt(limit, 10);
+            const paginatedPolicyHolders = policyHolders.slice(startIndex, endIndex);
+
+            return res.status(200).json({
+                total,
+                page: parseInt(page, 10),
+                limit: parseInt(limit, 10),
+                policyHolders: paginatedPolicyHolders,
+            });
         } catch (err) {
             console.error("Error fetching policyholders:", err);
             return res.status(500).json({ error: "Internal Server Error" });
         }
     }
+
+
+
     async deletePolicyHolder(req, res) {
         try {
             const { company_id, policyId } = req.params;
