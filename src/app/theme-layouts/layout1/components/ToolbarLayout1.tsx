@@ -20,9 +20,7 @@ import AdjustFontSize from "../../shared-components/AdjustFontSize";
 import FullScreenToggle from "../../shared-components/FullScreenToggle";
 import { useLocation, useNavigate } from "react-router-dom";
 import useAuth from "src/app/auth/useAuth";
-import {
-  selectAccount,
-} from "src/app/features/account/accountSlice";
+import { selectAccount } from "src/app/features/account/accountSlice";
 import { useSelector } from "react-redux";
 import { useModal } from "src/app/context/dashboardmodelcontext";
 
@@ -37,15 +35,18 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
   const { qaModal, setQaModal } = useModal();
   const location = useLocation();
   const account = useSelector(selectAccount);
-  const [showDemo, setShowDemo] = useState<boolean>();
+  const [loading, setLoading] = useState(true); // Add loading state
+  const [showDemo, setShowDemo] = useState<boolean>(false);
   const [fullName, setFullName] = useState<string>("");
   const [profileImage, setProfileImage] = useState<string>("");
 
   useEffect(() => {
     if (account) {
-      setShowDemo(account.isactive);
-      setFullName(account.user?.Customer_Name || "Guest");
+      // Simulate loading state until account data is processed
+      setShowDemo(account.isactive === false); // Show demo if account.isactive is false
+      setFullName(account.user?.Customer_Name || "");
       setProfileImage(account.user?.image || "");
+      setLoading(false); // Set loading to false after processing account data
     }
   }, [account]);
 
@@ -82,25 +83,31 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
         elevation={0}
       >
         <Toolbar className="min-h-48 p-0 md:min-h-64">
-
           {/* Left Section: Image and Name */}
           <div className="flex items-center space-x-8 px-8 md:px-16">
-            <Avatar
-              sx={{
-                background: (theme) => theme.palette.background.default,
-                color: (theme) => theme.palette.text.secondary,
-              }}
-              className="w-40 h-40"
-              alt="User Photo"
-              src={profileImage}
-            >
-              {fullName?.[0]} {/* Show the first letter of the name if no image */}
-            </Avatar>
-            <Typography className="text-lg font-semibold truncate">
-            Welcome back,{fullName} !
-            </Typography>
+            {!loading ? (
+              <>
+                <Avatar
+                  sx={{
+                    background: (theme) => theme.palette.background.default,
+                    color: (theme) => theme.palette.text.secondary,
+                  }}
+                  className="w-40 h-40"
+                  alt="User Photo"
+                  src={profileImage}
+                >
+                  {fullName?.[0] || "G"} {/* Show the first letter of the name or "G" */}
+                </Avatar>
+                <Typography className="text-lg font-semibold truncate">
+                  Welcome back, {fullName || "Guest"}!
+                </Typography>
+              </>
+            ) : (
+              <Typography className="text-lg font-semibold truncate">
+                Welcome back,
+              </Typography>
+            )}
           </div>
-       
 
           {/* Navbar Toggle and Shortcuts */}
           <div className="flex flex-1 px-8 md:px-16 space-x-8">
@@ -128,14 +135,11 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
             </Hidden>
           </div>
 
-
-          
-
           {/* Right Section: Buttons and Toggles */}
           <div className="flex items-center overflow-x-auto px-8 md:px-16 space-x-6">
             <AdjustFontSize />
             <FullScreenToggle />
-            {!showDemo && (
+            {!loading && showDemo && (
               <Button
                 variant="contained"
                 onClick={handleFreeTrial}
@@ -152,11 +156,16 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
                 variant="contained"
                 size="small"
                 color="secondary"
-                className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
+                className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40 flex items-center space-x-4"
                 classes={{ startIcon: "mr-4" }}
                 onClick={() => setQaModal(true)}
               >
-                Ask FINN
+               <img
+                className="h-24 w-24 object-cover"
+               src="assets/images/pages/dashboard/finn.png"
+               alt="Profile Cover"
+                />
+               <span> Ask FINN</span>
               </Button>
             )}
           </div>
@@ -179,7 +188,6 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
               </Hidden>
             </>
           )}
-
         </Toolbar>
       </AppBar>
     </ThemeProvider>
