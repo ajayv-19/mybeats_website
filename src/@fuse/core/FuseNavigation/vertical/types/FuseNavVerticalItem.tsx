@@ -6,7 +6,7 @@ import { ListItemButton, ListItemButtonProps } from '@mui/material';
 import FuseNavBadge from '../../FuseNavBadge';
 import FuseSvgIcon from '../../../FuseSvgIcon';
 import { FuseNavItemComponentProps } from '../../FuseNavItem';
-import { selectAccount } from 'src/app/features/account/accountSlice';
+import { selectAccount, selectAccountFetched } from 'src/app/features/account/accountSlice';
 import { useSelector } from 'react-redux';
 
 type ListItemButtonStyleProps = ListItemButtonProps & {
@@ -53,9 +53,13 @@ const Root = styled(ListItemButton)<ListItemButtonStyleProps>(({ theme, ...props
  */
 function FuseNavVerticalItem(props: FuseNavItemComponentProps) {
     const account = useSelector(selectAccount); // Get the logged-in user's account details
+    const isFetched = useSelector(selectAccountFetched); // Check if account data is fully fetched
     console.log({ account }, "account");
 	const { item, nestedLevel = 0, onItemClick, checkPermission } = props;
-
+       // If account details are not yet available, return null (don't render anything)
+       if (!isFetched) {
+        return null;
+    }
     const itempadding = nestedLevel > 0 ? 38 + nestedLevel * 16 : 16;
 
     const component = item.url ? NavLinkAdapter : 'li';

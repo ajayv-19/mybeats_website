@@ -7,6 +7,7 @@ import { memo, useEffect, useState } from "react";
 import Button from "@mui/material/Button";
 import Avatar from "@mui/material/Avatar";
 import Typography from "@mui/material/Typography";
+import Skeleton from "@mui/material/Skeleton";
 import {
   selectFuseCurrentLayoutConfig,
   selectToolbarTheme,
@@ -20,7 +21,7 @@ import AdjustFontSize from "../../shared-components/AdjustFontSize";
 import FullScreenToggle from "../../shared-components/FullScreenToggle";
 import { useLocation, useNavigate } from "react-router-dom";
 import useAuth from "src/app/auth/useAuth";
-import { selectAccount } from "src/app/features/account/accountSlice";
+import { selectAccount, selectAccountFetched } from "src/app/features/account/accountSlice";
 import { useSelector } from "react-redux";
 import { useModal } from "src/app/context/dashboardmodelcontext";
 
@@ -35,20 +36,19 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
   const { qaModal, setQaModal } = useModal();
   const location = useLocation();
   const account = useSelector(selectAccount);
-  const [loading, setLoading] = useState(true); // Add loading state
+  const isFetched = useSelector(selectAccountFetched); // Use the fetched flag
   const [showDemo, setShowDemo] = useState<boolean>(false);
   const [fullName, setFullName] = useState<string>("");
   const [profileImage, setProfileImage] = useState<string>("");
 
   useEffect(() => {
-    if (account) {
-      // Simulate loading state until account data is processed
+    if (isFetched && account) {
+      // Process account data after it is fully fetched
       setShowDemo(account.isactive === false); // Show demo if account.isactive is false
       setFullName(account.user?.Customer_Name || "");
       setProfileImage(account.user?.image || "");
-      setLoading(false); // Set loading to false after processing account data
     }
-  }, [account]);
+  }, [isFetched, account]);
 
   const { className } = props;
   const { signOut } = useAuth();
@@ -66,6 +66,34 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
       navigate("/sign-in?demo=true"), window.location.reload();
     }, 1000);
   };
+
+  // Show a loading skeleton until the account data is fully fetched
+  if (!isFetched) {
+    return (
+      <ThemeProvider theme={toolbarTheme}>
+        <AppBar
+          id="fuse-toolbar"
+          className={clsx("relative z-20 flex border-b", className)}
+          color="default"
+          sx={{
+            backgroundColor: (theme) =>
+              theme.palette.mode === "light"
+                ? toolbarTheme.palette.background.paper
+                : toolbarTheme.palette.background.default,
+          }}
+          position="static"
+          elevation={0}
+        >
+          <Toolbar className="min-h-48 p-0 md:min-h-64">
+            <div className="flex items-center space-x-8 px-8 md:px-16">
+              <Skeleton variant="circular" width={40} height={40} />
+              <Skeleton variant="text" width={120} height={30} />
+            </div>
+          </Toolbar>
+        </AppBar>
+      </ThemeProvider>
+    );
+  }
 
   return (
     <ThemeProvider theme={toolbarTheme}>
@@ -85,28 +113,26 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
         <Toolbar className="min-h-48 p-0 md:min-h-64">
           {/* Left Section: Image and Name */}
           <div className="flex items-center space-x-8 px-8 md:px-16">
-            {!loading ? (
-              <>
-                <Avatar
-                  sx={{
-                    background: (theme) => theme.palette.background.default,
-                    color: (theme) => theme.palette.text.secondary,
-                  }}
-                  className="w-40 h-40"
-                  alt="User Photo"
-                  src={profileImage}
-                >
-                  {fullName?.[0] || "G"} {/* Show the first letter of the name or "G" */}
-                </Avatar>
-                <Typography className="text-lg font-semibold truncate">
-                  Welcome back, {fullName || "Guest"}!
-                </Typography>
-              </>
-            ) : (
+            <Avatar
+              sx={{
+                background: (theme) => theme.palette.background.default,
+                color: (theme) => theme.palette.text.secondary,
+              }}
+              className="w-40 h-40"
+              alt="User Photo"
+              src={profileImage}
+            >
+              {fullName?.[0] || "G"} {/* Show the first letter of the name or "G" */}
+            </Avatar>
+
+            <div className="flex flex-col">
               <Typography className="text-lg font-semibold truncate">
-                Welcome back,
+                Welcome back, {fullName || "Guest"}!
               </Typography>
-            )}
+              <Typography className="text-sm px-2 font-medium text-gray-500 truncate">
+                You have two new messages!
+              </Typography>
+            </div>
           </div>
 
           {/* Navbar Toggle and Shortcuts */}
@@ -139,7 +165,7 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
           <div className="flex items-center overflow-x-auto px-8 md:px-16 space-x-6">
             <AdjustFontSize />
             <FullScreenToggle />
-            {!loading && showDemo && (
+            {showDemo && (
               <Button
                 variant="contained"
                 onClick={handleFreeTrial}
@@ -160,12 +186,12 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
                 classes={{ startIcon: "mr-4" }}
                 onClick={() => setQaModal(true)}
               >
-               <img
-                className="h-24 w-24 object-cover"
-               src="assets/images/pages/dashboard/finn.png"
-               alt="Profile Cover"
+                <img
+                  className="h-24 w-24 object-cover"
+                  src="assets/images/pages/dashboard/finn.png"
+                  alt="Profile Cover"
                 />
-               <span> Ask FINN</span>
+                <span> Ask FINN</span>
               </Button>
             )}
           </div>
