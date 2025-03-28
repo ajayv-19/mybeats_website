@@ -152,6 +152,16 @@ function AnalyticsDashboardApp() {
             height="100%"
             src={url}
           />
+           <div className="relative flex">
+            <button
+              type="button"
+              className="px-16 py-8 text-center absolute bottom-0  rounded bg-[#ffffff] text-white"
+              style={{ width: "100%" }}
+            >
+              {/* <span>CLOSE</span> */}
+              {/* <Close /> */}
+            </button>
+          </div>
         </div>
       }
       scroll={isMobile ? "normal" : "page"}

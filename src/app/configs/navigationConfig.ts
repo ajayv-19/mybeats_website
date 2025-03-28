@@ -11,6 +11,7 @@ i18next.addResourceBundle("en", "navigation", en);
 i18next.addResourceBundle("tr", "navigation", tr);
 i18next.addResourceBundle("ar", "navigation", ar);
 
+
 /**
  * The navigationConfig object is an array of navigation items for the Fuse application.
  */
@@ -56,6 +57,7 @@ const navigationConfig: FuseNavItemType[] = [
       // }
     ],
   },
+
   {
     id: "apps",
     title: "", //Applications
@@ -63,6 +65,9 @@ const navigationConfig: FuseNavItemType[] = [
     type: "group",
     icon: "heroicons-outline:cube",
     translate: "APPLICATIONS",
+    permisssions: {
+      "email": "novelaitech@gmail.com",
+    },
     children: [
       // {
       // 	id: 'apps.academy',
@@ -191,6 +196,10 @@ const navigationConfig: FuseNavItemType[] = [
         type: "item",
         icon: "heroicons-outline:user-circle",
         url: "/apps/profile",
+        permisssions: {
+          email: "novelaitech@gmail.com",
+        },
+  
       },
       // {
       //   id: "apps.notifications",
@@ -202,6 +211,9 @@ const navigationConfig: FuseNavItemType[] = [
       {
         ...SettingsAppNavigation,
         type: "item",
+        permisssions: {
+          email: "novelaitech@gmail.com"
+        },
         // badge: {
         //   title: "NEW",
         // },
@@ -276,6 +288,7 @@ const navigationConfig: FuseNavItemType[] = [
       // },
     ],
   },
+
   // {
   //   id: "pages",
   //   title: "Pages",

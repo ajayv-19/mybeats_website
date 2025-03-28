@@ -35,10 +35,11 @@ type AccountState = {
   error: string;
   success: boolean;
   isactive: boolean;
+  fetched: boolean; // Added fetched property
 };
 
 /**
- * The initital state for account details
+ * The initial state for account details
  */
 const initialState: AccountState = {
   user: null,
@@ -47,6 +48,7 @@ const initialState: AccountState = {
   error: null,
   success: false,
   isactive: null,
+  fetched: false, // Initialize fetched as false
 };
 
 /**
@@ -77,24 +79,15 @@ export const submitAccountDetails = createAsyncThunk(
         );
         const fileName = `profiles/${sanitizedEmail}${fileExtension}`;
 
-        // Upload the image to S3 if a profile image link exists
-        if (profileImageLink) {
-          const sanitizedEmail = defaultEmail.replace(/[.@]/g, ""); // Sanitize email
-          const fileExtension = profileImageLink.name.substring(
-            profileImageLink.name.lastIndexOf(".")
-          );
-          const fileName = `profiles/${sanitizedEmail}${fileExtension}`;
+        // Upload image
+        // TODO: uploadData is deprecated, have to change this method.
+        const result = await uploadData({
+          key: fileName,
+          data: profileImageLink,
+        }).result;
 
-          // Upload image
-          // TODO: uploadData is deprecated, have to change this method.
-          const result = await uploadData({
-            key: fileName,
-            data: profileImageLink,
-          }).result;
-
-          linkFromS3 = `https://insurance-dashboard-imagesdd445-dev.s3.us-east-1.amazonaws.com/public/${result.key}`;
-          formData = { ...formData, image: linkFromS3 };
-        }
+        linkFromS3 = `https://insurance-dashboard-imagesdd445-dev.s3.us-east-1.amazonaws.com/public/${result.key}`;
+        formData = { ...formData, image: linkFromS3 };
       }
 
       // Submit the account details to the API
@@ -243,16 +236,19 @@ export const accountSlice = createSlice({
       .addCase(fetchAccountDetails.pending, (state) => {
         state.loading = true;
         state.error = null;
+        state.fetched = false; // Reset fetched flag
       })
       .addCase(fetchAccountDetails.fulfilled, (state, action) => {
         state.loading = false;
         state.success = true;
+        state.fetched = true; // Set fetched to true
         _.merge(state, action.payload); // Update state with fetched data
       })
       .addCase(fetchAccountDetails.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
         state.success = false;
+        state.fetched = false; // Ensure fetched remains false
       });
   },
 });
@@ -278,5 +274,8 @@ export const selectAccountEmail = (state: RootState) =>
 
 export const selectAccountName = (state: RootState) =>
   state.account.user.Customer_Name;
+
+export const selectAccountFetched = (state: RootState) =>
+  state.account.fetched; // Selector for fetched flag
 
 export default accountSlice.reducer;

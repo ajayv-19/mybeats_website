@@ -2,120 +2,127 @@ import NavLinkAdapter from '@fuse/core/NavLinkAdapter';
 import { alpha, styled } from '@mui/material/styles';
 import ListItemText from '@mui/material/ListItemText';
 import clsx from 'clsx';
-import { useMemo } from 'react';
 import { ListItemButton, ListItemButtonProps } from '@mui/material';
 import FuseNavBadge from '../../FuseNavBadge';
 import FuseSvgIcon from '../../../FuseSvgIcon';
 import { FuseNavItemComponentProps } from '../../FuseNavItem';
-import { selectAccount } from "src/app/features/account/accountSlice";
-import { useDispatch, useSelector } from "react-redux";
-
+import { selectAccount, selectAccountFetched } from 'src/app/features/account/accountSlice';
+import { useSelector } from 'react-redux';
 
 type ListItemButtonStyleProps = ListItemButtonProps & {
-	itempadding: number;
+    itempadding: number;
 };
 
 const Root = styled(ListItemButton)<ListItemButtonStyleProps>(({ theme, ...props }) => ({
-	minHeight: 36,
-	width: '100%',
-	borderRadius: '8px',
-	margin: '0 0 4px 0',
-	paddingRight: 16,
-	paddingLeft: props.itempadding > 80 ? 80 : props.itempadding,
-	paddingTop: 10,
-	paddingBottom: 10,
-	color: alpha(theme.palette.text.primary, 0.7),
-	cursor: 'pointer',
-	textDecoration: 'none!important',
-	'&:hover': {
-		color: theme.palette.text.primary
-	},
-	'&.active': {
-		color: theme.palette.text.primary,
-		backgroundColor:
-			theme.palette.mode === 'light' ? 'rgba(0, 0, 0, .05)!important' : 'rgba(255, 255, 255, .1)!important',
-		pointerEvents: 'none',
-		transition: 'border-radius .15s cubic-bezier(0.4,0.0,0.2,1)',
-		'& > .fuse-list-item-text-primary': {
-			color: 'inherit'
-		},
-		'& > .fuse-list-item-icon': {
-			color: 'inherit'
-		}
-	},
-	'& > .fuse-list-item-icon': {
-		marginRight: 16,
-		color: 'inherit'
-	},
-	'& > .fuse-list-item-text': {}
+    minHeight: 36,
+    width: '100%',
+    borderRadius: '8px',
+    margin: '0 0 4px 0',
+    paddingRight: 16,
+    paddingLeft: props.itempadding > 80 ? 80 : props.itempadding,
+    paddingTop: 10,
+    paddingBottom: 10,
+    color: alpha(theme.palette.text.primary, 0.7),
+    cursor: 'pointer',
+    textDecoration: 'none!important',
+    '&:hover': {
+        color: theme.palette.text.primary,
+    },
+    '&.active': {
+        color: theme.palette.text.primary,
+        backgroundColor:
+            theme.palette.mode === 'light' ? 'rgba(0, 0, 0, .05)!important' : 'rgba(255, 255, 255, .1)!important',
+        pointerEvents: 'none',
+        transition: 'border-radius .15s cubic-bezier(0.4,0.0,0.2,1)',
+        '& > .fuse-list-item-text-primary': {
+            color: 'inherit',
+        },
+        '& > .fuse-list-item-icon': {
+            color: 'inherit',
+        },
+    },
+    '& > .fuse-list-item-icon': {
+        marginRight: 16,
+        color: 'inherit',
+    },
+    '& > .fuse-list-item-text': {},
 }));
 
 /**
  * FuseNavVerticalItem is a React component used to render FuseNavItem as part of the Fuse navigational component.
  */
 function FuseNavVerticalItem(props: FuseNavItemComponentProps) {
-	const account = useSelector(selectAccount);
+    const account = useSelector(selectAccount); // Get the logged-in user's account details
+    const isFetched = useSelector(selectAccountFetched); // Check if account data is fully fetched
+    console.log({ account }, "account");
 	const { item, nestedLevel = 0, onItemClick, checkPermission } = props;
+       // If account details are not yet available, return null (don't render anything)
+       if (!isFetched) {
+        return null;
+    }
+    const itempadding = nestedLevel > 0 ? 38 + nestedLevel * 16 : 16;
 
-	const itempadding = nestedLevel > 0 ? 38 + nestedLevel * 16 : 16;
+    const component = item.url ? NavLinkAdapter : 'li';
 
-	const component = item.url ? NavLinkAdapter : 'li';
+    let itemProps = {};
 
-	let itemProps = {};
+    if (typeof component !== 'string') {
+        itemProps = {
+            disabled: item.disabled,
+            to: item.url || '',
+            end: item.end,
+            role: 'button',
+        };
+    }
 
-	if (typeof component !== 'string') {
-		itemProps = {
-			disabled: item.disabled,
-			to: item.url || '',
-			end: item.end,
-			role: 'button'
-		};
+   // Check if the item has permission
+   if (checkPermission && item?.permisssions) {
+	const { email, isactive } = item.permisssions;
+
+	// If "email" permission exists and matches the logged-in user's email, hide the item
+	if (email && account?.user?.email === email) {
+		return null; // Hide the item
 	}
 
-	if (checkPermission && !item?.hasPermission) {
-		return null;
+	// If "isactive" permission exists and is false, hide the item
+	if (isactive  && account?.isactive !== isactive) {
+		return null; // Hide the item
 	}
-	const keys = Object.entries(item?.permisssions || {});
-	if(keys.reduce((col,[key, value]) => col && (account[key] == value), true) == false ) {
-		return null;
-	}
-	const ReturnComponent = () => (
-		<Root
-			component={component}
-			className={clsx('fuse-list-item', item.active && 'active')}
-			onClick={() => onItemClick && onItemClick(item)}
-			itempadding={itempadding}
-			sx={item.sx}
-			{...itemProps}
-		>
-			{item.icon && (
-				<FuseSvgIcon
-					className={clsx('fuse-list-item-icon shrink-0', item.iconClass)}
-					color="action"
-				>
-					{item.icon}
-				</FuseSvgIcon>
-			)}
+}
 
-			<ListItemText
-				className="fuse-list-item-text"
-				primary={item.title}
-				secondary={item.subtitle}
-				classes={{
-					primary: 'text-md font-medium fuse-list-item-text-primary truncate',
-					secondary: 'text-sm font-medium fuse-list-item-text-secondary leading-normal truncate'
-				}}
-			/>
-			{item.badge && <FuseNavBadge badge={item.badge} />}
-		</Root>
-	);
-	return <ReturnComponent />;
-	/*
-	return useMemo(
-		ReturnComponent,
-		[item, itempadding, onItemClick]
-	);
-	*/
+
+    const ReturnComponent = () => (
+        <Root
+            component={component}
+            className={clsx('fuse-list-item', item.active && 'active')}
+            onClick={() => onItemClick && onItemClick(item)}
+            itempadding={itempadding}
+            sx={item.sx}
+            {...itemProps}
+        >
+            {item.icon && (
+                <FuseSvgIcon
+                    className={clsx('fuse-list-item-icon shrink-0', item.iconClass)}
+                    color="action"
+                >
+                    {item.icon}
+                </FuseSvgIcon>
+            )}
+
+            <ListItemText
+                className="fuse-list-item-text"
+                primary={item.title}
+                secondary={item.subtitle}
+                classes={{
+                    primary: 'text-md font-medium fuse-list-item-text-primary truncate',
+                    secondary: 'text-sm font-medium fuse-list-item-text-secondary leading-normal truncate',
+                }}
+            />
+            {item.badge && <FuseNavBadge badge={item.badge} />}
+        </Root>
+    );
+
+    return <ReturnComponent />;
 }
 
 const NavVerticalItem = FuseNavVerticalItem;
