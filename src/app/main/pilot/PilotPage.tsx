@@ -65,20 +65,23 @@ const PilotPage = () => {
     <div className="bg-gray-200 overflow-x-hidden h-full flex flex-col justify-between">
       <Navbar />
       <div className="pb-[100px] overflow-auto flex-1 flex flex-col items-center justify-center gap-40">
-        <div className="px-40 md:w-[1000px] flex flex-col gap-20">
+        <div className="px-40 md:w-[1200px] flex flex-col gap-20">
           <div className="text-center">
             <Text variant="h2">
-              AI-enabled Data Driven Analytics for Insurance Companies
+              AI-enabled Health Monitoring for Firefighters
             </Text>
           </div>
           <FadeAnimatedContainer delay={1} direction="bottom">
             {/* <ShowcaseCard scale="large" tiltDirection="center" /> */}
-            <video controls poster={MyBeats}>
-              <source
-                src="https://fire.engineering.nyu.edu/home/documents/MyBeats_Final.mp4"
-                type="video/mp4"
-              />
-            </video>
+            <iframe
+              src="https://www.youtube.com/embed/hL4czjz1vhM?si=5I0nphnMx4ITja1U"
+              title="YouTube video player"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+              className="w-[330px] h-[280px] sm:w-[1200px] sm:h-[600px]"
+            />
           </FadeAnimatedContainer>
         </div>
 
@@ -95,7 +98,7 @@ const PilotPage = () => {
                 <div className="h-ful flex flex-col justify-center space-y-20">
                   <Text variant="h2">STEP 1: DOWNLOAD THE APP</Text>
                   <Text variant="body2">
-                    Search for MyBeats in your mobile app store or click on
+                    Search for "MyBeats" in your mobile app store or click on
                     buttons below.
                   </Text>
                 </div>

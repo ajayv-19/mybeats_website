@@ -45,6 +45,7 @@ const ConsentFormPage = () => {
             <h2 className="mt-20 font-bold text-xl mb-2">
               2. Purpose of the Study
             </h2>
+            <p>The purpose of this pilot study is to:</p>
             <ul className="list-disc list-inside space-y-2">
               <li>
                 Assess the effectiveness of an AI-powered mobile application in
@@ -58,14 +59,17 @@ const ConsentFormPage = () => {
             </ul>
 
             <h2 className="mt-20 font-bold text-xl mb-2">3. Eligibility</h2>
+            <p>
+              You are eligible to participate if you are an active firefighter
+              who:
+            </p>
             <ul className="list-disc list-inside space-y-2">
-              <li>You are an active firefighter.</li>
               <li>
-                You agree to wear a health tracker (either one provided by the
+                Agrees to wear a health tracker (either one provided by the
                 study or your own device).
               </li>
               <li>
-                You are willing to sync your device with our mobile app for data
+                Is willing to sync your device with our mobile app for data
                 collection over a 30-day period.
               </li>
             </ul>
@@ -78,7 +82,7 @@ const ConsentFormPage = () => {
               over a 30-day period:
             </p>
 
-            <h3 className="font-bold text-lg mb-2">Health Tracker Use:</h3>
+            <h3 className="font-bold text-lg mb-2">a. Health Tracker Use:</h3>
             <ul className="list-disc list-inside space-y-2">
               <li>You will receive a health tracker or use your own.</li>
               <li>
@@ -87,7 +91,7 @@ const ConsentFormPage = () => {
               </li>
             </ul>
 
-            <h3 className="font-bold text-lg mb-2">Data Syncing:</h3>
+            <h3 className="font-bold text-lg mb-2">b. Data Syncing:</h3>
             <ul className="list-disc list-inside space-y-2">
               <li>
                 Connect and sync your health tracker with our mobile app daily.
@@ -99,7 +103,7 @@ const ConsentFormPage = () => {
               </li>
             </ul>
 
-            <h3 className="font-bold text-lg mb-2">AI-Health Insights:</h3>
+            <h3 className="font-bold text-lg mb-2">c. AI-Health Insights:</h3>
             <ul className="list-disc list-inside space-y-2">
               <li>
                 Receive personalized health insights and recommendations within
@@ -121,7 +125,7 @@ const ConsentFormPage = () => {
               </li>
             </ul>
 
-            <h3 className="font-bold text-lg mb-2">Feedback Submission:</h3>
+            <h3 className="font-bold text-lg mb-2">d. Feedback Submission:</h3>
             <ul className="list-disc list-inside space-y-2">
               <li>
                 At the end of the pilot study, you will be asked to complete a
@@ -131,21 +135,24 @@ const ConsentFormPage = () => {
                 Survey responses will be de-linked from personally identifiable
                 information and used only for aggregate analysis.
               </li>
-              <li>
-                After the pilot test, you may disconnect the health tracker from
-                the app and return to normal device usage.
-              </li>
-              <li>
-                If provided with a health tracker, please return it. Contact us
-                at contact@mybeatshealth.com for return instructions.
-              </li>
             </ul>
+            <p className="mt-20">
+              After the pilot test, you may disconnect the health tracker with
+              the app and continue to use your devices the way you were using it
+              before participating in the pilot test. At the end of the pilot
+              test, if you were provided with a health tracker by us, please
+              return it. Please contact us at{" "}
+              <a href="mailto:contact@mybeatshealth.com" className="font-bold">
+                contact@mybeatshealth.com
+              </a>{" "}
+              for return instructions.
+            </p>
 
             <h2 className="mt-20 font-bold text-xl mb-2">
               5. Data Collection, Use &amp; Privacy
             </h2>
 
-            <h3 className="font-bold text-lg mb-2">What We Collect:</h3>
+            <h3 className="font-bold text-lg mb-2">a. What We Collect:</h3>
             <ul className="list-disc list-inside space-y-2">
               <li>
                 Health data (heart rate, activity, sleep patterns, caloric
@@ -157,7 +164,7 @@ const ConsentFormPage = () => {
               </li>
             </ul>
 
-            <h3 className="font-bold text-lg mb-2">How We Use Your Data:</h3>
+            <h3 className="font-bold text-lg mb-2">b. How We Use Your Data:</h3>
             <ul className="list-disc list-inside space-y-2">
               <li>
                 To provide real-time, AI-driven health insights tailored to you.
@@ -172,29 +179,33 @@ const ConsentFormPage = () => {
             </ul>
 
             <h3 className="font-bold text-lg mb-2">
-              Data Security &amp; Confidentiality:
+              c. Data Security &amp; Confidentiality:
             </h3>
-            <p>All data is stored securely on cloud servers.</p>
+            <ul className="list-disc list-inside space-y-2">
+              <li>All data is stored securely on cloud servers.</li>
+            </ul>
 
-            <h3 className="font-bold text-lg mb-2">Future Use of Data:</h3>
+            <h3 className="font-bold text-lg mb-2">d. Future Use of Data:</h3>
             <ul className="list-disc list-inside space-y-2">
               <li>
                 Data may be used for future research and further enhancement of
                 our AI models.
               </li>
-              <li>
-                Analytics generated through your data may be shared with your
-                insurance company for risk assessment and product development.
-                Any decisions made based on such analytics are at the user’s
-                risk.
-              </li>
             </ul>
+
+            <p className="mt-20">
+              Additionally, the analytics generated through your data may be
+              shared with your insurance company for risk assessment, product
+              development, and improving insurance-related analytics. Any
+              decisions made based on such analytics are solely at the user’s
+              risk. 
+            </p>
 
             <h2 className="mt-20 font-bold text-xl mb-2">
               6. Risks &amp; Discomforts
             </h2>
 
-            <h3 className="font-bold text-lg mb-2">Potential Risks:</h3>
+            <h3 className="font-bold text-lg mb-2">a. Potential Risks:</h3>
             <ul className="list-disc list-inside space-y-2">
               <li>
                 The mobile app may use additional battery power and cellular
@@ -206,17 +217,17 @@ const ConsentFormPage = () => {
               </li>
             </ul>
 
-            <h3 className="font-bold text-lg mb-2">Discomforts:</h3>
+            <h3 className="font-bold text-lg mb-2">b. Discomforts:</h3>
             <ul className="list-disc list-inside space-y-2">
               <li>
-                Minimal discomfort may arise from charging and wearing the
-                health tracker, and syncing data daily.
+                Minimal, primarily related to charging and wearing the health
+                tracker, and syncing data daily.
               </li>
             </ul>
 
             <h2 className="mt-20 font-bold text-xl mb-2">7. Benefits</h2>
 
-            <h3 className="font-bold text-lg mb-2">Personal Benefits:</h3>
+            <h3 className="font-bold text-lg mb-2">a. Personal Benefits:</h3>
             <ul className="list-disc list-inside space-y-2">
               <li>
                 Gain access to personalized, AI-driven health insights that may
@@ -224,7 +235,7 @@ const ConsentFormPage = () => {
               </li>
             </ul>
 
-            <h3 className="font-bold text-lg mb-2">Broader Benefits:</h3>
+            <h3 className="font-bold text-lg mb-2">b. Broader Benefits:</h3>
             <ul className="list-disc list-inside space-y-2">
               <li>
                 Your participation will help improve tools that may benefit the
@@ -238,7 +249,7 @@ const ConsentFormPage = () => {
             <ul className="list-disc list-inside space-y-2">
               <li>
                 You may withdraw from the study at any time by uninstalling the
-                app or selecting the “Withdraw Participation” option in the app.
+                app or clicking the “Withdraw Participation” option in the app.
               </li>
               <li>
                 If you withdraw, no new data will be collected, but previously
@@ -247,24 +258,29 @@ const ConsentFormPage = () => {
               </li>
               <li>
                 Upon withdrawal, you may request the deletion of any remaining
-                personal data by contacting us at: contact@mybeatshealth.com.
+                personal data by contacting us at:{" "}
+                <a
+                  href="mailto:contact@mybeatshealth.com"
+                  className="font-bold"
+                >
+                  contact@mybeatshealth.com
+                </a>
+                .
               </li>
             </ul>
 
             <h2 className="mt-20 font-bold text-xl mb-2">
               9. Contact Information
             </h2>
-            <ul className="list-disc list-inside space-y-2">
-              <li>
-                You may chat with our team through the app if you face any
-                issues.
-              </li>
-              <li>
-                For questions about your rights as a participant and concerns
-                regarding your data or about this pilot study, please contact us
-                at: contact@mybeatshealth.com
-              </li>
-            </ul>
+            <p>
+              You may chat with our team through the app if you face any issues.
+              For questions about your rights as a participant and concerns
+              regarding your data or about this pilot study, please contact us
+              at:{" "}
+              <a href="mailto:contact@mybeatshealth.com" className="font-bold">
+                contact@mybeatshealth.com
+              </a>
+            </p>
 
             <h2 className="mt-20 font-bold text-xl mb-2">
               10. Agreement to Participate
