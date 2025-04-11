@@ -18,17 +18,16 @@ import {
   IconButton,
 } from "@mui/material";
 import Papa from "papaparse";
-import DeleteIcon from "@mui/icons-material/Delete"; // Import Delete Icon
-import { addPolicyHolders, getPolicyHolders, deletePolicyHolder } from "../apis/Policyholdersapis"; // Replace with actual API service
+import DeleteIcon from "@mui/icons-material/Delete"; // Import Delete Icon// Replace with actual API service
 import { useSelector } from "react-redux";
 import { selectAccount } from "src/app/features/account/accountSlice";
 import { toast } from "sonner"; // Toast library
 import FuseLoading from "@fuse/core/FuseLoading"; // Loading spinner
+import { useAddPolicyHolders, useDeletePolicyHolder, usePolicyHolders, useUpdatePolicyHolder } from "../apis/Policyholdersapis";
 
 function PolicyHolders() {
-  const [existingPolicyHolders, setExistingPolicyHolders] = useState([]); // State for existing rows
   const [filteredPolicyHolders, setFilteredPolicyHolders] = useState([]); // State for filtered rows
-  const [csvData, setCsvData] = useState([]); // State for parsed CSV data
+  const [csvData, setCsvData] = useState<any>([]); // State for parsed CSV data
   const [isDialogOpen, setIsDialogOpen] = useState(false); // State for dialog visibility
   const [isSubmitting, setIsSubmitting] = useState(false); // State for submit button loading
   const [uploadError, setUploadError] = useState(""); // State for upload error messages
@@ -45,38 +44,20 @@ function PolicyHolders() {
     };
   };
 
-  console.log(accountData?.company?.policyholder_count, "policyholder_count");
-
-  // Fetch existing policyholders by company
-  const fetchPolicyByCompany = async () => {
-    setLoading(true); // Show loading spinner
-    try {
-      if (!accountData?.company?.id) {
-       
-        return;
-      }
-      const response = await getPolicyHolders(accountData?.company?.id); // Fetch existing policyholders from the backend
-      console.log("Fetched Policyholders:", response);
-      setExistingPolicyHolders(response.data.policyHolders || []);
-      setFilteredPolicyHolders(response.data.policyHolders || []); // Initialize filtered data
-    } catch (error) {
-      console.error("Error fetching policyholders:", error);
-      toast.error("Failed to fetch policyholders. Please try again.");
-    } finally {
-      setLoading(false); // Hide loading spinner
-    }
-  };
-
-  useEffect(() => {
-    fetchPolicyByCompany();
-  }, [accountData?.company?.id]); // Fetch policyholders when the component mounts or company ID changes
+  const {data: existingPolicyHolders, isPending, isError} = usePolicyHolders(accountData?.company?.id); // Fetch policyholders using custom hook
+  const {mutate: policyDeleteMutation, isPending: isDeletePending, isError: isDeleteError } = useDeletePolicyHolder()
+  const {mutate: updatePolicyHolderMutation, isPending: isUpdatePolicyPending, isError: isUpdatePolicyError}= useUpdatePolicyHolder()
+  const {mutate: addPolicyHolders, isPending: isAddingPolicyHolders}= useAddPolicyHolders()
+  console.log("-->", existingPolicyHolders?.policyHolders)
+  console.log("-->", existingPolicyHolders)
+  
 
   // Handle search input change
   const handleSearchChange = (event) => {
     const query = event.target.value.toLowerCase();
     setSearchQuery(query);
 
-    const filtered = existingPolicyHolders.filter(
+    const filtered = existingPolicyHolders?.policyHolders?.filter(
       (holder) =>
         holder.PolicyID.toLowerCase().includes(query) ||
         holder.Employer.toLowerCase().includes(query)
@@ -93,22 +74,10 @@ function PolicyHolders() {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
+const handleDelete = (policyId) => {
+  policyDeleteMutation({company_id: accountData?.company?.id, policyId: policyId})
+}
 
-  // Handle delete policyholder
-  const handleDelete = async (policyId) => {
-    try {
-      const response = await deletePolicyHolder(accountData?.company?.id, policyId); // Call API to delete policyholder
-      if (response.status === 200) {
-        toast.success("Policyholder deleted successfully!");
-        await fetchPolicyByCompany(); // Refresh the table after deletion
-      } else {
-        toast.error("Failed to delete policyholder. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error deleting policyholder:", error);
-      toast.error("Failed to delete policyholder. Please try again.");
-    }
-  };
 
   // Handle CSV file upload
   const handleFileUpload = (event) => {
@@ -145,7 +114,7 @@ function PolicyHolders() {
   };
 
   // Handle submitting CSV data to the backend
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (csvData.length === 0) {
       toast.error("No data to submit. Please upload a valid CSV file.");
       return;
@@ -153,31 +122,15 @@ function PolicyHolders() {
 
     setIsSubmitting(true);
     toast("Uploading data... This might take a few minutes."); // Notify user about upload time
-    try {
-      const data = {
-        policyData: csvData,
-        company_id: accountData?.company?.id,
-      };
-
-      const response = await addPolicyHolders(data);
-      console.log("Add PolicyHolders Response:", response);
-
-      if (response.status === 200) {
-        toast.success("Policy holders added successfully!");
-        setCsvData([]); // Clear the uploaded data
-        await fetchPolicyByCompany(); // Refresh the existing policyholders
-        setIsDialogOpen(false); // Close the dialog
-      } else {
-        toast.error("Failed to add policyholders. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error adding policyholders:", error);
-      toast.error("Failed to add policyholders. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    const data = {
+      policyData: csvData,
+      company_id: accountData?.company?.id,
+    };
+    console.log("Data to be submitted:", data);
+    
+    addPolicyHolders(data) 
   };
-
+  
   // Handle closing the dialog
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
@@ -201,9 +154,11 @@ function PolicyHolders() {
     document.body.removeChild(link);
   };
 
+  console.log("--", filteredPolicyHolders)
+
   return (
     <div>
-      {loading ? (
+      {isPending ? (
         <FuseLoading /> // Show loading spinner while fetching data
       ) : (
         <>
@@ -323,9 +278,8 @@ function PolicyHolders() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredPolicyHolders.length > 0 ? (
-                  filteredPolicyHolders
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
+                {existingPolicyHolders?.policyHolders.length > 0 ? (
+                  existingPolicyHolders?.policyHolders
                     .map((holder, index) => (
                       <TableRow key={index}>
                         <TableCell>{holder.PolicyID}</TableCell>
