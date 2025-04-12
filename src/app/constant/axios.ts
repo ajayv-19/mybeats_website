@@ -8,7 +8,7 @@ const instance = axios.create({
     //withCredentials: true,
 });
 const session = await fetchAuthSession();
-  const authToken = session.tokens?.accessToken?.toString();
+const authToken = session.tokens?.accessToken?.toString();
 
 instance.interceptors.request.use(
     (config) => {

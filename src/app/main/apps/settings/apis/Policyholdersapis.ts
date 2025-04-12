@@ -118,16 +118,13 @@ export const usePolicyHolders = (company_id: string) => {
 export const useAddPolicyHolders = () => {
   const queryClient = useQueryClient();
 
-  return useMutation({
+  return useMutation<{ company_id: string }, unknown, { company_id: string }>({
     mutationFn: async (data) => {
       const session = await fetchAuthSession();
       const authToken = session.tokens?.accessToken?.toString();
       console.log('data--->>>>', data);
-      const response = await axios.post(
-        '/policyholders',
-        data,
-      );
-
+      const response = await axios.post('/policyholders', data);
+  
       return response.data;
     },
     onSuccess: (_, variables) => {
@@ -137,6 +134,7 @@ export const useAddPolicyHolders = () => {
       console.error('Error adding policyholders:', error);
     },
   });
+
 };
 
 /**
