@@ -23,7 +23,12 @@ import { useSelector } from "react-redux";
 import { selectAccount } from "src/app/features/account/accountSlice";
 import { toast } from "sonner"; // Toast library
 import FuseLoading from "@fuse/core/FuseLoading"; // Loading spinner
-import { useAddPolicyHolders, useDeletePolicyHolder, usePolicyHolders, useUpdatePolicyHolder } from "../apis/Policyholdersapis";
+import {
+  useAddPolicyHolders,
+  useDeletePolicyHolder,
+  usePolicyHolders,
+  useUpdatePolicyHolder,
+} from "../apis/Policyholdersapis";
 
 function PolicyHolders() {
   const [filteredPolicyHolders, setFilteredPolicyHolders] = useState([]); // State for filtered rows
@@ -33,9 +38,9 @@ function PolicyHolders() {
   const [uploadError, setUploadError] = useState(""); // State for upload error messages
   const [loading, setLoading] = useState(false); // State for loading spinner
   const [searchQuery, setSearchQuery] = useState(""); // State for search query
-  const [page, setPage] = useState(0); // State for pagination page
-  const [rowsPerPage, setRowsPerPage] = useState(5); // State for rows per page
-
+  const [page, setPage] = useState(0); // State for pagination page (0-based for Material-UI)
+  const rowsPerPage = 10; // Number of rows per page
+  const [searchInput, setSearchInput] = useState(""); // State for search input field
   const requiredHeaders = ["PolicyID", "Employer"]; // Required headers for validation
   const accountData = useSelector(selectAccount) as unknown as {
     company: {
@@ -44,40 +49,47 @@ function PolicyHolders() {
     };
   };
 
-  const {data: existingPolicyHolders, isPending, isError} = usePolicyHolders(accountData?.company?.id); // Fetch policyholders using custom hook
-  const {mutate: policyDeleteMutation, isPending: isDeletePending, isError: isDeleteError } = useDeletePolicyHolder()
-  const {mutate: updatePolicyHolderMutation, isPending: isUpdatePolicyPending, isError: isUpdatePolicyError}= useUpdatePolicyHolder()
-  const {mutate: addPolicyHolders, isPending: isAddingPolicyHolders}= useAddPolicyHolders()
-  console.log("-->", existingPolicyHolders?.policyHolders)
-  console.log("-->", existingPolicyHolders)
-  
+  const {
+    data: existingPolicyHolders,
+    isPending,
+    isError,
+  } = usePolicyHolders(accountData?.company?.id, page, searchQuery); // Fetch policyholders using custom hook
+  const {
+    mutate: policyDeleteMutation,
+    isPending: isDeletePending,
+    isError: isDeleteError,
+  } = useDeletePolicyHolder();
+  const {
+    mutate: updatePolicyHolderMutation,
+    isPending: isUpdatePolicyPending,
+    isError: isUpdatePolicyError,
+  } = useUpdatePolicyHolder();
+  const { mutate: addPolicyHolders, isPending: isAddingPolicyHolders } =
+    useAddPolicyHolders();
+  console.log("-->", existingPolicyHolders?.policyHolders);
+  console.log("-->", existingPolicyHolders);
 
-  // Handle search input change
-  const handleSearchChange = (event) => {
-    const query = event.target.value.toLowerCase();
-    setSearchQuery(query);
+  const handleSearchInputChange = (event) => {
+    setSearchInput(event.target.value); // Update the input field value
+  };
 
-    const filtered = existingPolicyHolders?.policyHolders?.filter(
-      (holder) =>
-        holder.PolicyID.toLowerCase().includes(query) ||
-        holder.Employer.toLowerCase().includes(query)
-    );
-    setFilteredPolicyHolders(filtered);
+  // Handle search button click
+  const handleSearch = () => {
+    setSearchQuery(searchInput); // Update the actual search query
+    // Reset to the first page
   };
 
   // Handle pagination change
   const handleChangePage = (event, newPage) => {
-    setPage(newPage);
+    setPage(newPage); // Keep it 0-based for Material-UI
   };
 
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
+  const handleDelete = (policyId) => {
+    policyDeleteMutation({
+      company_id: accountData?.company?.id,
+      policyId: policyId,
+    });
   };
-const handleDelete = (policyId) => {
-  policyDeleteMutation({company_id: accountData?.company?.id, policyId: policyId})
-}
-
 
   // Handle CSV file upload
   const handleFileUpload = (event) => {
@@ -108,7 +120,9 @@ const handleDelete = (policyId) => {
       },
       error: (error) => {
         console.error("Error parsing CSV:", error);
-        setUploadError("Failed to parse CSV file. Please check the file format.");
+        setUploadError(
+          "Failed to parse CSV file. Please check the file format."
+        );
       },
     });
   };
@@ -127,10 +141,10 @@ const handleDelete = (policyId) => {
       company_id: accountData?.company?.id,
     };
     console.log("Data to be submitted:", data);
-    
-    addPolicyHolders(data) 
+
+    addPolicyHolders(data);
   };
-  
+
   // Handle closing the dialog
   const handleCloseDialog = () => {
     setIsDialogOpen(false);
@@ -154,7 +168,7 @@ const handleDelete = (policyId) => {
     document.body.removeChild(link);
   };
 
-  console.log("--", filteredPolicyHolders)
+  console.log("--", filteredPolicyHolders);
 
   return (
     <div>
@@ -165,7 +179,8 @@ const handleDelete = (policyId) => {
           {/* Download Template */}
           <div className="mb-16">
             <Typography variant="body1">
-              Download the template below and provide PolicyIDs and the Employers of policyholders
+              Download the template below and provide PolicyIDs and the
+              Employers of policyholders
             </Typography>
             <Button
               variant="contained"
@@ -178,8 +193,8 @@ const handleDelete = (policyId) => {
               Download CSV Template
             </Button>
           </div>
-            {/* Add Policy Holders */}
-           <div className="mb-16">
+          {/* Add Policy Holders */}
+          <div className="mb-16">
             <Button
               variant="contained"
               size="small"
@@ -256,15 +271,22 @@ const handleDelete = (policyId) => {
           </Dialog>
 
           {/* Search Bar */}
-          <div className="mb-16">
+          <div className="mb-16" style={{ display: "flex", gap: "10px" }}>
             <TextField
               label="Search by PolicyID or Employer"
               variant="outlined"
               size="small"
               fullWidth
-              value={searchQuery}
-              onChange={handleSearchChange}
+              value={searchInput}
+              onChange={handleSearchInputChange} // Update input field value
             />
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleSearch} // Trigger search on button click
+            >
+              Search
+            </Button>
           </div>
 
           {/* Existing Policy Holders Table */}
@@ -279,22 +301,21 @@ const handleDelete = (policyId) => {
               </TableHead>
               <TableBody>
                 {existingPolicyHolders?.policyHolders.length > 0 ? (
-                  existingPolicyHolders?.policyHolders
-                    .map((holder, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{holder.PolicyID}</TableCell>
-                        <TableCell>{holder.Employer}</TableCell>
-                        <TableCell>
+                  existingPolicyHolders?.policyHolders.map((holder, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{holder.PolicyID}</TableCell>
+                      <TableCell>{holder.Employer}</TableCell>
+                      <TableCell>
                         <IconButton
-                            color="secondary"
-                            size="small"
-                            onClick={() => handleDelete(holder.PolicyID)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                          color="secondary"
+                          size="small"
+                          onClick={() => handleDelete(holder.PolicyID)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 ) : (
                   <TableRow>
                     <TableCell colSpan={3} align="center">
@@ -309,11 +330,12 @@ const handleDelete = (policyId) => {
           {/* Pagination */}
           <TablePagination
             component="div"
-            count={filteredPolicyHolders.length}
+            count={existingPolicyHolders?.total || 0}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[]} // Remove "Rows per page" dropdown
+            labelRowsPerPage="" // Hide "Rows per page" label
           />
         </>
       )}

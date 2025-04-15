@@ -84,16 +84,16 @@
 //  */
 
 import axios from '../../../../constant/axios';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { fetchAuthSession } from '@aws-amplify/auth';
 
 /**
  * Fetch existing policyholders for a specific company.
  * @param {string} company_id - The ID of the company.
  */
-export const usePolicyHolders = (company_id: string) => {
+export const usePolicyHolders = (company_id: string, page: number, search: string) => {
   return useQuery({
-    queryKey: ['policyholders', company_id],
+    queryKey: ['policyholders', company_id, page,search],
     queryFn: async () => {
       console.log('company_id', company_id);
       const session = await fetchAuthSession();
@@ -102,10 +102,12 @@ export const usePolicyHolders = (company_id: string) => {
 
       const response = await axios.get(
         `/getpolicyholders/${company_id}`,
-        // {
-        //   headers: { Authorization: authToken },
-        // }
+        {
+          params: { page, search },
+        }
       );
+      keepPreviousData: true;
+      console.log('response-->', response);
       return response.data;
     },
     enabled: !!company_id, // Prevents execution if company_id is undefined

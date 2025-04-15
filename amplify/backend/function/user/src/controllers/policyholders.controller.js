@@ -126,6 +126,11 @@ class PolicyholdersController {
     //         return res.status(500).json({ error: "Internal Server Error" });
     //     }
     // }
+
+
+    /////////////////////////
+
+
     async getPolicyHoldersByCompanyId(req, res) {
         try {
             const { company_id } = req.params;
@@ -179,7 +184,7 @@ class PolicyholdersController {
 
             // Apply pagination
             const total = policyHolders.length; // Total number of filtered results
-            const startIndex = (page - 1) * limit;
+            const startIndex = page * limit; // Using 0-based indexing
             const endIndex = startIndex + parseInt(limit, 10);
             const paginatedPolicyHolders = policyHolders.slice(startIndex, endIndex);
 
