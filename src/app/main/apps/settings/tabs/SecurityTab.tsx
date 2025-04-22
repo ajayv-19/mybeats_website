@@ -172,9 +172,7 @@ function PolicyHolders() {
 
   return (
     <div>
-      {isPending ? (
-        <FuseLoading /> // Show loading spinner while fetching data
-      ) : (
+
         <>
           {/* Download Template */}
           <div className="mb-16">
@@ -290,7 +288,9 @@ function PolicyHolders() {
           </div>
 
           {/* Existing Policy Holders Table */}
-          <TableContainer component={Paper}>
+         {isPending ? <FuseLoading/> : 
+         <>
+         <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
@@ -327,7 +327,7 @@ function PolicyHolders() {
             </Table>
           </TableContainer>
 
-          {/* Pagination */}
+       
           <TablePagination
             component="div"
             count={existingPolicyHolders?.total || 0}
@@ -337,8 +337,10 @@ function PolicyHolders() {
             rowsPerPageOptions={[]} // Remove "Rows per page" dropdown
             labelRowsPerPage="" // Hide "Rows per page" label
           />
+          </>
+          }
         </>
-      )}
+      
     </div>
   );
 }
