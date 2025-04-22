@@ -4,7 +4,6 @@ const admin = require("firebase-admin");
 const { API_PREFIX } = require("./globals.const");
 const {
   awsServerlessExpressMiddleware,
-  validateScheduleToken,
   conditionalAuthMiddleware,
 } = require("./middlewares");
 const {
@@ -13,10 +12,10 @@ const {
   CompanyController,
   ScheduleController,
   EmailController,
+  PolicyholdersController,
 } = require("./controllers");
 const upload = require("./config/multer");
-var serviceAccount = require("./config/firebeats-43aaf-firebase-adminsdk-xfr1d-c158bfaef9.json");
-// Declare a new express app
+
 const app = express();
 app.use(bodyParser.json());
 
@@ -59,30 +58,37 @@ app.get('/health', async (req, res) => {
 
 // Define routes
 const router = express.Router();
+
+// UserController routes
 router.get("/checkusers", UserController.checkUserById);
 router.get("/users", UserController.getUserById);
 router.put("/updateUser", UserController.updateUser);
 router.post("/updaterole", UserController.updateUserRole);
 router.post("/addcomment", UserController.addComment);
-
-// router.post("/addOrUpdateUserDetails", UserController.addOrUpdateUserDetails);
 router.post(
   "/addOrUpdateUserDetails",
   upload.single("image"),
   UserController.addOrUpdateUserDetails
-)
-
+);
 router.get("/listInvitedUsers", UserController.listInvitedUsers);
 router.post("/invitedUserAccess", UserController.InvitedUserAccess);
 router.get("/canShowBilling", UserController.canShowBilling);
-router.post("/deactivate-user", (...args) => UserController.DeActivateUserQs(...args));
+router.post("/deactivate-user", (...args) =>
+  UserController.DeActivateUserQs(...args)
+);
 router.post("/delete-user", (...args) => UserController.DeleteUserQs(...args));
 
+// Setup routes for other controllers
 PaymentController.setupRoutes(router);
 CompanyController.setupRoutes(router);
 ScheduleController.setupRoutes(router);
 EmailController.setupRoutes(router);
-// Use router for specific path
+PolicyholdersController.setupRoutes(router);
+
+// Use PolicyholdersController router
+//app.use(`${API_PREFIX}/policyholders`, PolicyholdersController.router);
+
+// Use router for other paths
 app.use(API_PREFIX, router);
 
 // Start the server
@@ -92,4 +98,3 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
-// Changed

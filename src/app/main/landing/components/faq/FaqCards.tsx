@@ -24,14 +24,14 @@ const faqData = [
     question:
       "How does your platform ensure data privacy and security?",
     answer:
-      "We implement end-to-end encryption for data in transit and at rest. In addition, we conduct regular compliance checks to protect sensitive health information.",
+      "We implement end-to-end encryption for data in transit and at rest. In addition, we conduct regular security and compliance checks to protect sensitive health information.",
     delay: 0.6,
   },
 
   {
     question: "How can policyholders access their own data?",
     answer:
-      "Policyholders can view their personal health data and insights via the mobile app, which provides them with a user-friendly interface and access to reports.",
+      "Policyholders can view their personal health data and insights via the mobile app, which provides them with a user-friendly interface.",
     delay: 0.8,
   },
   {

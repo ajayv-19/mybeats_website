@@ -12,15 +12,25 @@ function ContactForm() {
 
   const handleSubmit = async () => {
     try {
+      const payload = {
+        firstName,
+        lastName,
+        email,
+        message,
+      };
+
       const response = await axios.post(
         "https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/addcomment",
-        {
-          firstName,
-          lastName,
-          email,
-          message,
-        }
+        payload
       );
+
+      const mailUrl =
+        "https://us-central1-firebeats-43aaf.cloudfunctions.net/sendContactMailMyBeats";
+
+      const mailResponse = await axios.post(mailUrl, payload);
+
+      console.log("Send Mail Response:", mailResponse.data);
+
       console.log("response", response);
       // eslint-disable-next-line no-alert
       alert("We will get back to you soon!");

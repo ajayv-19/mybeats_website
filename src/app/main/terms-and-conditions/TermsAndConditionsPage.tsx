@@ -2,15 +2,15 @@ import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import Navbar from "../landing/components/navbar/Navbar";
 import Footer from "../landing/components/footer/Footer";
-import InsurancePrivacy from "./InsurancePrivacy";
-import PolicyholdersPrivacy from "./PolicyholdersPrivacy";
+import InsuranceTerms from "./InsuranceTerms";
+import PolicyholderTerms from "./PolicyholderTerms";
 
 const TABS = [
-  "Privacy Policy for Policyholders",
-  "Privacy Policy for Insurance Companies",
+  "Terms & Conditions for Policyholders",
+  "Terms & Conditions for Insurance Companies",
 ];
 
-const PrivacyPage = () => {
+const TermsAndConditionsPage = () => {
   const [selectedTab, setSelectedTab] = useState(0);
 
   return (
@@ -23,7 +23,7 @@ const PrivacyPage = () => {
               <React.Fragment key={index}>
                 <button
                   onClick={() => setSelectedTab(index)}
-                  className={`text-4xl ${selectedTab === index ? "underline text-orange-400" : ""}`}
+                  className={`text-3xl ${selectedTab === index ? "underline text-orange-400" : ""}`}
                 >
                   {tab}
                 </button>
@@ -34,8 +34,8 @@ const PrivacyPage = () => {
             ))}
           </div>
 
-          {selectedTab === 0 && <PolicyholdersPrivacy />}
-          {selectedTab === 1 && <InsurancePrivacy />}
+          {selectedTab === 0 && <PolicyholderTerms />}
+          {selectedTab === 1 && <InsuranceTerms />}
         </div>
       </div>
       <Footer />
@@ -43,4 +43,4 @@ const PrivacyPage = () => {
   );
 };
 
-export default PrivacyPage;
+export default TermsAndConditionsPage;

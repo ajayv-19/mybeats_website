@@ -8,7 +8,7 @@ const FeatureHeader = () => {
   const isInView = useInView(ref, { once: true, amount: 0.7 });
 
   return (
-    <div className="md:w-[80%] flex flex-col justify-center items-center">
+    <div className="md:w-[90%] flex flex-col justify-center items-center">
       <FadeText>
         <div className="flex flex-col space-y-20 items-center justify-center text-center">
           <Text variant="caption">WHY CHOOSE US</Text>
