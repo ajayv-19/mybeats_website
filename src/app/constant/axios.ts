@@ -5,10 +5,10 @@ import { BASE_URL } from "./baseurl";
 
 const instance = axios.create({
     baseURL: BASE_URL,
-    withCredentials: true,
+    //withCredentials: true,
 });
 const session = await fetchAuthSession();
-  const authToken = session.tokens?.accessToken?.toString();
+const authToken = session.tokens?.accessToken?.toString();
 
 instance.interceptors.request.use(
     (config) => {
@@ -30,7 +30,10 @@ instance.interceptors.response.use(
             console.error("Unauthorized access. Redirecting to login...");
             // Redirect to login page or perform any other action
         }
-        toast.error("An error occurred: " + (error.response?.data?.message || "Unknown error"));    
+        toast.error("An error occurred: " + (error.response?.data?.message || "Unknown error"));
+        console.error("Error:", error);    
         return Promise.reject(error);
     },
 );
+
+export default instance;

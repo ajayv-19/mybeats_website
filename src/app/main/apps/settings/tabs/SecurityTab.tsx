@@ -18,25 +18,28 @@ import {
   IconButton,
 } from "@mui/material";
 import Papa from "papaparse";
-import DeleteIcon from "@mui/icons-material/Delete"; // Import Delete Icon
-import { addPolicyHolders, getPolicyHolders, deletePolicyHolder } from "../apis/Policyholdersapis"; // Replace with actual API service
+import DeleteIcon from "@mui/icons-material/Delete"; // Import Delete Icon// Replace with actual API service
 import { useSelector } from "react-redux";
 import { selectAccount } from "src/app/features/account/accountSlice";
 import { toast } from "sonner"; // Toast library
 import FuseLoading from "@fuse/core/FuseLoading"; // Loading spinner
+import {
+  useAddPolicyHolders,
+  useDeletePolicyHolder,
+  usePolicyHolders,
+  useUpdatePolicyHolder,
+} from "../apis/Policyholdersapis";
 
 function PolicyHolders() {
-  const [existingPolicyHolders, setExistingPolicyHolders] = useState([]); // State for existing rows
   const [filteredPolicyHolders, setFilteredPolicyHolders] = useState([]); // State for filtered rows
-  const [csvData, setCsvData] = useState([]); // State for parsed CSV data
+  const [csvData, setCsvData] = useState<any>([]); // State for parsed CSV data
   const [isDialogOpen, setIsDialogOpen] = useState(false); // State for dialog visibility
-  const [isSubmitting, setIsSubmitting] = useState(false); // State for submit button loading
   const [uploadError, setUploadError] = useState(""); // State for upload error messages
   const [loading, setLoading] = useState(false); // State for loading spinner
   const [searchQuery, setSearchQuery] = useState(""); // State for search query
-  const [page, setPage] = useState(0); // State for pagination page
-  const [rowsPerPage, setRowsPerPage] = useState(5); // State for rows per page
-
+  const [page, setPage] = useState(0); // State for pagination page (0-based for Material-UI)
+  const rowsPerPage = 10; // Number of rows per page
+  const [searchInput, setSearchInput] = useState(""); // State for search input field
   const requiredHeaders = ["PolicyID", "Employer"]; // Required headers for validation
   const accountData = useSelector(selectAccount) as unknown as {
     company: {
@@ -45,69 +48,51 @@ function PolicyHolders() {
     };
   };
 
-  console.log(accountData?.company?.policyholder_count, "policyholder_count");
+  const {
+    data: existingPolicyHolders,
+    isPending,
+    isError,
+  } = usePolicyHolders(accountData?.company?.id, page, searchQuery); // Fetch policyholders using custom hook
+  const {
+    mutate: policyDeleteMutation,
+    isPending: isDeletePending,
+    isError: isDeleteError,
+  } = useDeletePolicyHolder();
+  const {
+    mutate: updatePolicyHolderMutation,
+    isPending: isUpdatePolicyPending,
+    isError: isUpdatePolicyError,
+  } = useUpdatePolicyHolder();
+  const { mutate: addPolicyHolders, isSuccess, isPending: isSubmitting } =
+    useAddPolicyHolders();
+  console.log("-->", existingPolicyHolders?.policyHolders);
+  console.log("-->", existingPolicyHolders);
 
-  // Fetch existing policyholders by company
-  const fetchPolicyByCompany = async () => {
-    setLoading(true); // Show loading spinner
-    try {
-      if (!accountData?.company?.id) {
-       
-        return;
-      }
-      const response = await getPolicyHolders(accountData?.company?.id); // Fetch existing policyholders from the backend
-      console.log("Fetched Policyholders:", response);
-      setExistingPolicyHolders(response.data.policyHolders || []);
-      setFilteredPolicyHolders(response.data.policyHolders || []); // Initialize filtered data
-    } catch (error) {
-      console.error("Error fetching policyholders:", error);
-      toast.error("Failed to fetch policyholders. Please try again.");
-    } finally {
-      setLoading(false); // Hide loading spinner
-    }
+  useEffect(()=>{
+setIsDialogOpen(false)
+setCsvData([])
+  },[isSuccess])
+
+  const handleSearchInputChange = (event) => {
+    setSearchInput(event.target.value); // Update the input field value
   };
 
-  useEffect(() => {
-    fetchPolicyByCompany();
-  }, [accountData?.company?.id]); // Fetch policyholders when the component mounts or company ID changes
-
-  // Handle search input change
-  const handleSearchChange = (event) => {
-    const query = event.target.value.toLowerCase();
-    setSearchQuery(query);
-
-    const filtered = existingPolicyHolders.filter(
-      (holder) =>
-        holder.PolicyID.toLowerCase().includes(query) ||
-        holder.Employer.toLowerCase().includes(query)
-    );
-    setFilteredPolicyHolders(filtered);
+  // Handle search button click
+  const handleSearch = () => {
+    setSearchQuery(searchInput); // Update the actual search query
+    // Reset to the first page
   };
 
   // Handle pagination change
   const handleChangePage = (event, newPage) => {
-    setPage(newPage);
+    setPage(newPage); // Keep it 0-based for Material-UI
   };
 
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
-
-  // Handle delete policyholder
-  const handleDelete = async (policyId) => {
-    try {
-      const response = await deletePolicyHolder(accountData?.company?.id, policyId); // Call API to delete policyholder
-      if (response.status === 200) {
-        toast.success("Policyholder deleted successfully!");
-        await fetchPolicyByCompany(); // Refresh the table after deletion
-      } else {
-        toast.error("Failed to delete policyholder. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error deleting policyholder:", error);
-      toast.error("Failed to delete policyholder. Please try again.");
-    }
+  const handleDelete = (policyId) => {
+    policyDeleteMutation({
+      company_id: accountData?.company?.id,
+      policyId: policyId,
+    });
   };
 
   // Handle CSV file upload
@@ -139,43 +124,28 @@ function PolicyHolders() {
       },
       error: (error) => {
         console.error("Error parsing CSV:", error);
-        setUploadError("Failed to parse CSV file. Please check the file format.");
+        setUploadError(
+          "Failed to parse CSV file. Please check the file format."
+        );
       },
     });
   };
 
   // Handle submitting CSV data to the backend
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (csvData.length === 0) {
       toast.error("No data to submit. Please upload a valid CSV file.");
       return;
     }
 
-    setIsSubmitting(true);
     toast("Uploading data... This might take a few minutes."); // Notify user about upload time
-    try {
-      const data = {
-        policyData: csvData,
-        company_id: accountData?.company?.id,
-      };
+    const data = {
+      policyData: csvData,
+      company_id: accountData?.company?.id,
+    };
+    console.log("Data to be submitted:", data);
 
-      const response = await addPolicyHolders(data);
-      console.log("Add PolicyHolders Response:", response);
-
-      if (response.status === 200) {
-        toast.success("Policy holders added successfully!");
-        setCsvData([]); // Clear the uploaded data
-        await fetchPolicyByCompany(); // Refresh the existing policyholders
-        setIsDialogOpen(false); // Close the dialog
-      } else {
-        toast.error("Failed to add policyholders. Please try again.");
-      }
-    } catch (error) {
-      console.error("Error adding policyholders:", error);
-      toast.error("Failed to add policyholders. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    addPolicyHolders(data);
   };
 
   // Handle closing the dialog
@@ -201,16 +171,17 @@ function PolicyHolders() {
     document.body.removeChild(link);
   };
 
+  console.log("--", filteredPolicyHolders);
+
   return (
     <div>
-      {loading ? (
-        <FuseLoading /> // Show loading spinner while fetching data
-      ) : (
+
         <>
           {/* Download Template */}
           <div className="mb-16">
             <Typography variant="body1">
-              Download the template below and provide PolicyIDs and the Employers of policyholders
+              Download the template below and provide PolicyIDs and the
+              Employers of policyholders
             </Typography>
             <Button
               variant="contained"
@@ -223,8 +194,8 @@ function PolicyHolders() {
               Download CSV Template
             </Button>
           </div>
-            {/* Add Policy Holders */}
-           <div className="mb-16">
+          {/* Add Policy Holders */}
+          <div className="mb-16">
             <Button
               variant="contained"
               size="small"
@@ -301,19 +272,28 @@ function PolicyHolders() {
           </Dialog>
 
           {/* Search Bar */}
-          <div className="mb-16">
+          <div className="mb-16" style={{ display: "flex", gap: "10px" }}>
             <TextField
               label="Search by PolicyID or Employer"
               variant="outlined"
               size="small"
               fullWidth
-              value={searchQuery}
-              onChange={handleSearchChange}
+              value={searchInput}
+              onChange={handleSearchInputChange} // Update input field value
             />
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={handleSearch} // Trigger search on button click
+            >
+              Search
+            </Button>
           </div>
 
           {/* Existing Policy Holders Table */}
-          <TableContainer component={Paper}>
+         {isPending ? <FuseLoading/> : 
+         <>
+         <TableContainer component={Paper}>
             <Table>
               <TableHead>
                 <TableRow>
@@ -323,24 +303,22 @@ function PolicyHolders() {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {filteredPolicyHolders.length > 0 ? (
-                  filteredPolicyHolders
-                    .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                    .map((holder, index) => (
-                      <TableRow key={index}>
-                        <TableCell>{holder.PolicyID}</TableCell>
-                        <TableCell>{holder.Employer}</TableCell>
-                        <TableCell>
+                {existingPolicyHolders?.policyHolders.length > 0 ? (
+                  existingPolicyHolders?.policyHolders.map((holder, index) => (
+                    <TableRow key={index}>
+                      <TableCell>{holder.PolicyID}</TableCell>
+                      <TableCell>{holder.Employer}</TableCell>
+                      <TableCell>
                         <IconButton
-                            color="secondary"
-                            size="small"
-                            onClick={() => handleDelete(holder.PolicyID)}
-                          >
-                            <DeleteIcon />
-                          </IconButton>
-                        </TableCell>
-                      </TableRow>
-                    ))
+                          color="secondary"
+                          size="small"
+                          onClick={() => handleDelete(holder.PolicyID)}
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 ) : (
                   <TableRow>
                     <TableCell colSpan={3} align="center">
@@ -352,17 +330,20 @@ function PolicyHolders() {
             </Table>
           </TableContainer>
 
-          {/* Pagination */}
+       
           <TablePagination
             component="div"
-            count={filteredPolicyHolders.length}
+            count={existingPolicyHolders?.total || 0}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}
-            onRowsPerPageChange={handleChangeRowsPerPage}
+            rowsPerPageOptions={[]} // Remove "Rows per page" dropdown
+            labelRowsPerPage="" // Hide "Rows per page" label
           />
+          </>
+          }
         </>
-      )}
+      
     </div>
   );
 }
