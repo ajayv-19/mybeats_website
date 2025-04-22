@@ -34,7 +34,6 @@ function PolicyHolders() {
   const [filteredPolicyHolders, setFilteredPolicyHolders] = useState([]); // State for filtered rows
   const [csvData, setCsvData] = useState<any>([]); // State for parsed CSV data
   const [isDialogOpen, setIsDialogOpen] = useState(false); // State for dialog visibility
-  const [isSubmitting, setIsSubmitting] = useState(false); // State for submit button loading
   const [uploadError, setUploadError] = useState(""); // State for upload error messages
   const [loading, setLoading] = useState(false); // State for loading spinner
   const [searchQuery, setSearchQuery] = useState(""); // State for search query
@@ -64,10 +63,15 @@ function PolicyHolders() {
     isPending: isUpdatePolicyPending,
     isError: isUpdatePolicyError,
   } = useUpdatePolicyHolder();
-  const { mutate: addPolicyHolders, isPending: isAddingPolicyHolders } =
+  const { mutate: addPolicyHolders, isSuccess, isPending: isSubmitting } =
     useAddPolicyHolders();
   console.log("-->", existingPolicyHolders?.policyHolders);
   console.log("-->", existingPolicyHolders);
+
+  useEffect(()=>{
+setIsDialogOpen(false)
+setCsvData([])
+  },[isSuccess])
 
   const handleSearchInputChange = (event) => {
     setSearchInput(event.target.value); // Update the input field value
@@ -134,7 +138,6 @@ function PolicyHolders() {
       return;
     }
 
-    setIsSubmitting(true);
     toast("Uploading data... This might take a few minutes."); // Notify user about upload time
     const data = {
       policyData: csvData,
