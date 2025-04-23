@@ -204,7 +204,7 @@ setCsvData([])
               classes={{ startIcon: "mr-4" }}
               onClick={() => setIsDialogOpen(true)}
             >
-              Add Policy Holders
+              Add Policyholders
             </Button>
           </div>
 
@@ -215,7 +215,7 @@ setCsvData([])
             maxWidth="md"
             fullWidth
           >
-            <DialogTitle>Upload Policyholders Information </DialogTitle>
+            <DialogTitle>Upload Unique IDs of Policyholders </DialogTitle>
             <DialogContent>
               <input type="file" accept=".csv" onChange={handleFileUpload} />
               {uploadError && (
@@ -274,7 +274,7 @@ setCsvData([])
           {/* Search Bar */}
           <div className="mb-16" style={{ display: "flex", gap: "10px" }}>
             <TextField
-              label="Search by PolicyID or Employer"
+              label="Search by Unique ID or Employer"
               variant="outlined"
               size="small"
               fullWidth

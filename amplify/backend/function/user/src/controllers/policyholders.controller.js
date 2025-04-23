@@ -17,8 +17,8 @@ class PolicyholdersController {
                 return res.status(400).json({ error: "company_id is required" });
             }
 
-            // Fetch company details from PostgreSQL
             const company = await Company.findByPk(company_id);
+            console.log("Company:", company);
             if (!company) {
                 return res.status(404).json({ error: "Company not found" });
             }
@@ -32,18 +32,16 @@ class PolicyholdersController {
             console.log("Domain:", domain);
             console.log("Policyholder Count Limit:", policyholder_count);
 
-            // Check if the number of records exceeds the policyholder_count limit
-            if (records.length > policyholder_count) {
+
+            const companyRef = db.collection("insuranceCompanies").doc(domain);
+            const companyDoc = await companyRef.get();
+
+            if (records.length + companyDoc.length > policyholder_count) {
                 return res.status(400).json({
                     error: `File exceeds the allowed limit of ${policyholder_count} records for this company.`,
                 });
             }
 
-            // Use the domain to interact with Firestore
-            const companyRef = db.collection("insuranceCompanies").doc(domain);
-            const companyDoc = await companyRef.get();
-
-            // If company document does not exist, create it
             if (!companyDoc.exists) {
                 await companyRef.set({
                     name: company_name || "Unknown Company",
@@ -53,6 +51,7 @@ class PolicyholdersController {
 
             const batch = db.batch();
             const existingPolicyIds = [];
+            const uniqueRecords = [];
 
             for (const record of records) {
                 const policyId = record.PolicyID;
@@ -62,26 +61,121 @@ class PolicyholdersController {
                 }
 
                 const policyRef = companyRef.collection("policyHolders").doc(policyId);
+                console.log("Policy Ref:", policyRef);
                 const policyDoc = await policyRef.get();
+                console.log("Policy Doc:", policyDoc);
 
                 if (!policyDoc.exists) {
-                    batch.set(policyRef, record); // Add to batch only if it doesn't exist
+                    uniqueRecords.push({ ref: policyRef, data: record });
                 } else {
-                    existingPolicyIds.push(policyId); // Track duplicates
+                    existingPolicyIds.push(policyId);
                 }
+            }
+            console.log("Unique Records:", uniqueRecords);
+
+            if (uniqueRecords.length + companyDoc.length > 100) {
+                return res.status(400).json({
+                    error: "Upload limit exceeded. Only 100 new policyholders can be uploaded at a time.",
+                    uniqueRecordsAttempted: uniqueRecords.length,
+                });
+            }
+
+            for (const { ref, data } of uniqueRecords) {
+                batch.set(ref, data);
             }
 
             await batch.commit();
 
             res.status(200).json({
                 message: "Data uploaded successfully",
+                uploadedCount: uniqueRecords.length,
                 skippedDuplicates: existingPolicyIds,
             });
+
         } catch (err) {
             console.error("Error processing policyholder upload:", err);
             res.status(500).json({ error: "Internal Server Error" });
         }
     }
+
+
+
+
+
+    // async policyHolderListUpload(req, res) {
+    //     try {
+    //         const { company_id, policyData: records } = req.body;
+    //         console.log("company_id:", company_id);
+
+    //         if (!company_id) {
+    //             return res.status(400).json({ error: "company_id is required" });
+    //         }
+
+    //         // Fetch company details from PostgreSQL
+    //         const company = await Company.findByPk(company_id);
+    //         if (!company) {
+    //             return res.status(404).json({ error: "Company not found for the Id" });
+    //         }
+
+    //         const { domain, Company_Name: company_name, policyholder_count } = company;
+
+    //         if (!domain) {
+    //             return res.status(400).json({ error: "Domain not found for the company" });
+    //         }
+
+    //         console.log("Domain:", domain);
+    //         console.log("Policyholder Count Limit:", policyholder_count);
+
+    //         // Check if the number of records exceeds the policyholder_count limit
+    //         if (records.length > policyholder_count) {
+    //             return res.status(400).json({
+    //                 error: `File exceeds the allowed limit of ${policyholder_count} records for this company.`,
+    //             });
+    //         }
+
+    //         // Use the domain to interact with Firestore
+    //         const companyRef = db.collection("insuranceCompanies").doc(domain);
+    //         const companyDoc = await companyRef.get();
+
+    //         // If company document does not exist, create it
+    //         if (!companyDoc.exists) {
+    //             await companyRef.set({
+    //                 name: company_name || "Unknown Company",
+    //                 createdAt: new Date(),
+    //             });
+    //         }
+
+    //         const batch = db.batch();
+    //         const existingPolicyIds = [];
+
+    //         for (const record of records) {
+    //             const policyId = record.PolicyID;
+
+    //             if (!policyId) {
+    //                 return res.status(400).json({ error: "PolicyID is required in each record" });
+    //             }
+
+    //             const policyRef = companyRef.collection("policyHolders").doc(policyId);
+    //             const policyDoc = await policyRef.get();
+
+    //             if (!policyDoc.exists) {
+    //                 batch.set(policyRef, record); // Add to batch only if it doesn't exist
+    //             } else {
+    //                 existingPolicyIds.push(policyId); // Track duplicates
+    //             }
+    //         }
+
+    //         await batch.commit();
+
+    //         res.status(200).json({
+    //             message: "Data uploaded successfully",
+    //             skippedDuplicates: existingPolicyIds,
+    //         });
+    //     } catch (err) {
+    //         console.error("Error processing policyholder upload:", err);
+    //         res.status(500).json({ error: "Internal Server Error" });
+    //     }
+    // }
 
     // async getPolicyHoldersByCompanyId(req, res) {
     //     try {
@@ -126,6 +220,11 @@ class PolicyholdersController {
     //         return res.status(500).json({ error: "Internal Server Error" });
     //     }
     // }
+
+
+    /////////////////////////
+
+
     async getPolicyHoldersByCompanyId(req, res) {
         try {
             const { company_id } = req.params;
@@ -154,7 +253,12 @@ class PolicyholdersController {
             const companyDoc = await companyRef.get();
 
             if (!companyDoc.exists) {
-                return res.status(404).json({ error: "Company not found in Firestore" });
+                return res.status(200).json({
+                    total: 0,
+                    page: parseInt(page, 10),
+                    limit: parseInt(limit, 10),
+                    policyHolders: [],
+                });
             }
 
             const policyHoldersRef = companyRef.collection("policyHolders");
@@ -179,7 +283,7 @@ class PolicyholdersController {
 
             // Apply pagination
             const total = policyHolders.length; // Total number of filtered results
-            const startIndex = (page - 1) * limit;
+            const startIndex = page * limit; // Adjusted for 0-based indexing
             const endIndex = startIndex + parseInt(limit, 10);
             const paginatedPolicyHolders = policyHolders.slice(startIndex, endIndex);
 
