@@ -19,12 +19,19 @@ function ShowcaseScreenOne({ openModal }: ShowcaseScreenOneProps) {
       </FadeAnimatedContainer> */}
         <FadeAnimatedContainer delay={1} direction="bottom">
           {/* <ShowcaseCard scale="large" tiltDirection="center" /> */}
-          <video controls poster={MyBeats}>
-            <source
-              src="https://fire.engineering.nyu.edu/home/documents/MyBeats_Final.mp4"
-              type="video/mp4"
+          <div className="relative w-[300px] h-[200px] md:w-[1000px] md:h-[600px]">
+            {/* 615 ÷ 800 = 0.76875 → 76.875%; this preserves your original aspect */}
+            <iframe
+              width="100%"
+              height="100%"
+              src="https://www.youtube.com/embed/S4HS7PSCn4s?si=lCV62Re_t-PXnRfU"
+              title="YouTube video player"
+              frameBorder="0"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
             />
-          </video>
+          </div>
         </FadeAnimatedContainer>
         {/* <FadeAnimatedContainer delay={2} direction="rightBottom">
         <ShowcaseCard tiltDirection="left" />

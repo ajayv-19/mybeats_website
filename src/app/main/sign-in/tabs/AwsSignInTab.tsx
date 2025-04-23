@@ -65,21 +65,36 @@ function AwsSignInTab() {
   }, [isDemo, demoEmail, demoPassword, navigate]);
 
   return (
-    <AwsAuthenticator
-      initialState="signIn"
-      socialProviders={[]}
-      hideSignUp
-      formFields={{
-        signIn: {
-          username: {
-            defaultValue: demoEmail,
+    <div>
+      <AwsAuthenticator
+        initialState="signIn"
+        socialProviders={[]}
+        hideSignUp
+        formFields={{
+          signIn: {
+            username: {
+              defaultValue: demoEmail,
+            },
+            password: {
+              defaultValue: demoPassword,
+            },
           },
-          password: {
-            defaultValue: demoPassword,
-          },
-        },
-      }}
-    />
+        }}
+      />
+
+      <div className="flex flex-row justify-center gap-2 items-center">
+        <a
+          href="/terms-and-conditions"
+          className="hover:underline text-blue-600"
+        >
+          Terms and Conditions
+        </a>
+        <span> & </span>
+        <a href="/privacy" className="hover:underline text-blue-600">
+          Privacy Policy
+        </a>
+      </div>
+    </div>
   );
 }
 
