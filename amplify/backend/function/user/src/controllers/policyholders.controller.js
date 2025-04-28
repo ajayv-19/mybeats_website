@@ -11,14 +11,12 @@ class PolicyholdersController {
     async policyHolderListUpload(req, res) {
         try {
             const { company_id, policyData: records } = req.body;
-            console.log("company_id:", company_id);
 
             if (!company_id) {
                 return res.status(400).json({ error: "company_id is required" });
             }
 
             const company = await Company.findByPk(company_id);
-            console.log("Company:", company);
             if (!company) {
                 return res.status(404).json({ error: "Company not found" });
             }
@@ -29,18 +27,8 @@ class PolicyholdersController {
                 return res.status(400).json({ error: "Domain not found for the company" });
             }
 
-            console.log("Domain:", domain);
-            console.log("Policyholder Count Limit:", policyholder_count);
-
-
             const companyRef = db.collection("insuranceCompanies").doc(domain);
             const companyDoc = await companyRef.get();
-
-            if (records.length + companyDoc.length > policyholder_count) {
-                return res.status(400).json({
-                    error: `File exceeds the allowed limit of ${policyholder_count} records for this company.`,
-                });
-            }
 
             if (!companyDoc.exists) {
                 await companyRef.set({
@@ -49,9 +37,19 @@ class PolicyholdersController {
                 });
             }
 
-            const batch = db.batch();
-            const existingPolicyIds = [];
-            const uniqueRecords = [];
+            // Fetch all existing policyholders
+            const policyHoldersRef = companyRef.collection("policyHolders");
+            const existingPolicySnapshot = await policyHoldersRef.get();
+            const existingPolicyIds = new Set();
+            existingPolicySnapshot.forEach((doc) => {
+                existingPolicyIds.add(doc.id);
+            });
+
+            const existingCount = existingPolicyIds.size;
+
+            // Classify uploaded records
+            const newRecords = [];
+            const duplicateRecords = [];
 
             for (const record of records) {
                 const policyId = record.PolicyID;
@@ -60,41 +58,60 @@ class PolicyholdersController {
                     return res.status(400).json({ error: "PolicyID is required in each record" });
                 }
 
-                const policyRef = companyRef.collection("policyHolders").doc(policyId);
-                console.log("Policy Ref:", policyRef);
-                const policyDoc = await policyRef.get();
-                console.log("Policy Doc:", policyDoc);
-
-                if (!policyDoc.exists) {
-                    uniqueRecords.push({ ref: policyRef, data: record });
+                if (existingPolicyIds.has(policyId)) {
+                    duplicateRecords.push(record); // Existing record
                 } else {
-                    existingPolicyIds.push(policyId);
+                    newRecords.push(record); // New record
                 }
             }
-            console.log("Unique Records:", uniqueRecords);
 
-            if (uniqueRecords.length + companyDoc.length > 100) {
+            const totalUnique = existingCount + newRecords.length;
+
+            // Case 1: Total unique exceeds the limit
+            if (totalUnique > policyholder_count) {
                 return res.status(400).json({
-                    error: "Upload limit exceeded. Only 100 new policyholders can be uploaded at a time.",
-                    uniqueRecordsAttempted: uniqueRecords.length,
+                    error: `Upload exceeds the allowed limit of ${policyholder_count} unique records.`,
+                    existingCount,
+                    newRecordsAttempted: newRecords.length,
+                    totalUnique,
                 });
             }
 
-            for (const { ref, data } of uniqueRecords) {
-                batch.set(ref, data);
+            // Case 2: All records are duplicates
+            if (newRecords.length === 0) {
+                return res.status(200).json({
+                    message: "All uploaded records already exist. No new records were added.",
+                    existingCount,
+                    skippedDuplicates: duplicateRecords.length,
+                });
+            }
+
+            // Case 3: Total unique is within the limit
+            const batch = db.batch();
+
+            // Add new records to the batch
+            for (const record of newRecords) {
+                const policyRef = policyHoldersRef.doc(record.PolicyID);
+                batch.set(policyRef, record);
+            }
+
+            // Replace existing records in the batch
+            for (const record of duplicateRecords) {
+                const policyRef = policyHoldersRef.doc(record.PolicyID);
+                batch.set(policyRef, record); // Replace existing record
             }
 
             await batch.commit();
 
             res.status(200).json({
                 message: "Data uploaded successfully",
-                uploadedCount: uniqueRecords.length,
-                skippedDuplicates: existingPolicyIds,
+                uploadedCount: newRecords.length,
+                replacedCount: duplicateRecords.length,
+                totalUnique,
             });
-
         } catch (err) {
             console.error("Error processing policyholder upload:", err);
-            res.status(500).json({ error: "Internal Server Error" });
+            res.status(500).json({ error: "Internal Server Error", details: err.message });
         }
     }
 

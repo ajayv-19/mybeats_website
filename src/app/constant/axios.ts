@@ -20,20 +20,33 @@ instance.interceptors.request.use(
         return config;
     },);
 
+
+
 instance.interceptors.response.use(
     (response) => {
         return response;
     },
     (error) => {
-        if (error.response && error.response.status === 401) {
-            // Handle unauthorized access (e.g., redirect to login)
-            console.error("Unauthorized access. Redirecting to login...");
-            // Redirect to login page or perform any other action
+        if (error.response) {
+            const { status, data } = error.response;
+
+            // Handle unauthorized access
+            if (status === 401) {
+                console.error("Unauthorized access. Redirecting to login...");
+                // Redirect to login page or perform any other action
+            }
+
+            // Extract and display the error message
+            const errorMessage = data?.error || data?.message || "An unknown error occurred.";
+            toast.error(errorMessage);
+        } else {
+            // Handle network or unknown errors
+            toast.error("A network error occurred. Please try again.");
         }
-        toast.error("An error occurred: " + (error.response?.data?.message || "Unknown error"));
-        console.error("Error:", error);    
+
+        console.error("Error:", error);
         return Promise.reject(error);
-    },
+    }
 );
 
 export default instance;

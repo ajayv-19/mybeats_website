@@ -29,6 +29,7 @@ import {
   usePolicyHolders,
   useUpdatePolicyHolder,
 } from "../apis/Policyholdersapis";
+import { debounce } from "lodash"; 
 
 function PolicyHolders() {
   const [filteredPolicyHolders, setFilteredPolicyHolders] = useState([]); // State for filtered rows
@@ -73,15 +74,41 @@ setIsDialogOpen(false)
 setCsvData([])
   },[isSuccess])
 
-  const handleSearchInputChange = (event) => {
-    setSearchInput(event.target.value); // Update the input field value
-  };
+// Handle search input change
+const handleSearchInputChange = (event) => {
+  const value = event.target.value;
+  setSearchInput(value); // Update the input field value
 
-  // Handle search button click
-  const handleSearch = () => {
+  // Reset search results when input is cleared
+  if (value === "") {
+    resetSearch(); // Reset search results
+  }
+};
+
+
+// // Debounced search function
+// const debouncedSearch = debounce((value) => {
+//   setSearchQuery(value); // Update the actual search query
+//   setPage(0); // Reset to the first page
+// }, 300); // 300ms debounce delay
+
+// Reset search results
+const resetSearch = () => {
+  setSearchQuery(""); // Clear the search query
+  setSearchInput(""); // Clear the search input field
+  setPage(0); // Reset to the first page
+};
+
+
+// Handle search button click or Enter key press
+const handleSearch = () => {
+  if (searchInput.trim() === "") {
+    resetSearch(); // Reset if the search input is empty
+  } else {
     setSearchQuery(searchInput); // Update the actual search query
-    // Reset to the first page
-  };
+    setPage(0); // Reset to the first page
+  }
+};
 
   // Handle pagination change
   const handleChangePage = (event, newPage) => {
@@ -145,7 +172,16 @@ setCsvData([])
     };
     console.log("Data to be submitted:", data);
 
-    addPolicyHolders(data);
+    addPolicyHolders(data, {
+      onError: (error) => {
+        // Extract error message from the response
+        const errorMessage =
+          (error as any)?.response?.data?.error || "An unknown error occurred.";
+        setUploadError(errorMessage); // Display the error in the popup
+        setCsvData([]); // Clear the table in the popup
+        //toast.error(errorMessage); // Show the error in a toast
+      },
+    });
   };
 
   // Handle closing the dialog
@@ -178,7 +214,7 @@ setCsvData([])
 
         <>
           {/* Download Template */}
-          <div className="mb-16">
+          {/* <div className="mb-16">
             <Typography variant="body1">
               Download the template below and provide PolicyIDs and the
               Employers of policyholders
@@ -193,7 +229,25 @@ setCsvData([])
             >
               Download CSV Template
             </Button>
+          </div> */}
+          {/* Download Template */}
+          <div className="mb-16">
+            <Typography variant="body1">
+              <a
+                href="#"
+                onClick={(event) => {
+                  event.preventDefault(); // Prevent the default behavior of the anchor tag
+                  handleDownloadTemplate(); // Call the download function
+                }}
+                className="text-blue-500 hover:underline"
+              >
+                Download
+              </a>{" "}
+              the template below and provide PolicyIDs and the Employers of policyholders
+            </Typography>
           </div>
+
+          
           {/* Add Policy Holders */}
           <div className="mb-16">
             <Button
@@ -273,14 +327,20 @@ setCsvData([])
 
           {/* Search Bar */}
           <div className="mb-16" style={{ display: "flex", gap: "10px" }}>
-            <TextField
-              label="Search by Unique ID or Employer"
-              variant="outlined"
-              size="small"
-              fullWidth
-              value={searchInput}
-              onChange={handleSearchInputChange} // Update input field value
-            />
+          <TextField
+  label="Search by Unique ID or Employer"
+  variant="outlined"
+  size="small"
+  fullWidth
+  value={searchInput}
+  onChange={handleSearchInputChange} // Update input field value
+  onKeyDown={(event) => {
+    if (event.key === "Enter") {
+      handleSearch(); // Trigger search when Enter is pressed
+    }
+  }}
+/>
+
             <Button
               variant="contained"
               color="secondary"
