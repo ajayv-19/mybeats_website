@@ -128,7 +128,7 @@ function PolicyholderTerms() {
         You agree to indemnify, defend, and hold harmless Novel AI Technologies,
         Inc. and its affiliates, officers, directors, employees, and agents from
         any claims, damages, liabilities, costs, or expenses (including legal
-        fees) arising from:
+        fees) arising from your use of our applications or your breach of these Terms.
       </p>
 
       <h2 className="font-bold text-xl mb-2">
