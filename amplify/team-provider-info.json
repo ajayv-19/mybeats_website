@@ -21,23 +21,22 @@
           "deploymentBucketName": "amplify-amplifyquicksightdas-dev-dd445-deployment",
           "s3Key": "amplify-builds/getQuickSightDashboardEmbedURL-37705643366c70675653-build.zip"
         },
-        "companyname": {},
         "getcompanyofuser": {
           "deploymentBucketName": "amplify-amplifyquicksightdas-dev-dd445-deployment",
           "s3Key": "amplify-builds/getcompanyofuser-7132514c535a55663577-build.zip"
         },
         "user": {
           "deploymentBucketName": "amplify-amplifyquicksightdas-dev-dd445-deployment",
-          "s3Key": "amplify-builds/user-426e376344796a632f45-build.zip"
+          "s3Key": "amplify-builds/user-5358694a694157414e4c-build.zip"
         }
-      },
-      "api": {
-        "quicksight": {},
-        "backendapis": {},
-        "backendapi": {}
       },
       "storage": {
         "InsuranceDashboardImages": {}
+      },
+      "api": {
+        "backendapi": {},
+        "backendapis": {},
+        "quicksight": {}
       }
     }
   }

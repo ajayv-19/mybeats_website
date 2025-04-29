@@ -35,6 +35,10 @@ yarn-error.log*
 !.yarn/versions
 .pnp.*
 
+
+# Sentry Config File
+.env.sentry-build-plugin
+
 #amplify-do-not-edit-begin
 amplify/\#current-cloud-backend
 amplify/.config/local-*
@@ -56,6 +60,3 @@ amplifytools.xcconfig
 .secret-*
 **.sample
 #amplify-do-not-edit-end
-
-# Sentry Config File
-.env.sentry-build-plugin
