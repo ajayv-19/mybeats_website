@@ -104,7 +104,7 @@ company: {
   //   dispatch(fetchAccountDetails() as any);
 
   // }, [dispatch]);
-
+/*
   useEffect(() => {
     const fetchAccount = async () => {
       setLoading(true); // Start loading
@@ -115,8 +115,8 @@ company: {
       }
     };
     fetchAccount();
-  }, [dispatch]);
-
+  }, []);
+*/
   const validateEmail = (email: string) => {
     const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
 
