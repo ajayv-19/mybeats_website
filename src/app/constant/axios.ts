@@ -7,12 +7,11 @@ const instance = axios.create({
     baseURL: BASE_URL,
     //withCredentials: true,
 });
-const session = await fetchAuthSession();
-const authToken = session.tokens?.accessToken?.toString();
+const getAuth = async()=>((await fetchAuthSession()).tokens?.accessToken?.toString());
 
 instance.interceptors.request.use(
-    (config) => {
-        const token = authToken;
+    async (config) => {
+        const token = await getAuth();
         if (token) {
             config.headers.Authorization = token;
         }
