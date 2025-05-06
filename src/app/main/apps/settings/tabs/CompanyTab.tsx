@@ -237,7 +237,7 @@ function CompanyTab() {
             variant="contained"
             color="secondary"
             type="submit"
-            disabled={!isValid || Object.keys(dirtyFields).length === 0} // Disable button if form is invalid or no fields are dirty
+            disabled={!isValid} // Disable button if form is invalid or no fields are dirty
           >
             {company?.is_subscribed ? "Update" : "Next"}
           </Button>

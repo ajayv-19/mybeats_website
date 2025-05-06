@@ -8,33 +8,33 @@ const {
   UserInvites,
   Role,
   Plans,
- } = require("../models");
- 
- 
- const { QuickSightClient, UpdateUserCommand, ListUsersCommand, DeleteUserCommand } = require('@aws-sdk/client-quicksight');
- const { CognitoIdentityClient, GetIdCommand, GetOpenIdTokenCommand } = require('@aws-sdk/client-cognito-identity');
- const { STSClient, AssumeRoleWithWebIdentityCommand } = require('@aws-sdk/client-sts');
- 
- 
- 
- 
- const cognitoClient = new CognitoIdentityClient({ region: "us-east-1" });
- const stsClient = new STSClient({ region: "us-east-1" });
- 
- 
- 
- 
- const UserController = {
- 
- 
-   async getUserById(req, res) {
+} = require("../models");
+
+
+const { QuickSightClient, UpdateUserCommand, ListUsersCommand, DeleteUserCommand } = require('@aws-sdk/client-quicksight');
+const { CognitoIdentityClient, GetIdCommand, GetOpenIdTokenCommand } = require('@aws-sdk/client-cognito-identity');
+const { STSClient, AssumeRoleWithWebIdentityCommand } = require('@aws-sdk/client-sts');
+
+
+
+
+const cognitoClient = new CognitoIdentityClient({ region: "us-east-1" });
+const stsClient = new STSClient({ region: "us-east-1" });
+
+
+
+
+const UserController = {
+
+
+  async getUserById(req, res) {
     try {
       const payload = req.query;
       const user = await User.findOne({ where: payload });
       console.log(payload, "payload");
       console.log(user, "user");
- 
- 
+
+
       if (!user) {
         return res
           .status(404)
@@ -51,24 +51,24 @@ const {
         plan = await Plans.findOne({ where: { id: company.plan_id } });
       }
       console.log(company, "company");
- 
- 
+
+
       let subscription = null;
- 
- 
- 
- 
- 
- 
+
+
+
+
+
+
       if (company) {
         subscription = await NewSubscriptions.findOne({
           where: { id: company.subscription_id },
         });
       }
       console.log(subscription, "subscription");
- 
- 
-     // const AdminRoleId = await Role.findOne({ where: { name: "ADMIN" } }).id;
+
+
+      // const AdminRoleId = await Role.findOne({ where: { name: "ADMIN" } }).id;
       let isactive = null;
       if (subscription) {
         let hasActiveFlag = (
@@ -87,6 +87,7 @@ const {
           console.log(expiryDate, "expiryDate");
           if (currentDate > expiryDate) {
             subscription.status = "INACTIVE";
+            await company.update({ is_subscribed: false });
             await subscription.update({ status: "INACTIVE" });
             isactive = false;
           }
@@ -102,19 +103,19 @@ const {
        * error: true, // or false
        * }
        */
- 
- 
-      const userdata = { user, company, isactive, plan };
+
+
+      const userdata = { user, company, isactive, plan, subscription };
       res.json({ success: true, userdata });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ success: false, error: "Failed to fetch user" });
     }
   },
- 
- 
- 
- 
+
+
+
+
   async canShowBilling(req, res) {
     const payload = req.query;
     payload.is_varified = true;
@@ -129,56 +130,56 @@ const {
     }
     res.json({ success: true, flag });
   },
- 
- 
+
+
   async checkUserById(req, res) {
     try {
       const payload = req.query;
       payload.is_varified = true;
       const user = await User.findOne({ where: payload });
- 
- 
+
+
       // user.company = company;
- 
- 
+
+
       if (!user) {
         return res
           .status(404)
           .json({ success: false, error: "User not found" });
       }
- 
- 
+
+
       res.status(200).json({ success: true, user });
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ success: false, error: "Failed to fetch user" });
     }
   },
- 
- 
+
+
   async updateUser(req, res) {
     try {
       const userData = req.body;
       const [updated] = await User.update(userData, {
         where: { email: userData.email },
       });
- 
- 
+
+
       if (!updated) {
         return res
           .status(404)
           .json({ success: false, error: "User not found" });
       }
- 
- 
+
+
       res.json({ success: true, message: "User updated successfully" });
     } catch (error) {
       console.error("Error updating user:", error);
       res.status(500).json({ success: false, error: "Failed to update user" });
     }
   },
- 
- 
+
+
   async syncMyInvites(user) {
     const invite = await UserInvites.findOne({ where: { email: user.email } });
     if (!invite) {
@@ -195,8 +196,8 @@ const {
     });
     return invite;
   },
- 
- 
+
+
   async addOrUpdateUserDetails(req, res) {
     try {
       const {
@@ -208,8 +209,8 @@ const {
         removedByAdmin,
         invited_by = 0,
       } = req.body;
- 
- 
+
+
       if (!email || !Customer_Name) {
         return res.status(400).json({
           success: false,
@@ -218,11 +219,11 @@ const {
       }
       const domain = email.split("@")[1];
       let company_id;
- 
- 
+
+
       const created_timestamp = new Date().toISOString();
- 
- 
+
+
       // Find the existing user by email
       const existingUser = await User.findOne({ where: { email } });
       // If the user exists, update only the fields that are not null
@@ -250,19 +251,19 @@ const {
           user: updatedUser,
         });
       }
- 
- 
+
+
       const company = await Company.findOne({ where: { domain } });
       if (company) {
         company_id = company.id;
       }
- 
- 
+
+
       // If the user does not exist, create a new user
       const newUser = await User.create({
         email,
         username: req?.cognitoUser?.username || username,
-        role_id:3,
+        role_id: 3,
         Customer_Name,
         usertype,
         created_timestamp,
@@ -274,11 +275,11 @@ const {
         invited_by,
         ...(company_id && { company_id }),
       });
- 
- 
+
+
       await this.syncMyInvites(newUser);
- 
- 
+
+
       res.json({
         success: true,
         message: "User created successfully",
@@ -291,12 +292,12 @@ const {
         .json({ success: false, error: "Failed to update user details" });
     }
   },
- 
- 
+
+
   async updateUserRole(req, res) {
     const { email, role } = req.body;
- 
- 
+
+
     // Determine role_id based on the role
     let role_id;
     if (role === "READER") {
@@ -309,26 +310,26 @@ const {
         message: "Invalid role provided",
       });
     }
- 
- 
+
+
     try {
       // Find the user by email
       const user = await User.findOne({ where: { email } });
- 
- 
+
+
       if (!user) {
         return res.status(404).json({
           success: false,
           message: "User not found",
         });
       }
- 
- 
+
+
       // Update the user's role_id
       user.role_id = role_id;
       await user.save();
- 
- 
+
+
       return res.json({
         success: true,
         message: "User role updated successfully",
@@ -343,28 +344,28 @@ const {
       });
     }
   },
- 
- 
+
+
   async addComment(req, res) {
     const { email, firstName, lastName, message } = req.body;
- 
- 
+
+
     // Determine role_id based on the role
- 
- 
+
+
     try {
       // Find the user by email
       // const user = await User.findOne({ where: { email } });
- 
- 
+
+
       // if (!user) {
       //   return res.status(404).json({
       //     success: false,
       //     message: "User not found",
       //   });
       // }
- 
- 
+
+
       // Create a new comment
       const newComment = await CustomerQueries.create({
         email,
@@ -372,8 +373,8 @@ const {
         lastName,
         message,
       });
- 
- 
+
+
       return res.json({
         success: true,
         message: "Comment added successfully",
@@ -388,8 +389,8 @@ const {
       });
     }
   },
- 
- 
+
+
   async listInvitedUsers(req, res) {
     const { company_id, user_id } = req.query;
     if (!company_id || !user_id) {
@@ -403,20 +404,20 @@ const {
       const invitedUsers = await UserInvites.findAll({
         where: { company_id },
       });
-       // Get admin users who are NOT in the invites table
+      // Get admin users who are NOT in the invites table
       const adminUsers = await User.findAll({
         where: { company_id, role_id: 1 },
         attributes: ["Customer_Name", "email", "role_id", "image", "usertype"], // Fetch necessary attributes
       });
-       // Filter out admin users already in the invited list
+      // Filter out admin users already in the invited list
       const filteredAdminUsers = adminUsers.filter((adminUser) => {
         return !invitedUsers.some(
           (invitedUser) => invitedUser.email === adminUser.email
         );
       });
-       // Convert invited users to JSON
+      // Convert invited users to JSON
       const invitedUsersData = invitedUsers.map((invite) => invite.toJSON());
-       // Format user details
+      // Format user details
       const formattedUsers = await Promise.all(
         [...invitedUsersData, ...filteredAdminUsers].map(async (invite) => {
           if (invite.is_accepted) {
@@ -447,7 +448,7 @@ const {
               userDetails: userDetails || null,
             };
           }
-           // If it's an admin, return their details directly
+          // If it's an admin, return their details directly
           if (invite.role_id === 1) {
             return {
               id: null,
@@ -468,7 +469,7 @@ const {
               },
             };
           }
-           return {
+          return {
             id: invite.id || null,
             email: invite.email,
             invitedBy: invite.invitedBy || null,
@@ -482,7 +483,7 @@ const {
           };
         })
       );
-       return res.json({
+      return res.json({
         success: true,
         invitedUsers: formattedUsers,
         message: "Invited users listed successfully",
@@ -496,8 +497,8 @@ const {
       });
     }
   },
- 
- 
+
+
   async InvitedUserAccess(req, res) {
     const { email, company_id, access_type } = req.body;
     try {
@@ -522,15 +523,15 @@ const {
       });
     }
   },
- 
- 
+
+
   async assumeRoleWithJWT(jwtToken, payloadSub) {
     console.log("Step 1: Fetching Cognito Identity ID...");
     const COGNITO_IDENTITY_POOL_ID = "us-east-1:3bed750a-a8a0-4866-b823-8f474cea8e6f";
     const IAM_ROLE_ARN = "arn:aws:iam::185329004895:role/amplify-amplifyquicksightdas-dev-dd445-authRole";
     const COGNITO_PROVIDER = "cognito-idp.us-east-1.amazonaws.com/us-east-1_O4uSMgJop";
- 
- 
+
+
     const idResponse = await cognitoClient.send(
       new GetIdCommand({
         IdentityPoolId: COGNITO_IDENTITY_POOL_ID,
@@ -540,8 +541,8 @@ const {
       })
     );
     console.log("Cognito Identity ID response:", idResponse);
- 
- 
+
+
     console.log("Step 2: Fetching OpenID Token...");
     const openIdTokenResponse = await cognitoClient.send(
       new GetOpenIdTokenCommand({
@@ -552,8 +553,8 @@ const {
       })
     );
     console.log("OpenID Token response:", openIdTokenResponse);
- 
- 
+
+
     console.log("Step 3: Assuming IAM Role...");
     const stsResponse = await stsClient.send(
       new AssumeRoleWithWebIdentityCommand({
@@ -564,8 +565,8 @@ const {
     );
     return stsResponse;
   },
- 
- 
+
+
   async DeActivateUserQs(req, res) {
     const { email, jwtToken, payloadSub } = req.query;
     const AWS_REGION = "us-east-1";
@@ -573,8 +574,8 @@ const {
     if (!email) {
       return res.status(400).json({ error: 'Missing required parameter: email' });
     }
- 
- 
+
+
     try {
       // Assume role and get temporary credentials
       const stsResponse = await this.assumeRoleWithJWT(jwtToken, payloadSub);
@@ -586,23 +587,23 @@ const {
           sessionToken: stsResponse.Credentials.SessionToken,
         },
       });
- 
- 
+
+
       // Fetch the userName using the provided email
       const listUsersParams = {
         AwsAccountId: AWS_ACCOUNT_ID,
         Namespace: 'default',
       };
- 
- 
+
+
       const usersListResponse = await quickSightClientWithCreds.send(
         new ListUsersCommand(listUsersParams)
       );
       const users = usersListResponse.UserList;
       console.log("Users list:", users);
       const registeredUser = users.find(user => user.Email === email);
- 
- 
+
+
       if (!registeredUser) {
         return res.status(404).json({ error: 'User not found' });
       }
@@ -630,19 +631,19 @@ const {
       res.status(500).json({ error: 'Failed to deactivate user', details: error.message });
     }
   },
- 
- 
+
+
   async DeleteUserQs(req, res) {
     const { email, jwtToken, payloadSub } = req.query;
     const AWS_REGION = "us-east-1";
     const AWS_ACCOUNT_ID = "185329004895";
- 
- 
+
+
     if (!email) {
       return res.status(400).json({ error: 'Missing required parameter: email' });
     }
- 
- 
+
+
     try {
       // Assume role and get temporary credentials
       const stsResponse = await this.assumeRoleWithJWT(jwtToken, payloadSub);
@@ -654,31 +655,31 @@ const {
           sessionToken: stsResponse.Credentials.SessionToken,
         },
       });
- 
- 
+
+
       // Fetch the userName using the provided email
       const listUsersParams = {
         AwsAccountId: AWS_ACCOUNT_ID,
         Namespace: 'default',
       };
- 
- 
+
+
       const usersListResponse = await quickSightClientWithCreds.send(
         new ListUsersCommand(listUsersParams)
       );
       const users = usersListResponse.UserList;
       console.log("Users list:", users);
       const registeredUser = users.find(user => user.Email === email);
- 
- 
+
+
       if (!registeredUser) {
         return res.status(404).json({ error: 'User not found' });
       }
- 
- 
+
+
       console.log("Registered user:", registeredUser);
- 
- 
+
+
       const userName = registeredUser.UserName;
       const params = {
         AwsAccountId: AWS_ACCOUNT_ID,
@@ -687,35 +688,34 @@ const {
         Email: registeredUser.Email,
         Role: registeredUser.Role,
       };
- 
- 
+
+
       console.log("Delete user params:", params);
       const command = new DeleteUserCommand(params);
       console.log("Delete user command:", command);
- 
- 
+
+
       const response = await quickSightClientWithCreds.send(command);
       console.log("Delete user response:", response);
- 
- 
+
+
       res.status(200).json({ message: 'User deleted successfully', data: response });
- 
- 
+
+
     } catch (error) {
       console.error('Error deleting user:', error);
       res.status(500).json({ error: 'Failed to delete user', details: error.message });
     }
   }
- 
- 
- 
- 
- };
- 
- 
- module.exports = UserController;
- 
- 
- // Changed
- 
- 
+
+
+
+
+};
+
+
+module.exports = UserController;
+
+
+// Changed
+

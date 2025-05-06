@@ -359,7 +359,7 @@ class PaymentController {
       });
 
       if (existingSubscriptions.data.length === 0) {
-        return res.status(404).json({ error: "No active subscription found" });
+        return res.status(404).json({ error: "No active subscription found of customer id " + customer.id });
       }
 
       const currentSubscription = existingSubscriptions.data[0];
