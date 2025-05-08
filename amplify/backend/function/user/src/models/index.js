@@ -41,6 +41,7 @@ const Company = sequelize.define(
     address: { type: DataTypes.STRING, allowNull: true },
     domain: { type: DataTypes.STRING, allowNull: false },
     plan_type: { type: DataTypes.TEXT, allowNull: true },
+    website: { type: DataTypes.STRING, allowNull: true },
     // admin_id: {
     //   type: DataTypes.TEXT,
     //   allowNull: true,

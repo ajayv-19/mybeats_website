@@ -329,14 +329,12 @@ class PaymentController {
   async UpdateSubscription(req, res) {
     try {
       const stripe = StripeClient(STRIPE_SECRET_KEY);
-      const { company_id, plan_id, user_id } = req.body;
+      const { company_id, plan_id, user_id, quantity = 0 } = req.body;
 
-      // Validate required parameters
       if (!user_id || !plan_id || !company_id) {
         return res.status(400).json({ error: "Missing required parameters" });
       }
 
-      // Get the user, plan and company details
       const [user, plan, company] = await Promise.all([
         User.findOne({ where: { id: user_id } }),
         Plans.findOne({ where: { id: plan_id } }),
@@ -344,14 +342,11 @@ class PaymentController {
       ]);
 
       if (!user || !plan || !company) {
-        return res
-          .status(400)
-          .json({ error: "Invalid user, plan, or company" });
+        return res.status(400).json({ error: "Invalid user, plan, or company" });
       }
 
       const customer = await getCustomerDetails(user.email);
 
-      // Find existing subscription in Stripe
       const existingSubscriptions = await stripe.subscriptions.list({
         limit: 1,
         customer: customer.id,
@@ -359,59 +354,43 @@ class PaymentController {
       });
 
       if (existingSubscriptions.data.length === 0) {
-        return res.status(404).json({ error: "No active subscription found of customer id " + customer.id });
+        return res.status(404).json({ error: "No active subscription found for customer " + customer.id });
       }
 
       const currentSubscription = existingSubscriptions.data[0];
 
-      // Create a new subscription item with the new price
       const subscriptionUpdateParams = {
-        proration_behavior: "always_invoice", // or 'create_prorations' based on your billing model
-        items: [
-          {
-            id: currentSubscription.items.data[0].id,
-            price: plan.price_id,
-            quantity: company.policyholder_count,
-          },
-        ],
+        items: [{
+          id: currentSubscription.items.data[0].id,
+          price: plan.price_id,
+          quantity: quantity || company.policyholder_count,
+        }],
+        proration_behavior: "create_prorations",
+        proration_date: Math.floor(Date.now() / 1000),
+        payment_behavior: "allow_incomplete",
+        payment_settings: {
+          payment_method_types: ["card"],
+        },
         metadata: {
           user_id,
           company_id,
           plan_id,
           updated_at: new Date().toISOString(),
         },
-        payment_settings: {
-          payment_method_types: ["card", "us_bank_account"],
-        },
+        expand: ["latest_invoice.payment_intent"],
       };
 
-      // If the plan is changing, we need to handle the proration
-      if (currentSubscription.items.data[0].price.id !== plan.price_id) {
-        // Optional: Add any specific proration handling here
-        subscriptionUpdateParams.proration_date = Math.floor(Date.now() / 1000);
-      }
-
-      // Update the subscription
       const updatedSubscription = await stripe.subscriptions.update(
         currentSubscription.id,
         subscriptionUpdateParams
       );
 
-      // If you need to create a new payment intent for the updated subscription
-      let paymentIntent = null;
-      if (updatedSubscription.latest_invoice?.payment_intent) {
-        paymentIntent = await stripe.paymentIntents.retrieve(
-          updatedSubscription.latest_invoice.payment_intent
-        );
-      }
-
-      // Update local database records if needed
-      // Add your database update logic here
+      const paymentIntentClientSecret = updatedSubscription.latest_invoice?.payment_intent?.client_secret;
 
       res.status(200).json({
-        message: "Subscription updated successfully",
+        message: "Subscription updated with proration. Confirm payment client-side.",
         subscription: updatedSubscription,
-        clientSecret: paymentIntent?.client_secret,
+        clientSecret: paymentIntentClientSecret,
       });
     } catch (error) {
       console.error("Error updating subscription:", error);
@@ -422,7 +401,7 @@ class PaymentController {
     }
   }
 
-  async;
+
 
   // Create Subscription route
   async CreateSubscription(req, res) {
@@ -479,10 +458,10 @@ class PaymentController {
         },
         expand: ["latest_invoice.payment_intent"],
       });
-
+      console.log("subscription", subscription);
       res.status(200).json({
         message: "Subscription initiated successfully",
-        clientSecret: subscription.latest_invoice.payment_intent.client_secret,
+        clientSecret: subscription?.latest_invoice?.payment_intent?.client_secret,
       });
     } catch (error) {
       console.error("Error creating subscription:", error);

@@ -27,7 +27,7 @@ type FormType = SettingsPlanBilling;
 
 const PLANS: Array<PlanType> = [
   {
-    id: 1,
+    id: 4,
     value: "free",
     label: "Bronze",
     details: "Monthly Starter Plan",
@@ -73,6 +73,7 @@ const PLANS: Array<PlanType> = [
 
 interface SubscriptionResponse {
   clientSecret: string;
+  subscription: any;
 }
 
 const defaultValues: FormType = {
@@ -118,7 +119,7 @@ function PlanBillingTab() {
         user_id: user.id,
       };
 
-      console.log("request data", requestData);
+      console.log("request data 121",{ subscription, requestData});
 
       const response = await axios.post<SubscriptionResponse>(
         `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/${subscription ? "update-subscription" : "create-subscription"}`,
@@ -131,10 +132,14 @@ function PlanBillingTab() {
       );
 
       if (subscription) {
-        navigate("/apps/settings/account");
+        //navigate("/apps/settings/account");
       }
 
-      const { clientSecret } = response.data;
+      const { clientSecret, subscription: subscriptionResponse  } = response.data;
+      if(subscriptionResponse?.latest_invoice?.payment_intent?.status === "succeeded") {
+        navigate("/apps/settings/account");
+        return;
+      }
 
       setIsClientSecret(clientSecret);
       setIsLoading(false);
@@ -275,7 +280,7 @@ function PlanBillingTab() {
             variant="contained"
             color="secondary"
             type="submit"
-            disabled={_.isEmpty(dirtyFields) || !isValid}
+            // disabled={_.isEmpty(dirtyFields) || !isValid}
           >
             {user?.role_id === 1 ? "Update" : "Save"}
           </Button>

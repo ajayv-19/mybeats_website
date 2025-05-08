@@ -32,7 +32,7 @@ const schema = z.object({
 const defaultValues = {
   companyName: null,
   phoneNumber: null,
-  website: null,
+  website: '',
   policyholderCount: null,
 };
 
