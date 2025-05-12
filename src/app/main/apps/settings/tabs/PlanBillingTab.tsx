@@ -27,9 +27,10 @@ import { AppDispatch } from "app/store/store";
 import { fetchPlans, selectPlans, selectPlansLoading } from "../../../../features/plans/plansSlice";
 import { any } from "promise";
 import ViewPlan from "../tabcomponents/PlanBillingComponents/ViewPlan";
+import ModelContents from "../tabcomponents/PlanBillingComponents/modelcontent";
 import { toast } from "sonner";
 import { is } from "immutable";
-
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 type FormType = SettingsPlanBilling;
 
@@ -239,6 +240,8 @@ function PlanBillingTab() {
   console.log("plans:", plans);
   console.log("plan:", plan);
 
+  const ModelContent = ModelContents[actionType];
+
   if (isLoading || isPlansLoading) // ||!plans
     return (
       <div className="h-screen w-screen flex items-center justify-center">
@@ -279,18 +282,6 @@ function PlanBillingTab() {
 
   return (
     <div>
-      {/* Back Button */}
-      {/* <div className="absolute left-10 bottom-10 ml-12 mt-12">
-       <Button
-         variant="contained"
-         color="secondary"
-         onClick={() => handleEdit()} // Replace with the reverse of handleEdit
-       >
-         Current Plan
-       </Button>
-     </div> */}
-
-
       <form onSubmit={handleSubmit(onSubmit)}>
         <div className="mt-32 grid w-full gap-16 sm:grid-cols-2">
           <div className="sm:col-span-2">
@@ -322,6 +313,7 @@ function PlanBillingTab() {
             />
           </div>
         </div>
+
         <div className="mt-32 grid w-full gap-16 sm:grid-cols-3">
           <Controller
             name="plan_id"
@@ -336,53 +328,61 @@ function PlanBillingTab() {
                   bulletPoints: o.feature_description.split("\n"),
                 })).map((plan) => (
                   <Paper
-                    sx={{
-                      "&.selected": {
-                        border: (theme) =>
-                          `3px solid ${theme.palette.secondary.main}`,
-                      },
-                    }}
-                    className="flex flex-1 cursor-pointer flex-col items-start justify-start rounded-md p-24 border-3 border-transparent relative"
-                    onClick={() => field.onChange(plan.id)} // ✅ Store `plan.id` instead of `plan.value`
-                    key={plan.id} // ✅ Key should also be based on `id`
+                    key={plan.id}
+                    elevation={3}
+                    className={`flex flex-col justify-between p-8 rounded-2xl shadow-md h-full ${Number(field.value) === plan.id
+                      ? "border-2 border-orange-500"
+                      : "border border-gray-200"
+                      }`}
+                    sx={{ minHeight: 400, display: "flex", flexDirection: "column" }}
                   >
-                    {Number(field.value) === plan.id && ( // ✅ Compare using `plan.id`
-                      <FuseSvgIcon
-                        className="absolute right-0 top-0 mr-12 mt-12"
-                        size={24}
-                        color="secondary"
-                      >
-                        heroicons-solid:check-circle
-                      </FuseSvgIcon>
-                    )}
-                    <Typography className="font-semibold uppercase">
-                      {plan.label}
-                    </Typography>
-                    <Typography className="mt-4" color="text.secondary">
-                      {plan.details}
-                    </Typography>
-                    {/* <div className="flex-auto" /> */}
-                    <div className="flex items-end mt-8 text-lg">
-                      <Typography>
+                    {/* Header */}
+                    <div className="text-center">
+                      <Typography className="font-semibold text-lg">
+                        {plan.label}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" className="mt-1">
+                        {plan.details}
+                      </Typography>
+
+                      {/* Price */}
+                      <Typography variant="h4" className="my-4 font-bold">
                         {plan.price.toLocaleString("en-US", {
                           style: "currency",
                           currency: "USD",
-                        })}
+                        })}{" "}
+                        <Typography
+                          component="span"
+                          variant="body1"
+                          color="text.secondary"
+                        >
+                          / Policyholder
+                        </Typography>
                       </Typography>
-                      <Typography color="text.secondary">
-                        {" "}
-                        / policyholder
-                      </Typography>
+
+                      <div className="w-full border-t border-gray-300 my-4" />
                     </div>
 
-
-                    <div className="mt-32">
-                      {plan.bulletPoints.map((point) => (
-                        <div className="flex gap-4">
-                          <Check />
-                          <Typography>{point}</Typography>
+                    {/* Features */}
+                    <div className="flex-1">
+                      {plan.bulletPoints.map((point, index) => (
+                        <div className="flex items-start gap-2 mb-2" key={index}>
+                          <span className="text-orange-500 font-bold pt-1">✔</span>
+                          <Typography variant="body2">{point}</Typography>
                         </div>
                       ))}
+                    </div>
+
+                    {/* Select Button */}
+                    <div className="mt-8 text-center">
+                      <Button
+
+                        variant="contained"
+                        color="secondary"
+                        onClick={() => field.onChange(plan.id)}
+                      >
+                        Select
+                      </Button>
                     </div>
                   </Paper>
                 ))}
@@ -441,10 +441,7 @@ function PlanBillingTab() {
         <DialogTitle>Confirm Action</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            {actionType === "update"
-              ? "Are you sure you want to update your subscription?"
-              : actionType === "next" ? "Are you sure you want to Purchase this " : "Are you sure you want to cancel your subscription?"}
-
+            {ModelContent && <ModelContent data={{ user, company, plan, subscription, isactive, control, plans }} />}
           </DialogContentText>
         </DialogContent>
         <DialogActions>
