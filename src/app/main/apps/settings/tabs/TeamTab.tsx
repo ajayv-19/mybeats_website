@@ -80,16 +80,16 @@ function TeamTab() {
   const [emailError, setEmailError] = useState('');
   const accountData = useSelector(selectAccount) as unknown as {
     plan: any;
-   user: {
-    id: any; email: string; role_id: number 
-}; 
-company: {
-    id: any; license_used: number 
-} 
-};
+    user: {
+      id: any; email: string; role_id: number
+    };
+    company: {
+      id: any; license_used: number
+    }
+  };
   const [loading, setLoading] = useState(false); // Add loading state
   const ALLOWED_DOMAIN = accountData?.user?.email.split('@')[1];
-  
+
   const licenseUsed = accountData?.company?.license_used || 0;
   const teamSize = accountData?.plan?.team_size || 0;
   const isInputDisabled = licenseUsed >= teamSize;
@@ -104,19 +104,19 @@ company: {
   //   dispatch(fetchAccountDetails() as any);
 
   // }, [dispatch]);
-
-  useEffect(() => {
-    const fetchAccount = async () => {
-      setLoading(true); // Start loading
-      try {
-        await dispatch(fetchAccountDetails() as any);
-      } finally {
-        setLoading(false); // Stop loading
-      }
-    };
-    fetchAccount();
-  }, [dispatch]);
-
+  /*
+    useEffect(() => {
+      const fetchAccount = async () => {
+        setLoading(true); // Start loading
+        try {
+          await dispatch(fetchAccountDetails() as any);
+        } finally {
+          setLoading(false); // Stop loading
+        }
+      };
+      fetchAccount();
+    }, []);
+  */
   const validateEmail = (email: string) => {
     const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
 
@@ -149,7 +149,7 @@ company: {
         setData(response.data);
       } catch (error) {
         console.error("Error fetching team members:", error);
-      }finally {
+      } finally {
         setLoading(false); // Stop loading
       }
     } else {
@@ -172,10 +172,10 @@ company: {
       role: user.userDetails?.role_id || 0,
     }));
 
-  console.log("teamMembers", {teamMembers,accountData});
+  console.log("teamMembers", { teamMembers, accountData });
 
   const handleRemoveMember = async (email: string) => {
-    
+
     if (teamMembers) {
       let hasError = false;
       setLoading(true);
@@ -195,7 +195,7 @@ company: {
           toast.error("Failed to remove member");
           hasError = true;
         }
-      }finally {
+      } finally {
         setLoading(false); // Stop loading
       }
 
@@ -231,7 +231,7 @@ company: {
     try {
       const response = await inviteTeamMembers(email);
       if (!response || response.status !== 200) {
-       toast.error("Failed to invite user");
+        toast.error("Failed to invite user");
         return;
       }
       if (response.status === 200) {
@@ -242,7 +242,7 @@ company: {
       }
     } catch (error) {
       setEmailError("Failed to invite user");
-    }finally {
+    } finally {
       setLoading(false); // Stop loading
     }
     console.log("Add member clicked", email);
@@ -254,7 +254,7 @@ company: {
     try {
       const response = await updateUserPermission(email, role);
       console.log("response------>", response);
-      
+
       if (!response || response.status !== 200) {
         toast.error("Failed to update user role");
         return;
@@ -275,7 +275,7 @@ company: {
   //raplace with actual isUserAdmin check
 
 
-  return loading ? <FuseLoading/> :(
+  return loading ? <FuseLoading /> : (
     <div>
       <TextField
         value={email}
@@ -288,7 +288,7 @@ company: {
         InputLabelProps={{
           shrink: true,
         }}
-        disabled={!isUserAdmin|| isInputDisabled}
+        disabled={!isUserAdmin || isInputDisabled}
         InputProps={{
           startAdornment: (
             <InputAdornment position="start">
@@ -298,9 +298,9 @@ company: {
           endAdornment: (
             <InputAdornment position="end">
               <IconButton onClick={handleAddMember}
-              disabled={!isUserAdmin || isInputDisabled}
+                disabled={!isUserAdmin || isInputDisabled}
               >
-              <SendIcon color={!isUserAdmin || isInputDisabled ? "disabled" : "primary"} />
+                <SendIcon color={!isUserAdmin || isInputDisabled ? "disabled" : "primary"} />
               </IconButton>
             </InputAdornment>
           ),
@@ -317,12 +317,12 @@ company: {
         }}
 
       />
-<Typography variant="h6" className="mb-16">
-  Team Size: {accountData?.company?.license_used || 0}/{accountData?.plan?.team_size || 0}
-  {isInputDisabled && (
-    <span style={{ color: "red", marginLeft: "8px" }}> (Invite limit is reached)</span>
-  )}
-</Typography>
+      <Typography variant="h6" className="mb-16">
+        Team Size: {accountData?.company?.license_used || 0}/{accountData?.plan?.team_size || 0}
+        {isInputDisabled && (
+          <span style={{ color: "red", marginLeft: "8px" }}> (Invite limit is reached)</span>
+        )}
+      </Typography>
       <Divider />
       {(!teamMembers || teamMembers.length === 0) && (
         <Typography className="text-center my-32" color="textSecondary">

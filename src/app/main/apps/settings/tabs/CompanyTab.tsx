@@ -15,6 +15,7 @@ import {
 import AuthorityForm from "../tabcomponents/AuthorityForm";
 import { useNavigate } from "react-router";
 
+
 // Define the form schema using Zod
 const schema = z.object({
   companyName: z.string().min(1, "Company Name is required"),
@@ -23,24 +24,25 @@ const schema = z.object({
     .min(1, "Phone number is required")
     .regex(/^\d{10}$/, "Phone number must be exactly 10 digits"),
   website: z.string().url("Invalid website URL").optional(),
-  policyholderCount: z.coerce
-    .number()
-    .min(1, "Enter the amount of policyholders"),
+  // policyholderCount: z.coerce
+  //   .number()
+  //   .min(1, "Enter the amount of policyholders"),
 });
 
 // Default form values
 const defaultValues = {
   companyName: null,
   phoneNumber: null,
-  website: null,
-  policyholderCount: null,
+  website: '',
+  //policyholderCount: null,
 };
 
 function CompanyTab() {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
 
-  const { company } = useSelector(selectAccount);
+  const { user, company, isactive } = useSelector(selectAccount);
+  console.log(isactive, "isactive");
 
   const { control, reset, handleSubmit, formState } = useForm({
     defaultValues,
@@ -61,11 +63,11 @@ function CompanyTab() {
         companyName: company.Company_Name ?? null,
         phoneNumber: company.phone_number ?? null,
         website: company.website ?? null,
-        policyholderCount: company.policyholder_count ?? null,
+        //policyholderCount: company.policyholder_count ?? null,
       });
 
       // Set authorization state based on subscription status
-      setIsAuthorized(!!company.is_subscribed);
+      setIsAuthorized(!!user.company_id); //company.is_subscribed
       setLoading(false); // Stop loading once data is fetched
     } else {
       setLoading(false); // Stop loading even if no company data is available
@@ -105,9 +107,9 @@ function CompanyTab() {
   return (
     <div className="w-full max-w-3xl">
       <form onSubmit={handleSubmit(onSubmit)}>
-        <div className="mt-32 grid w-full gap-24 sm:grid-cols-4">
+        <div className="mt-32 grid w-full gap-24 sm:grid-cols-1">
           {/* Company Name */}
-          <div className="sm:col-span-2">
+          <div>
             <Controller
               control={control}
               name="companyName"
@@ -137,7 +139,7 @@ function CompanyTab() {
           </div>
 
           {/* Phone Number */}
-          <div className="sm:col-span-2">
+          <div>
             <Controller
               control={control}
               name="phoneNumber"
@@ -167,9 +169,9 @@ function CompanyTab() {
           </div>
         </div>
 
-        <div className="mt-32 grid w-full gap-24 sm:grid-cols-4">
+        <div className="mt-32 grid w-full gap-24 sm:grid-cols-1">
           {/* Website */}
-          <div className="sm:col-span-2">
+          <div>
             <Controller
               control={control}
               name="website"
@@ -198,7 +200,8 @@ function CompanyTab() {
           </div>
 
           {/* Policy Holder Count */}
-          <div className="sm:col-span-2">
+          {/* Uncomment this section if needed */}
+          {/* <div>
             <Controller
               control={control}
               name="policyholderCount"
@@ -225,7 +228,7 @@ function CompanyTab() {
                 />
               )}
             />
-          </div>
+          </div> */}
         </div>
 
         <Divider className="mb-40 mt-44 border-t" />
@@ -237,7 +240,7 @@ function CompanyTab() {
             variant="contained"
             color="secondary"
             type="submit"
-            disabled={!isValid || Object.keys(dirtyFields).length === 0} // Disable button if form is invalid or no fields are dirty
+            disabled={!isValid} // Disable button if form is invalid or no fields are dirty
           >
             {company?.is_subscribed ? "Update" : "Next"}
           </Button>
@@ -245,6 +248,7 @@ function CompanyTab() {
       </form>
     </div>
   );
+
 }
 
 export default CompanyTab;

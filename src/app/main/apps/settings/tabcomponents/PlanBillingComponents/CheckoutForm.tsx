@@ -34,7 +34,7 @@ function CheckoutForm({ clientSecret }: CheckoutFormProps): ReactElement {
       elements,
       clientSecret,
       confirmParams: {
-        return_url: `${window.location.origin}/apps/settings/account`,
+        return_url: `${window.location.origin}/apps/settings/company`,
       },
     });
 
