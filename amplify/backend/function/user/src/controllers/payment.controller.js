@@ -235,8 +235,11 @@ class PaymentController {
     router.post("/create-setup-intent", (...arg) =>
       this.CreateSetupIntent(...arg)
     );
-    router.post("/update-payment-method", (...arg) =>
-      this.UpdatePaymentMethod(...arg)
+    router.post("/update-payment-methods", (...arg) =>
+      this.UpdatePaymentMethods(...arg)
+    );
+    router.post("/update-default-payment-method", (...arg) =>
+      this.UpdateDefaultPaymentMethod(...arg)
     );
     router.post("/getplans", (...arg) =>
       this.GetAllPlans(...arg)
@@ -304,7 +307,7 @@ class PaymentController {
     }
   }
 
-  async UpdatePaymentMethod(req, res) {
+  async UpdatePaymentMethods(req, res) {
     try {
       const { email } = req.body;
       const stripe = StripeClient(STRIPE_SECRET_KEY);
@@ -419,6 +422,30 @@ class PaymentController {
         error: "Unable to update subscription",
         details: error.message,
       });
+    }
+  }
+
+  async UpdateDefaultPaymentMethod(req, res) {
+    try {
+      const { email, payment_method_id } = req.body;
+      const stripe = StripeClient(STRIPE_SECRET_KEY);
+
+      const customer = await getCustomerDetails(email);
+
+      // Update the default payment method for the customer
+      const updatedCustomer = await stripe.customers.update(customer.id, {
+        invoice_settings: {
+          default_payment_method: payment_method_id,
+        },
+      });
+
+      res.status(200).json({
+        message: "Default payment method updated successfully",
+        customer: updatedCustomer,
+      });
+    } catch (error) {
+      console.error("Error updating default payment method:", error);
+      res.status(500).json({ error: "Unable to update default payment method" });
     }
   }
 

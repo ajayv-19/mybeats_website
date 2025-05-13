@@ -1,13 +1,19 @@
 import { Button, Typography } from "@mui/material";
 
-// Define the interface for the Authority Form Props
 interface AuthorityFormProps {
-  authorizeUser: (isAuthorized: boolean) => void; // Function to authorize the user to show the user company form
+  authorizeUser: (isAuthorized: boolean) => void;
+  emailForm?: boolean;
+  setEmailForm?: (value: boolean) => void;
 }
 
-function AuthorityForm({ authorizeUser }: AuthorityFormProps) {
+function AuthorityForm({ authorizeUser, setEmailForm }: AuthorityFormProps) {
+  const handleCancelClick = () => {
+    setEmailForm?.(true); // Show email form
+    authorizeUser(false); // Prevent authorized access
+  };
+
   return (
-    <div className="flex flex-col gap-32">
+    <div className="flex flex-col gap-32 mt-20">
       <Typography>
         Do you have the authority to register your insurance company and
         purchase the subscription plan?
@@ -21,7 +27,7 @@ function AuthorityForm({ authorizeUser }: AuthorityFormProps) {
         >
           Yes
         </Button>
-        <Button variant="outlined" onClick={() => authorizeUser(false)}>
+        <Button variant="outlined" onClick={handleCancelClick}>
           No
         </Button>
       </div>
