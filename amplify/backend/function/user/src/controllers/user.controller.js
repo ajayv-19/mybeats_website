@@ -87,7 +87,7 @@ const UserController = {
           console.log(expiryDate, "expiryDate");
           if (currentDate > expiryDate) {
             subscription.status = "INACTIVE";
-            await company.update({ is_subscribed: false });
+            //await company.update({ is_subscribed: false });
             await subscription.update({ status: "INACTIVE" });
             isactive = false;
           }

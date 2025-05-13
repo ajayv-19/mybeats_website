@@ -47,14 +47,17 @@ type SettingsAppSidebarContentProps = {
 };
 
 function SettingsAppSidebarContent(props: SettingsAppSidebarContentProps) {
-	const { user } = useSelector(selectAccount); // Get user from Redux
+	const { user, company } = useSelector(selectAccount); // Get user from Redux
 	const { className, onSetSidebarOpen, isUserExists } = props;
 	const filterItems = ['apps.settings.account', 'apps.settings.company']
 	const navigation = isUserExists
 		? SettingsAppNavigation.children
 		: SettingsAppNavigation.children.filter((item) => item.id === 'apps.settings.account');
 	console.log("navigation===>", navigation);
-	const filteredNavigation = user?.company_id
+	console.log("user===>", user);
+	console.log("company===>", company);
+
+	const filteredNavigation = user?.company_id || (company?.is_subscribed === true && user?.role_id === 3)
 		? navigation // If company exists, show all navigation items
 		: navigation.filter(
 			(item) =>

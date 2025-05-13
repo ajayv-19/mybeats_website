@@ -244,8 +244,8 @@ function PlanBillingTab() {
 
   if (isLoading || isPlansLoading) // ||!plans
     return (
-      <div className="h-screen w-screen flex items-center justify-center">
-        loading...
+      <div className="flex justify-center items-center h-full">
+        <FuseLoading />
       </div>
     );
   console.log(clientSecret, "clientSecret");
@@ -394,44 +394,49 @@ function PlanBillingTab() {
 
         <Divider className="mb-40 mt-44 border-t" />
 
-        <div className="flex items-center justify-end space-x-8">
-          <Button
-            variant="contained"
-            color="secondary"
-            onClick={() => handleEdit()} // Replace with the reverse of handleEdit
-            disabled={!isactive}
-          >
-            Back
-          </Button>
+        <div className="flex items-center justify-between space-x-8">
+          <div>
+            <Button
+              variant="contained"
+              color="secondary"
+              onClick={() => handleEdit()} // Replace with the reverse of handleEdit
+              disabled={!isactive}
+            >
+              Back
+            </Button>
+          </div>
 
-          <Button
-            variant="contained"
-            onClick={(event) => {
-              event.preventDefault();
-              handleModalOpen("cancel")
-            }}
-            color="error"
-            disabled={user?.role_id !== 1 || !isactive}
-          >
-            Cancel
-          </Button>
-          <Button
-            variant="contained"
+          <div className="space-x-6">
+            <Button
+              variant="contained"
+              onClick={(event) => {
+                event.preventDefault();
+                handleModalOpen("cancel")
+              }}
+              color="error"
+              disabled={user?.role_id !== 1 || !isactive}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="contained"
 
-            color="secondary"
-            type="submit"
-            onClick={(event) => {
-              event.preventDefault();
-              if (isactive) {
-                handleModalOpen("update")
-              } else {
-                handleModalOpen("next")
-              }
-            }}
-            disabled={!isValid || (isactive && user?.role_id !== 1)}
-          >
-            {isactive ? "Update" : "Next"}
-          </Button>
+              color="secondary"
+              type="submit"
+              onClick={(event) => {
+                event.preventDefault();
+                if (isactive) {
+                  handleModalOpen("update")
+                } else {
+                  handleModalOpen("next")
+                }
+              }}
+              disabled={!isValid || (isactive && user?.role_id !== 1)}
+            >
+              {isactive ? "Update" : "Next"}
+            </Button>
+          </div>
+
         </div>
       </form>
 
@@ -445,10 +450,10 @@ function PlanBillingTab() {
           </DialogContentText>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleModalClose} color="primary">
+          <Button onClick={handleModalClose} color="primary" variant="contained">
             No
           </Button>
-          <Button onClick={handleModalConfirm} color="secondary" autoFocus>
+          <Button onClick={handleModalConfirm} color="primary" autoFocus variant="contained">
             Yes
           </Button>
         </DialogActions>
