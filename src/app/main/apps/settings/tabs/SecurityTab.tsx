@@ -29,7 +29,7 @@ import {
   usePolicyHolders,
   useUpdatePolicyHolder,
 } from "../apis/Policyholdersapis";
-import { debounce } from "lodash"; 
+import { debounce } from "lodash";
 
 function PolicyHolders() {
   const [filteredPolicyHolders, setFilteredPolicyHolders] = useState([]); // State for filtered rows
@@ -47,6 +47,12 @@ function PolicyHolders() {
       id: any;
       policyholder_count: number;
     };
+    user: {
+      id: any;
+      company_id: any;
+      role_id: any;
+    };
+    isactive: boolean;
   };
 
   const {
@@ -69,46 +75,46 @@ function PolicyHolders() {
   console.log("-->", existingPolicyHolders?.policyHolders);
   console.log("-->", existingPolicyHolders);
 
-  useEffect(()=>{
-setIsDialogOpen(false)
-setCsvData([])
-  },[isSuccess])
+  useEffect(() => {
+    setIsDialogOpen(false)
+    setCsvData([])
+  }, [isSuccess])
 
-// Handle search input change
-const handleSearchInputChange = (event) => {
-  const value = event.target.value;
-  setSearchInput(value); // Update the input field value
+  // Handle search input change
+  const handleSearchInputChange = (event) => {
+    const value = event.target.value;
+    setSearchInput(value); // Update the input field value
 
-  // Reset search results when input is cleared
-  if (value === "") {
-    resetSearch(); // Reset search results
-  }
-};
-
-
-// // Debounced search function
-// const debouncedSearch = debounce((value) => {
-//   setSearchQuery(value); // Update the actual search query
-//   setPage(0); // Reset to the first page
-// }, 300); // 300ms debounce delay
-
-// Reset search results
-const resetSearch = () => {
-  setSearchQuery(""); // Clear the search query
-  setSearchInput(""); // Clear the search input field
-  setPage(0); // Reset to the first page
-};
+    // Reset search results when input is cleared
+    if (value === "") {
+      resetSearch(); // Reset search results
+    }
+  };
 
 
-// Handle search button click or Enter key press
-const handleSearch = () => {
-  if (searchInput.trim() === "") {
-    resetSearch(); // Reset if the search input is empty
-  } else {
-    setSearchQuery(searchInput); // Update the actual search query
+  // // Debounced search function
+  // const debouncedSearch = debounce((value) => {
+  //   setSearchQuery(value); // Update the actual search query
+  //   setPage(0); // Reset to the first page
+  // }, 300); // 300ms debounce delay
+
+  // Reset search results
+  const resetSearch = () => {
+    setSearchQuery(""); // Clear the search query
+    setSearchInput(""); // Clear the search input field
     setPage(0); // Reset to the first page
-  }
-};
+  };
+
+
+  // Handle search button click or Enter key press
+  const handleSearch = () => {
+    if (searchInput.trim() === "") {
+      resetSearch(); // Reset if the search input is empty
+    } else {
+      setSearchQuery(searchInput); // Update the actual search query
+      setPage(0); // Reset to the first page
+    }
+  };
 
   // Handle pagination change
   const handleChangePage = (event, newPage) => {
@@ -190,7 +196,7 @@ const handleSearch = () => {
     setUploadError(""); // Reset the error message
     setCsvData([]); // Clear any previously uploaded data
   };
-
+  const isAddDisabled = accountData?.user?.role_id !== 1; // Condition to disable "Add Policyholders"
   // Handle downloading the CSV template
   const handleDownloadTemplate = () => {
     const templateData = [
@@ -212,198 +218,183 @@ const handleSearch = () => {
   return (
     <div>
 
-        <>
-          {/* Download Template */}
-          {/* <div className="mb-16">
-            <Typography variant="body1">
-              Download the template below and provide PolicyIDs and the
-              Employers of policyholders
-            </Typography>
-            <Button
-              variant="contained"
-              size="small"
-              color="secondary"
-              className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
-              classes={{ startIcon: "mr-4" }}
-              onClick={handleDownloadTemplate}
-            >
-              Download CSV Template
-            </Button>
-          </div> */}
-          {/* Download Template */}
-          <div className="mb-16">
-            <Typography variant="body1">
-              <a
-                href="#"
-                onClick={(event) => {
-                  event.preventDefault(); // Prevent the default behavior of the anchor tag
-                  handleDownloadTemplate(); // Call the download function
-                }}
-                className="text-blue-500 hover:underline"
-              >
-                Download
-              </a>{" "}
-              the template below and provide PolicyIDs and the Employers of policyholders
-            </Typography>
-          </div>
+      <>
+        <div className="mb-16">
+          <Typography variant="body1">
+            <a
+              href="#"
+              onClick={(event) => {
+                event.preventDefault(); // Prevent the default behavior of the anchor tag
+                handleDownloadTemplate(); // Call the download function
+              }}
+              className="text-blue-500 hover:underline"
 
-          
-          {/* Add Policy Holders */}
-          <div className="mb-16">
-            <Button
-              variant="contained"
-              size="small"
-              color="secondary"
-              className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
-              classes={{ startIcon: "mr-4" }}
-              onClick={() => setIsDialogOpen(true)}
             >
-              Add Policyholders
-            </Button>
-          </div>
+              Download
+            </a>{" "}
+            the template below and provide PolicyIDs and the Employers of policyholders
+          </Typography>
+        </div>
 
-          {/* Dialog for Uploading CSV */}
-          <Dialog
-            open={isDialogOpen}
-            onClose={handleCloseDialog}
-            maxWidth="md"
-            fullWidth
+
+        {/* Add Policy Holders */}
+        <div className="mb-16">
+          <Button
+            variant="contained"
+            size="small"
+            color="secondary"
+            className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
+            classes={{ startIcon: "mr-4" }}
+            onClick={() => setIsDialogOpen(true)}
+            disabled={isAddDisabled}
           >
-            <DialogTitle>Upload Unique IDs of Policyholders </DialogTitle>
-            <DialogContent>
-              <input type="file" accept=".csv" onChange={handleFileUpload} />
-              {uploadError && (
-                <Typography color="error" className="mt-8">
-                  {uploadError}
-                </Typography>
-              )}
-              {csvData.length > 0 && (
-                <TableContainer component={Paper} className="mt-16">
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        {Object.keys(csvData[0]).map((key) => (
-                          <TableCell key={key}>{key}</TableCell>
+            Add Policyholders
+          </Button>
+        </div>
+
+        {/* Dialog for Uploading CSV */}
+        <Dialog
+          open={isDialogOpen}
+          onClose={handleCloseDialog}
+          maxWidth="md"
+          fullWidth
+        >
+          <DialogTitle>Upload Unique IDs of Policyholders </DialogTitle>
+          <DialogContent>
+            <input type="file" accept=".csv" onChange={handleFileUpload} />
+            {uploadError && (
+              <Typography color="error" className="mt-8">
+                {uploadError}
+              </Typography>
+            )}
+            {csvData.length > 0 && (
+              <TableContainer component={Paper} className="mt-16">
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      {Object.keys(csvData[0]).map((key) => (
+                        <TableCell key={key}>{key}</TableCell>
+                      ))}
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {csvData.map((row, index) => (
+                      <TableRow key={index}>
+                        {Object.values(row).map((value, i) => (
+                          <TableCell key={i}>{String(value)}</TableCell>
                         ))}
                       </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {csvData.map((row, index) => (
-                        <TableRow key={index}>
-                          {Object.values(row).map((value, i) => (
-                            <TableCell key={i}>{String(value)}</TableCell>
-                          ))}
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </DialogContent>
-            <DialogActions>
-              <Button
-                variant="contained"
-                size="small"
-                color="secondary"
-                className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
-                classes={{ startIcon: "mr-4" }}
-                onClick={handleCloseDialog}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="contained"
-                size="small"
-                color="secondary"
-                className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
-                classes={{ startIcon: "mr-4" }}
-                onClick={handleSubmit}
-                disabled={isSubmitting}
-              >
-                {isSubmitting ? "Submitting..." : "Submit"}
-              </Button>
-            </DialogActions>
-          </Dialog>
-
-          {/* Search Bar */}
-          <div className="mb-16" style={{ display: "flex", gap: "10px" }}>
-          <TextField
-  label="Search by Unique ID or Employer"
-  variant="outlined"
-  size="small"
-  fullWidth
-  value={searchInput}
-  onChange={handleSearchInputChange} // Update input field value
-  onKeyDown={(event) => {
-    if (event.key === "Enter") {
-      handleSearch(); // Trigger search when Enter is pressed
-    }
-  }}
-/>
-
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </DialogContent>
+          <DialogActions>
             <Button
               variant="contained"
+              size="small"
               color="secondary"
-              onClick={handleSearch} // Trigger search on button click
+              className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
+              classes={{ startIcon: "mr-4" }}
+              onClick={handleCloseDialog}
             >
-              Search
+              Cancel
             </Button>
-          </div>
+            <Button
+              variant="contained"
+              size="small"
+              color="secondary"
+              className="mt-4 m-6 z-10 rounded p-0 text-md min-h-0  w-auto min-w-0 px-8 py-4 h-40"
+              classes={{ startIcon: "mr-4" }}
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? "Submitting..." : "Submit"}
+            </Button>
+          </DialogActions>
+        </Dialog>
 
-          {/* Existing Policy Holders Table */}
-         {isPending ? <FuseLoading/> : 
-         <>
-         <TableContainer component={Paper}>
-            <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell>PolicyID</TableCell>
-                  <TableCell>Employer</TableCell>
-                  <TableCell>Actions</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {existingPolicyHolders?.policyHolders.length > 0 ? (
-                  existingPolicyHolders?.policyHolders.map((holder, index) => (
-                    <TableRow key={index}>
-                      <TableCell>{holder.PolicyID}</TableCell>
-                      <TableCell>{holder.Employer}</TableCell>
-                      <TableCell>
-                        <IconButton
-                          color="secondary"
-                          size="small"
-                          onClick={() => handleDelete(holder.PolicyID)}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
+        {/* Search Bar */}
+        <div className="mb-16" style={{ display: "flex", gap: "10px" }}>
+          <TextField
+            label="Search by Unique ID or Employer"
+            variant="outlined"
+            size="small"
+            fullWidth
+            value={searchInput}
+            onChange={handleSearchInputChange} // Update input field value
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                handleSearch(); // Trigger search when Enter is pressed
+              }
+            }}
+          />
+
+          <Button
+            variant="contained"
+            color="secondary"
+            onClick={handleSearch} // Trigger search on button click
+          >
+            Search
+          </Button>
+        </div>
+
+        {/* Existing Policy Holders Table */}
+        {isPending ? <FuseLoading /> :
+          <>
+            <TableContainer component={Paper}>
+              <Table>
+                <TableHead>
+                  <TableRow>
+                    <TableCell>PolicyID</TableCell>
+                    <TableCell>Employer</TableCell>
+                    <TableCell>Actions</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {existingPolicyHolders?.policyHolders.length > 0 ? (
+                    existingPolicyHolders?.policyHolders.map((holder, index) => (
+                      <TableRow key={index}>
+                        <TableCell>{holder.PolicyID}</TableCell>
+                        <TableCell>{holder.Employer}</TableCell>
+                        <TableCell>
+                          <IconButton
+                            color="secondary"
+                            size="small"
+                            onClick={() => handleDelete(holder.PolicyID)}
+                            disabled={isAddDisabled}
+                          >
+                            <DeleteIcon />
+                          </IconButton>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} align="center">
+                        No policy holders found.
                       </TableCell>
                     </TableRow>
-                  ))
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={3} align="center">
-                      No policy holders found.
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                  )}
+                </TableBody>
+              </Table>
+            </TableContainer>
 
-       
-          <TablePagination
-            component="div"
-            count={existingPolicyHolders?.total || 0}
-            page={page}
-            onPageChange={handleChangePage}
-            rowsPerPage={rowsPerPage}
-            rowsPerPageOptions={[]} // Remove "Rows per page" dropdown
-            labelRowsPerPage="" // Hide "Rows per page" label
-          />
+
+            <TablePagination
+              component="div"
+              count={existingPolicyHolders?.total || 0}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              rowsPerPageOptions={[]} // Remove "Rows per page" dropdown
+              labelRowsPerPage="" // Hide "Rows per page" label
+            />
           </>
-          }
-        </>
-      
+        }
+      </>
+
     </div>
   );
 }

@@ -14,6 +14,7 @@ type UserDetails = {
   email?: string;
   image?: string;
   role_id?: number;
+  company_id?: string;
 };
 
 type CompanyDetails = {
@@ -26,11 +27,39 @@ type CompanyDetails = {
   plan_type: string;
   address: string;
   policyholder_count: number;
+  
+};
+
+type PlanSubscription = {
+  amount: string;               // e.g., "25.87"
+  bill_start: string;           // ISO timestamp string
+  bill_end: string;             // ISO timestamp string
+  company_id: number;
+  id: number;
+  plan_id: number;
+  status: "ACTIVE" | "INACTIVE" | string; // enum can be refined
+  sub_id: string;              // Stripe subscription ID
+  user_id: number;
+};
+
+type PlanDetails = {
+  id: number;
+  name: string;
+  description: string;
+  feature_description: string;
+  interval: "day" | "week" | "month" | "year" | string; // can be refined
+  interval_count: number;
+  days: number;
+  pricing: number; // e.g., 0.9 means 90% or $0.90
+  price_id: string; // Stripe price ID
+  team_size: number;
 };
 
 type AccountState = {
   user: UserDetails;
   company: CompanyDetails;
+  subscription: PlanSubscription;
+  plan: PlanDetails,
   loading: boolean;
   error: string;
   success: boolean;
@@ -44,6 +73,8 @@ type AccountState = {
 const initialState: AccountState = {
   user: null,
   company: null,
+  subscription: null,
+  plan: null,
   loading: false,
   error: null,
   success: false,
@@ -277,5 +308,8 @@ export const selectAccountName = (state: RootState) =>
 
 export const selectAccountFetched = (state: RootState) =>
   state.account.fetched; // Selector for fetched flag
+
+export const selectCompanySubscription = (state: RootState) =>
+  state.account.subscription;
 
 export default accountSlice.reducer;

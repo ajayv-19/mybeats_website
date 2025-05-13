@@ -12,7 +12,7 @@ class CompanyController {
 
   async createCompany(req, res) {
     try {
-      const { name, address, phone_number, email, user_id, policyholder_count, website } = req.body;
+      const { name, address, phone_number, email, user_id, website } = req.body;
 
       // Find the user and check if they exist
       const user = await User.findOne({ where: { id: user_id } });
@@ -35,7 +35,7 @@ class CompanyController {
           address,
           phone_number,
           email,
-          policyholder_count,
+          //policyholder_count,
           website,
           // Keeping the original primary_user_id and domain
         });
@@ -48,7 +48,7 @@ class CompanyController {
           email,
           website,
           primary_user_id: user.id,
-          policyholder_count,
+          //policyholder_count,
           domain: user.domain,
           number_of_admins: 0,
           number_of_users_invited: 0,
