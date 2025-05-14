@@ -8,7 +8,6 @@ import {
 import { useSelector } from 'react-redux';
 import { selectAccount } from "src/app/features/account/accountSlice";
 import axios from 'axios';
-import { fetchAuthSession } from "@aws-amplify/auth";
 
 function UpdatePaymentMethodForm(props) {
     const { subscription, customer, stripePromise, clientSecret } = props;
@@ -34,33 +33,26 @@ function UpdatePaymentMethodForm(props) {
         setMessage('');
 
         try {
-
-            let result;
-            if (paymentType === 'card') {
-                result = await stripe.confirmCardSetup(clientSecret, {
-                    payment_method: {
-                        card: elements.getElement(CardElement),
-                        billing_details: { email },
-                    },
-                });
-            } else {
-                result = await stripe.confirmSetup({
-                    elements,
-                    confirmParams: {
-                        return_url: window.location.href,
-                    },
-                    clientSecret,
-                });
-            }
+            console.log('Submitting payment method update...');
+            console.log({ paymentType, clientSecret, stripe, elements });
+            // return setLoading(false);
+            let result = await stripe.confirmSetup({
+                elements,
+                confirmParams: {
+                    // return_url: window.location.href,
+                    return_url: `${window.location.origin}/apps/settings/team`,
+                },
+                clientSecret,
+            });
 
             if (result.error) {
+                console.error('Error confirming setup:', result.error);
                 setMessage(result.error.message);
                 setLoading(false);
                 return;
             }
-
-            const paymentMethodId =
-                result.setupIntent?.payment_method || result.paymentMethod?.id;
+            console.log('Payment method updated successfully:', result);
+            const paymentMethodId = 1;
 
             const subscriptionId = subscription.sub_id; // Replace with actual
 
@@ -76,6 +68,7 @@ function UpdatePaymentMethodForm(props) {
                 setMessage(updateResponse.data.error || 'Failed to update payment method.');
             }
         } catch (err) {
+            console.error('Error updating payment method:', err);
             // Error already handled in handleSetupIntent
         }
 
@@ -96,30 +89,9 @@ function UpdatePaymentMethodForm(props) {
 
     return (
         <form onSubmit={handleSubmit} className="space-y-4 p-4 border rounded-md max-w-md mx-auto">
-            <div>
-                <label className="block font-medium mb-1">Choose Payment Method:</label>
-                <select
-                    value={paymentType}
-                    onChange={(e) => setPaymentType(e.target.value)}
-                    className="w-full border p-2 rounded"
-                >
-                    <option value="card">Card</option>
-                    <option value="bank">Bank</option>
-                </select>
+            <div className="p-2 border rounded">
+                <PaymentElement />
             </div>
-
-
-            {paymentType === 'card' && (
-                <div className="p-2 border rounded">
-                    <CardElement options={{ hidePostalCode: true }} />
-                </div>
-            )}
-
-            {paymentType === 'bank' && (
-                <div className="p-2 border rounded">
-                    <PaymentElement />
-                </div>
-            )}
 
             <button
                 type="submit"

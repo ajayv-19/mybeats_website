@@ -8,9 +8,14 @@ import { fetchAccountDetails, selectAccount } from "src/app/features/account/acc
 import UpdatePaymentMethodForm from "./UpdatePaymentMethod";
 import { Elements } from "@stripe/react-stripe-js";
 import { fetchAuthSession } from "@aws-amplify/auth";
+import { loadStripe } from "@stripe/stripe-js";
 import axios from 'axios';
 
-const ViewPlan = ({ handleEdit, stripePromise }) => {
+const stripePromise = loadStripe(
+    "pk_test_51QVNrHDIv4SXGrBxLk9llPOeoiczwAeRWCINxXbBNNw2Ecr1FTlk4ZasY3wHAZrjDcANw5bJN318FKvXtS2qpJEA00O6QyClPD"
+);
+
+const ViewPlan = ({ handleEdit }) => {
     const { user, company, plan, subscription, isactive } = useSelector(selectAccount);
     const [displayPaymentMethod, setDisplayPaymentMethod] = React.useState(false);
     const [clientSecret, setClientSecret] = React.useState(null);
@@ -51,7 +56,7 @@ const ViewPlan = ({ handleEdit, stripePromise }) => {
         }
     };
 
-    if (displayPaymentMethod) {
+    if (displayPaymentMethod && clientSecret) {
         return (<Elements stripe={stripePromise} options={{ clientSecret }}>
             <UpdatePaymentMethodForm
                 subscription={subscription}

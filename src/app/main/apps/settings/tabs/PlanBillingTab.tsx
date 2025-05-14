@@ -262,7 +262,7 @@ function PlanBillingTab() {
 
   if (!editMode && plan) {
     return (
-      <ViewPlan handleEdit={handleEdit} stripePromise={stripePromise} />
+      <ViewPlan handleEdit={handleEdit} />
     );
   }
 

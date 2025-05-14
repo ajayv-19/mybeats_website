@@ -16,7 +16,8 @@ import {
   useUpdateTeamMemberSettingsMutation,
 } from "../SettingsApi";
 import { useEffect, useState } from "react";
-import { deleteQuickSightUser, getTeamMembers, inviteTeamMembers, removeTeamMembers, updateUserPermission } from "../apis/Teamapis";
+import { getTeamMembers, inviteTeamMembers, removeTeamMembers, updateUserPermission } from "../apis/Teamapis";
+import { deleteQuickSightUser } from "../apis/QuickSightapi";
 import { useDispatch } from "react-redux";
 import { useSelector } from "react-redux";
 import { useAppDispatch, useAppSelector } from "app/store/hooks";
@@ -98,25 +99,6 @@ function TeamTab() {
   const [data, setData] = useState<ApiResponse | null>({ success: false, invitedUsers: [], message: "" });
   console.log("accountData", accountData);
 
-  // Fetch account details only once when the component mounts
-  // useEffect(() => {
-
-  //   dispatch(fetchAccountDetails() as any);
-
-  // }, [dispatch]);
-  /*
-    useEffect(() => {
-      const fetchAccount = async () => {
-        setLoading(true); // Start loading
-        try {
-          await dispatch(fetchAccountDetails() as any);
-        } finally {
-          setLoading(false); // Stop loading
-        }
-      };
-      fetchAccount();
-    }, []);
-  */
   const validateEmail = (email: string) => {
     const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,6}$/;
 
@@ -186,6 +168,7 @@ function TeamTab() {
           hasError = true;
         }
         if (response.status === 200) {
+          toast.success("Member removed successfully");
           await fetchData(); // Update team members state
           dispatch(fetchAccountDetails()); // Fetch updated license_used
         }
@@ -261,6 +244,7 @@ function TeamTab() {
       }
       if (response.status === 200) {
         fetchData();
+        toast.success("User role updated successfully");
       }
     } catch (error) {
 
