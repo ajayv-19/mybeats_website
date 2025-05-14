@@ -36,7 +36,8 @@ instance.interceptors.response.use(
             }
 
             // Extract and display the error message
-            const errorMessage = data?.error || data?.message || "An unknown error occurred.";
+            const errorMessage = data?.error?.message|| "An unknown error occurred.";
+            console.error("Error:", errorMessage);
             toast.error(errorMessage);
         } else {
             // Handle network or unknown errors

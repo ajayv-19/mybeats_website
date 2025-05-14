@@ -25,11 +25,9 @@ import { useNavigate } from "react-router";
 import { Check } from "@mui/icons-material";
 import { AppDispatch } from "app/store/store";
 import { fetchPlans, selectPlans, selectPlansLoading } from "../../../../features/plans/plansSlice";
-import { any } from "promise";
 import ViewPlan from "../tabcomponents/PlanBillingComponents/ViewPlan";
 import ModelContents from "../tabcomponents/PlanBillingComponents/modelcontent";
 import { toast } from "sonner";
-import { is } from "immutable";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 
 type FormType = SettingsPlanBilling;
@@ -264,7 +262,7 @@ function PlanBillingTab() {
 
   if (!editMode && plan) {
     return (
-      <ViewPlan handleEdit={handleEdit} />
+      <ViewPlan handleEdit={handleEdit} stripePromise={stripePromise} />
     );
   }
 

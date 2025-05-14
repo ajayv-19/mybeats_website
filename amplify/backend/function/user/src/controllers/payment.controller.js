@@ -292,6 +292,7 @@ class PaymentController {
   async CreateSetupIntent(req, res) {
     try {
       const { email } = req.body; // Get customer email from frontend
+      const stripe = StripeClient(STRIPE_SECRET_KEY);
 
       const customer = await getCustomerDetails(email);
 
@@ -301,7 +302,7 @@ class PaymentController {
         payment_method_types: ["card", "us_bank_account"], // Supports card payments
       });
 
-      res.json({ clientSecret: setupIntent.client_secret });
+      res.json({ clientSecret: setupIntent.client_secret, customer });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }

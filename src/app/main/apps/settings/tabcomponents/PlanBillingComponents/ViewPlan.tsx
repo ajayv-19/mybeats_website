@@ -5,10 +5,61 @@ import { Paper } from "@mui/material";
 import React from 'react'
 import { useSelector } from 'react-redux'
 import { fetchAccountDetails, selectAccount } from "src/app/features/account/accountSlice";
+import UpdatePaymentMethodForm from "./UpdatePaymentMethod";
+import { Elements } from "@stripe/react-stripe-js";
+import { fetchAuthSession } from "@aws-amplify/auth";
+import axios from 'axios';
 
-const ViewPlan = ({ handleEdit }) => {
+const ViewPlan = ({ handleEdit, stripePromise }) => {
     const { user, company, plan, subscription, isactive } = useSelector(selectAccount);
+    const [displayPaymentMethod, setDisplayPaymentMethod] = React.useState(false);
+    const [clientSecret, setClientSecret] = React.useState(null);
+    const [loading, setLoading] = React.useState(false);
+    const [error, setError] = React.useState(null);
+    const [message, setMessage] = React.useState('');
+    const [customer, setCustomer] = React.useState(null);
 
+
+    const initiatPaymentMethodChange = async () => {
+        await handleSetupIntent();
+        setDisplayPaymentMethod(true);
+    }
+
+    const handleSetupIntent = async () => {
+        try {
+            const session = await fetchAuthSession();
+            const authToken = session.tokens?.accessToken?.toString();
+
+            const response = await axios.post(
+                'https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi/create-setup-intent',
+                { email: user.email },
+                {
+                    headers: {
+                        Authorization: authToken,
+                    },
+                }
+            );
+
+            const data = response.data;
+            console.log("Setup Intent Response:", data);
+            setClientSecret(data.clientSecret);
+            setCustomer(data.customer);
+            return data.clientSecret;
+        } catch (error) {
+            const errMsg = error.response?.data?.error || error.message || 'Failed to create setup intent.';
+            throw new Error(errMsg);
+        }
+    };
+
+    if (displayPaymentMethod) {
+        return (<Elements stripe={stripePromise} options={{ clientSecret }}>
+            <UpdatePaymentMethodForm
+                subscription={subscription}
+                customer={customer}
+                clientSecret={clientSecret}
+            />
+        </Elements>)
+    }
 
     return (
         <div className="mt-32 grid w-full gap-16 sm:grid-cols-2">
@@ -135,6 +186,31 @@ const ViewPlan = ({ handleEdit }) => {
                             </Typography>
                         </div>
                     ))}
+                </div>
+            </Paper>
+            <Paper
+                sx={{
+                    "&.selected": {
+                        border: (theme) => `3px solid ${theme.palette.secondary.main}`,
+                        boxShadow: (theme) => theme.shadows[6],
+                    },
+                    transition: "all 0.3s ease-in-out",
+                    "&:hover": {
+                        transform: "scale(1.02)",
+                        boxShadow: (theme) => theme.shadows[8],
+                    },
+                }}
+                className="flex flex-1 cursor-pointer flex-col items-start justify-start rounded-md p-24 border-3 border-transparent relative"
+            >
+                {/* Top Right Edit Button */}
+                <div className="absolute right-0 top-0 mr-12 mt-12">
+                    <Button
+                        variant="contained"
+                        color="secondary"
+                        onClick={() => initiatPaymentMethodChange()} // Replace with your edit handler function
+                    >
+                        Change Payment Method
+                    </Button>
                 </div>
             </Paper>
         </div>

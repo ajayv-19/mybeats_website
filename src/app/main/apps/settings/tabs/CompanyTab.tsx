@@ -4,7 +4,7 @@ import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import TextField from "@mui/material/TextField";
-import { Button, Divider, InputAdornment, Typography } from "@mui/material";
+import { Button, Card, CardContent, Divider, Grid, InputAdornment, Typography } from "@mui/material";
 import FuseSvgIcon from "@fuse/core/FuseSvgIcon";
 import FuseLoading from "@fuse/core/FuseLoading";
 import { AppDispatch } from "app/store/store";
@@ -61,12 +61,12 @@ function CompanyTab() {
         phoneNumber: company.phone_number ?? null,
         website: company.website ?? null,
       });
-      setIsAuthorized(!!user.company_id);
+      setIsAuthorized(!!user?.company_id);
       setLoading(false);
     } else {
       setLoading(false);
     }
-  }, [company, reset, user.company_id]);
+  }, [company, reset, user?.company_id]);
 
   const onSubmit = (formData) => {
     if (!isValid) return;
@@ -78,7 +78,15 @@ function CompanyTab() {
     if (!email) {
       toast.error("Please enter an email address");
     }
-    await sendMembersEmail(email)
+    const response = await sendMembersEmail(email)
+    console.log("Email sent response:", response);
+    if (response.status === 200) {
+      toast.success("Email sent successfully");
+      navigate("/apps/settings/account");
+      setEmail("");
+    } else {
+      toast.error("Failed to send email");
+    }
   }
   const handleCancelClick = () => {
     setEmailForm(false);
@@ -97,31 +105,45 @@ function CompanyTab() {
   // Display Email Form if requested
   if (emailForm) {
     return (
-      <>
-        <Typography variant="body1">
-          Please provide the authorized person's email address:
-        </Typography>
+      <Card elevation={3} style={{ maxWidth: 500, margin: "auto", padding: "20px" }}>
+        <CardContent>
+          <Typography variant="h6" gutterBottom>
+            Authorized Person's Email
+          </Typography>
+          <Typography variant="body2" color="textSecondary" gutterBottom>
+            Please provide the authorized person's email address to proceed.
+          </Typography>
 
-        <TextField
-          label="Email Address"
-          variant="outlined"
-          fullWidth
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          error={!!emailError}
-          helperText={emailError}
-        />
+          <Grid container spacing={2} style={{ marginTop: "16px" }}>
+            <Grid item xs={12}>
+              <TextField
+                label="Email Address"
+                variant="outlined"
+                fullWidth
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                error={!!emailError}
+                helperText={emailError}
+              />
+            </Grid>
 
-        <div className="flex gap-10 mt-4">
-          <Button variant="outlined" onClick={handleCancelClick}>
-            Cancel
-          </Button>
-          <Button variant="contained" color="primary" onClick={handleSend}>
-            Send
-          </Button>
-        </div>
-      </>
+            <Grid item xs={12} container justifyContent="flex-end" spacing={2}>
+              <Grid item>
+                <Button variant="outlined" color="secondary" onClick={handleCancelClick}>
+                  Cancel
+                </Button>
+              </Grid>
+              <Grid item>
+                <Button variant="contained" color="primary" onClick={handleSend}>
+                  Send
+                </Button>
+              </Grid>
+            </Grid>
+          </Grid>
+        </CardContent>
+      </Card>
     );
+
   }
 
   // Display Authority Form
