@@ -108,7 +108,7 @@ function CompanyTab() {
       <Card elevation={3} style={{ maxWidth: 500, margin: "auto", padding: "20px" }}>
         <CardContent>
           <Typography variant="h6" gutterBottom>
-            Authorized Person's Email
+            Kindly share MyBeats Website with the authorized person.
           </Typography>
           <Typography variant="body2" color="textSecondary" gutterBottom>
             Please provide the authorized person's email address to proceed.

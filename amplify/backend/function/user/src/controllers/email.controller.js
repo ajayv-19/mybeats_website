@@ -220,7 +220,7 @@ class EmailController {
         switch (templateName) {
             case "welcome":
                 return {
-                    name: this.request.Customer_Name,
+                    name: this.request.user.Customer_Name,
                     email: this.request.email,
                     debug: JSON.stringify(this.request.user)
                 };

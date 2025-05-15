@@ -192,32 +192,17 @@ const ViewPlan = ({ handleEdit }) => {
                         </div>
                     ))}
                 </div>
+                <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={() => initiatPaymentMethodChange()} // Replace with your edit handler function
+                >
+                    Change Payment Method
+                </Button>
             </Paper>
-            <Paper
-                sx={{
-                    "&.selected": {
-                        border: (theme) => `3px solid ${theme.palette.secondary.main}`,
-                        boxShadow: (theme) => theme.shadows[6],
-                    },
-                    transition: "all 0.3s ease-in-out",
-                    "&:hover": {
-                        transform: "scale(1.02)",
-                        boxShadow: (theme) => theme.shadows[8],
-                    },
-                }}
-                className="flex flex-1 cursor-pointer flex-col items-start justify-start rounded-md p-24 border-3 border-transparent relative"
-            >
-                {/* Top Right Edit Button */}
-                <div className="absolute right-0 top-0 mr-12 mt-12">
-                    <Button
-                        variant="contained"
-                        color="secondary"
-                        onClick={() => initiatPaymentMethodChange()} // Replace with your edit handler function
-                    >
-                        Change Payment Method
-                    </Button>
-                </div>
-            </Paper>
+
+
+
         </div>
     )
 }
