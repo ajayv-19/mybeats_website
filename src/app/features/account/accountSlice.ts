@@ -7,6 +7,7 @@ import { addOrUpdateUser } from "src/app/main/apps/settings/apis/Accountapis";
 import { fetchAuthSession } from "@aws-amplify/auth";
 import axios from "axios";
 import { CompanyFormInput } from "src/app/main/apps/settings/types/CompanyTypes.types";
+import { toast } from "sonner";
 
 type UserDetails = {
   id?: number;
@@ -125,11 +126,14 @@ export const submitAccountDetails = createAsyncThunk(
       const response = await addOrUpdateUser(formData);
 
       if (response.status === 200) {
+        toast.success("User details added successfully");
         return response.data.userdata as UserDetails;
+        
       }
 
       return rejectWithValue("Failed to submit account details");
     } catch (error) {
+      toast.success("User Update failed");
       console.error("Failed to update account settings:", error);
       return rejectWithValue(error.message || "Unknown error");
     }
@@ -174,6 +178,11 @@ export const submitCompanyDetails = createAsyncThunk(
           },
         }
       );
+
+      if (response.status === 200) { 
+        toast.success("Company details added successfully");
+
+      }
 
       dispatch(fetchAccountDetails());
 

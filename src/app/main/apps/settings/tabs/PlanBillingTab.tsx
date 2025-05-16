@@ -179,6 +179,7 @@ function PlanBillingTab() {
       setIsLoading(false);
     } catch (error) {
       setIsLoading(false);
+      toast.error("Error while fetching client secret");
       console.error("Error while fetching client secret", error);
     } finally {
       setIsLoading(false);
@@ -208,6 +209,7 @@ function PlanBillingTab() {
 
       dispatch(fetchCompanySubscription());
     } catch (error) {
+      toast.error("Error while cancelling subscription");
       console.error("Error while cancelling", error);
     }
   };

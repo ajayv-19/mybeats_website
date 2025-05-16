@@ -92,7 +92,8 @@ function CompanyTab() {
     setEmailForm(false);
     setIsAuthorized(false);
   }
-
+  console.log("lockstatus===>", (company?.is_subscribed === true && user?.role_id !== 1));
+  console.log("lockstatusval===>", !isValid);
   // Loading
   if (loading) {
     return (
@@ -203,6 +204,7 @@ function CompanyTab() {
                 error={!!errors.phoneNumber}
                 required
                 fullWidth
+                disabled={(company?.is_subscribed === true && user?.role_id !== 1)}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -228,6 +230,7 @@ function CompanyTab() {
                 error={!!errors.website}
                 required
                 fullWidth
+                disabled={(company?.is_subscribed === true && user?.role_id !== 1)}
                 InputProps={{
                   startAdornment: (
                     <InputAdornment position="start">
@@ -243,12 +246,15 @@ function CompanyTab() {
         <Divider className="mb-40 mt-44 border-t" />
 
         <div className="flex items-center justify-end space-x-8">
-          <Button variant="outlined">Cancel</Button>
+          <Button
+            variant="outlined"
+            disabled={(company?.is_subscribed === true && user?.role_id !== 1)}
+          >Cancel</Button>
           <Button
             variant="contained"
             color="secondary"
             type="submit"
-            disabled={!isValid}
+            disabled={!isValid || (company?.is_subscribed === true && user?.role_id !== 1)}
           >
             {company?.is_subscribed ? "Update" : "Next"}
           </Button>

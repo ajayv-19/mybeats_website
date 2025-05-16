@@ -180,7 +180,7 @@ const UserController = {
   },
 
 
-  async syncMyInvites(user) {
+  syncMyInvites: async (user) => {
     const invite = await UserInvites.findOne({ where: { email: user.email } });
     if (!invite) {
       return false;
@@ -244,7 +244,7 @@ const UserController = {
               ? removedByAdmin
               : existingUser.removedByAdmin,
         });
-        await this.syncMyInvites(updatedUser);
+        await UserController.syncMyInvites(updatedUser);
         return res.json({
           success: true,
           message: "User updated successfully",
@@ -276,11 +276,11 @@ const UserController = {
         ...(company_id && { company_id }),
       });
 
+      console.log("This", this);
+      await UserController.syncMyInvites(newUser);
 
-      await this.syncMyInvites(newUser);
 
-
-      res.json({
+      res.status(200).json({
         success: true,
         message: "User created successfully",
         user: newUser,

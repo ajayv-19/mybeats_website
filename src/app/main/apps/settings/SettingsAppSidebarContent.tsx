@@ -8,6 +8,7 @@ import clsx from 'clsx';
 import SettingsAppNavigation from './SettingsAppNavigation';
 import { selectAccount } from 'src/app/features/account/accountSlice';
 import { useSelector } from 'react-redux';
+import { co } from '@fullcalendar/core/internal-common';
 const Root = styled('div')(({ theme }) => ({
 	'&  .navigation': {
 		padding: 0,
@@ -56,13 +57,18 @@ function SettingsAppSidebarContent(props: SettingsAppSidebarContentProps) {
 	console.log("navigation===>", navigation);
 	console.log("user===>", user);
 	console.log("company===>", company);
-
-	const filteredNavigation = user?.company_id || (company?.is_subscribed === true && user?.role_id === 3)
+	console.log("Checkstatus", (company?.is_subscribed === true && user?.role_id === 3))
+	console.log("Checkstatus1", user?.company_id);
+	console.log("Checkstatus2", user?.company_id && !(company?.is_subscribed === true && user?.role_id === 3));
+	const filteredNavigation = user?.company_id && !(company?.is_subscribed === true && user?.role_id === 3)
 		? navigation // If company exists, show all navigation items
 		: navigation.filter(
 			(item) =>
 				filterItems.includes(item.id)
 		);
+
+
+
 	//const secondFilter = user.role_id === 3 ? 
 
 	return (

@@ -89,6 +89,7 @@ const ViewPlan = ({ handleEdit }) => {
                         variant="contained"
                         color="secondary"
                         onClick={() => handleEdit()} // Replace with your edit handler function
+                        disabled={(company?.is_subscribed === true && user?.role_id !== 1)}
                     >
                         Edit
                     </Button>
@@ -196,6 +197,7 @@ const ViewPlan = ({ handleEdit }) => {
                     variant="contained"
                     color="secondary"
                     onClick={() => initiatPaymentMethodChange()} // Replace with your edit handler function
+                    disabled={(company?.is_subscribed === true && user?.role_id !== 1)}
                 >
                     Change Payment Method
                 </Button>

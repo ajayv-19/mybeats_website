@@ -7,7 +7,7 @@ import PolicyholderTerms from "./PolicyholderTerms";
 
 const TABS = [
   "Terms & Conditions for Policyholders",
-  "Terms & Conditions for Insurance Companies",
+  // "Terms & Conditions for Insurance Companies",
 ];
 
 const TermsAndConditionsPage = () => {
@@ -28,14 +28,14 @@ const TermsAndConditionsPage = () => {
                   {tab}
                 </button>
                 {index === 0 && (
-                  <span className="text-4xl text-gray-400">|</span>
+                  <span className="text-4xl text-gray-400"></span>
                 )}
               </React.Fragment>
             ))}
           </div>
 
           {selectedTab === 0 && <PolicyholderTerms />}
-          {selectedTab === 1 && <InsuranceTerms />}
+          {/* {selectedTab === 1 && <InsuranceTerms />} */}
         </div>
       </div>
       <Footer />
