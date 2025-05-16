@@ -7,12 +7,11 @@ const instance = axios.create({
     baseURL: BASE_URL,
     //withCredentials: true,
 });
-const session = await fetchAuthSession();
-const authToken = session.tokens?.accessToken?.toString();
+const getAuth = async()=>((await fetchAuthSession()).tokens?.accessToken?.toString());
 
 instance.interceptors.request.use(
-    (config) => {
-        const token = authToken;
+    async (config) => {
+        const token = await getAuth();
         if (token) {
             config.headers.Authorization = token;
         }
@@ -20,20 +19,34 @@ instance.interceptors.request.use(
         return config;
     },);
 
+
+
 instance.interceptors.response.use(
     (response) => {
         return response;
     },
     (error) => {
-        if (error.response && error.response.status === 401) {
-            // Handle unauthorized access (e.g., redirect to login)
-            console.error("Unauthorized access. Redirecting to login...");
-            // Redirect to login page or perform any other action
+        if (error.response) {
+            const { status, data } = error.response;
+
+            // Handle unauthorized access
+            if (status === 401) {
+                console.error("Unauthorized access. Redirecting to login...");
+                // Redirect to login page or perform any other action
+            }
+
+            // Extract and display the error message
+            const errorMessage = data?.error?.message|| "An unknown error occurred.";
+            console.error("Error:", errorMessage);
+            toast.error(errorMessage);
+        } else {
+            // Handle network or unknown errors
+            toast.error("A network error occurred. Please try again.");
         }
-        toast.error("An error occurred: " + (error.response?.data?.message || "Unknown error"));
-        console.error("Error:", error);    
+
+        console.error("Error:", error);
         return Promise.reject(error);
-    },
+    }
 );
 
 export default instance;

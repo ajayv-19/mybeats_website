@@ -219,7 +219,11 @@ class EmailController {
         console.log("company", company);
         switch (templateName) {
             case "welcome":
-                return { name: this.request.Customer_Name, email: this.request.email, debug: JSON.stringify(this.request.user) };
+                return {
+                    name: this.request.user.Customer_Name,
+                    email: this.request.email,
+                    debug: JSON.stringify(this.request.user)
+                };
             case "invite":
                 return { name: this.request.user.Customer_Name, email: this.request.email, company: company.Company_Name };
             default:

@@ -6,7 +6,9 @@ import IconButton from '@mui/material/IconButton';
 import FuseSvgIcon from '@fuse/core/FuseSvgIcon';
 import clsx from 'clsx';
 import SettingsAppNavigation from './SettingsAppNavigation';
-
+import { selectAccount } from 'src/app/features/account/accountSlice';
+import { useSelector } from 'react-redux';
+import { co } from '@fullcalendar/core/internal-common';
 const Root = styled('div')(({ theme }) => ({
 	'&  .navigation': {
 		padding: 0,
@@ -46,10 +48,28 @@ type SettingsAppSidebarContentProps = {
 };
 
 function SettingsAppSidebarContent(props: SettingsAppSidebarContentProps) {
+	const { user, company } = useSelector(selectAccount); // Get user from Redux
 	const { className, onSetSidebarOpen, isUserExists } = props;
+	const filterItems = ['apps.settings.account', 'apps.settings.company']
 	const navigation = isUserExists
 		? SettingsAppNavigation.children
 		: SettingsAppNavigation.children.filter((item) => item.id === 'apps.settings.account');
+	console.log("navigation===>", navigation);
+	console.log("user===>", user);
+	console.log("company===>", company);
+	console.log("Checkstatus", (company?.is_subscribed === true && user?.role_id === 3))
+	console.log("Checkstatus1", user?.company_id);
+	console.log("Checkstatus2", user?.company_id && !(company?.is_subscribed === true && user?.role_id === 3));
+	const filteredNavigation = user?.company_id && !(company?.is_subscribed === true && user?.role_id === 3)
+		? navigation // If company exists, show all navigation items
+		: navigation.filter(
+			(item) =>
+				filterItems.includes(item.id)
+		);
+
+
+
+	//const secondFilter = user.role_id === 3 ? 
 
 	return (
 		<Root>
@@ -65,7 +85,7 @@ function SettingsAppSidebarContent(props: SettingsAppSidebarContentProps) {
 					</IconButton>
 				</Hidden>
 			</div>
-			<FuseNavigation navigation={navigation} />
+			<FuseNavigation navigation={filteredNavigation} />
 		</Root>
 	);
 }

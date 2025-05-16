@@ -31,8 +31,10 @@ function PrivateRoute() {
           }
         );
 
-        if (response.status === 200) {
+        if (response.data.userdata.isactive === true) {
           setUserExists(true);
+          console.log("User exists:", response.data.userdata.isactive);
+
           navigate("/dashboards/analytics");
         } else {
           navigate("/apps/settings/account");

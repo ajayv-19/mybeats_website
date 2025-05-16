@@ -55,7 +55,7 @@ function PolicyholdersPrivacy() {
           purposes only and do not constitute medical advice.
         </li>
         <li>
-          Developing analytics for insurance risk assessment and product
+          Developing analytics for risk assessment and product
           development.
         </li>
         <li>
@@ -70,9 +70,8 @@ function PolicyholdersPrivacy() {
 
       <h2 className="font-bold text-xl mb-2">3. Data Sharing and Disclosure</h2>
       <p className="mb-20">
-        The analytics generated through your data may be shared with your
-        insurance company for risk assessment, product development, and
-        improving insurance-related analytics. We do not share your personally
+        The analytics generated through your data may be used for risk assessment, product development, and
+        improving analytics. We do not share your personally
         identifiable information with third parties except in the following
         circumstances:
       </p>
@@ -98,12 +97,12 @@ function PolicyholdersPrivacy() {
       <h2 className="font-bold text-xl mb-2">4. Data Security</h2>
       <p className="mb-20">
         We take extensive measures to protect your information from unauthorized
-        access, disclosure, alteration, or destruction. These measures include:
+        access, disclosure, alteration, or destruction.
       </p>
-      <ul className="list-disc ml-6 mb-20">
+      {/* <ul className="list-disc ml-6 mb-20">
         <li>Encryption of data.</li>
         <li>Regular security and vulnerability assessments.</li>
-      </ul>
+      </ul> */}
       <p className="mb-20">
         While no system can guarantee absolute security, we continuously monitor
         and update our security practices to mitigate risk.
@@ -143,8 +142,7 @@ function PolicyholdersPrivacy() {
       </h2>
       <p className="mb-20">
         We may update this Privacy Policy from time to time to reflect changes
-        in our practices or legal requirements. We will notify you of any
-        material changes by posting the updated policy within our app. Your
+        in our practices or legal requirements. Your
         continued use of our Services after such updates constitutes your
         acceptance of the revised Privacy Policy.
       </p>

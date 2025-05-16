@@ -42,6 +42,7 @@ const getCustomerDetails = async (email, payload) => {
     throw new Error("Unable to retrieve or create customer.");
   }
 };
+
 const addSubscription = async (customer_subscription_created) => {
   try {
     // Extract relevant details from the event
@@ -60,12 +61,14 @@ const addSubscription = async (customer_subscription_created) => {
       : null;
     const plan_id = metadata?.plan_id ? Number(metadata.plan_id) : null;
     const user_id = metadata?.user_id ? Number(metadata.user_id) : null;
+    const policyholders_count = metadata?.policyholders_count ? Number(metadata.policyholders_count) : null;
 
     const company = await Company.findByPk(company_id);
     company.update({
       is_subscribed: true,
       license_used: company.license_used == 0 ? 1 : company.license_used,
       number_of_admins: company.number_of_admins == 0 ? 1 : company.number_of_admins,
+      policyholder_count: policyholders_count,
     });
     const user = await User.findByPk(user_id);
     user.update({ role_id: 1 });
@@ -131,6 +134,10 @@ const handleSuccesfullInvoicePayment = async (invoice) => {
 
 const handleSubscriptionUpdated = async (subscription) => {
   try {
+
+    console.log("🔄 Subscription updated:", subscription);
+
+
     const stripe = StripeClient(STRIPE_SECRET_KEY);
     console.log("🔄 Subscription updated in Stripe:", subscription.id);
 
@@ -155,6 +162,12 @@ const handleSubscriptionUpdated = async (subscription) => {
 
     // Get plan_id from subscription metadata
     const plan_id = subscription.metadata.plan_id;
+    const policyholder_count = subscription.metadata.policyholders_count;
+    const company_id = subscription.metadata.company_id;
+    const company = await Company.findByPk(company_id);
+    company.update({ plan_id: plan_id });
+    company.update({ policyholder_count: policyholder_count });
+
 
     console.log("📊 Updating DB with new values:", {
       newQuantity,
@@ -222,8 +235,14 @@ class PaymentController {
     router.post("/create-setup-intent", (...arg) =>
       this.CreateSetupIntent(...arg)
     );
-    router.post("/update-payment-method", (...arg) =>
-      this.UpdatePaymentMethod(...arg)
+    router.post("/update-payment-methods", (...arg) =>
+      this.UpdatePaymentMethods(...arg)
+    );
+    router.post("/update-default-payment-method", (...arg) =>
+      this.UpdateDefaultPaymentMethod(...arg)
+    );
+    router.post("/getplans", (...arg) =>
+      this.GetAllPlans(...arg)
     );
   }
 
@@ -273,6 +292,7 @@ class PaymentController {
   async CreateSetupIntent(req, res) {
     try {
       const { email } = req.body; // Get customer email from frontend
+      const stripe = StripeClient(STRIPE_SECRET_KEY);
 
       const customer = await getCustomerDetails(email);
 
@@ -282,13 +302,13 @@ class PaymentController {
         payment_method_types: ["card", "us_bank_account"], // Supports card payments
       });
 
-      res.json({ clientSecret: setupIntent.client_secret });
+      res.json({ clientSecret: setupIntent.client_secret, customer });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
   }
 
-  async UpdatePaymentMethod(req, res) {
+  async UpdatePaymentMethods(req, res) {
     try {
       const { email } = req.body;
       const stripe = StripeClient(STRIPE_SECRET_KEY);
@@ -329,14 +349,13 @@ class PaymentController {
   async UpdateSubscription(req, res) {
     try {
       const stripe = StripeClient(STRIPE_SECRET_KEY);
-      const { company_id, plan_id, user_id } = req.body;
+      const company_extract = await Company.findOne({ where: { id: req.body.company_id } });
+      const { company_id, plan_id, user_id, quantity = company_extract.policyholder_count } = req.body;
 
-      // Validate required parameters
       if (!user_id || !plan_id || !company_id) {
         return res.status(400).json({ error: "Missing required parameters" });
       }
 
-      // Get the user, plan and company details
       const [user, plan, company] = await Promise.all([
         User.findOne({ where: { id: user_id } }),
         Plans.findOne({ where: { id: plan_id } }),
@@ -344,14 +363,11 @@ class PaymentController {
       ]);
 
       if (!user || !plan || !company) {
-        return res
-          .status(400)
-          .json({ error: "Invalid user, plan, or company" });
+        return res.status(400).json({ error: "Invalid user, plan, or company" });
       }
 
       const customer = await getCustomerDetails(user.email);
 
-      // Find existing subscription in Stripe
       const existingSubscriptions = await stripe.subscriptions.list({
         limit: 1,
         customer: customer.id,
@@ -359,59 +375,47 @@ class PaymentController {
       });
 
       if (existingSubscriptions.data.length === 0) {
-        return res.status(404).json({ error: "No active subscription found" });
+        return res.status(404).json({ error: "No active subscription found for customer " + customer.id });
       }
 
       const currentSubscription = existingSubscriptions.data[0];
-
-      // Create a new subscription item with the new price
+      if (company.policyholder_count != quantity) {
+        company.update({ policyholder_count: quantity });
+      }
       const subscriptionUpdateParams = {
-        proration_behavior: "always_invoice", // or 'create_prorations' based on your billing model
-        items: [
-          {
-            id: currentSubscription.items.data[0].id,
-            price: plan.price_id,
-            quantity: company.policyholder_count,
-          },
-        ],
+        items: [{
+          id: currentSubscription.items.data[0].id,
+          price: plan.price_id,
+          quantity: quantity || company.policyholder_count,
+        }],
+        proration_behavior: "create_prorations",
+        proration_date: Math.floor(Date.now() / 1000),
+        payment_behavior: "allow_incomplete",
+        payment_settings: {
+          payment_method_types: ["card"],
+        },
         metadata: {
           user_id,
           company_id,
           plan_id,
           updated_at: new Date().toISOString(),
+          policyholders_count: quantity,
         },
-        payment_settings: {
-          payment_method_types: ["card", "us_bank_account"],
-        },
+        expand: ["latest_invoice.payment_intent"],
       };
-
-      // If the plan is changing, we need to handle the proration
-      if (currentSubscription.items.data[0].price.id !== plan.price_id) {
-        // Optional: Add any specific proration handling here
-        subscriptionUpdateParams.proration_date = Math.floor(Date.now() / 1000);
-      }
-
-      // Update the subscription
+      //Company.update({ plan_id: plan_id });
+      //Company.update({ policyholder_count: quantity });
       const updatedSubscription = await stripe.subscriptions.update(
         currentSubscription.id,
         subscriptionUpdateParams
       );
 
-      // If you need to create a new payment intent for the updated subscription
-      let paymentIntent = null;
-      if (updatedSubscription.latest_invoice?.payment_intent) {
-        paymentIntent = await stripe.paymentIntents.retrieve(
-          updatedSubscription.latest_invoice.payment_intent
-        );
-      }
-
-      // Update local database records if needed
-      // Add your database update logic here
+      const paymentIntentClientSecret = updatedSubscription.latest_invoice?.payment_intent?.client_secret;
 
       res.status(200).json({
-        message: "Subscription updated successfully",
+        message: "Subscription updated with proration. Confirm payment client-side.",
         subscription: updatedSubscription,
-        clientSecret: paymentIntent?.client_secret,
+        clientSecret: paymentIntentClientSecret,
       });
     } catch (error) {
       console.error("Error updating subscription:", error);
@@ -422,7 +426,31 @@ class PaymentController {
     }
   }
 
-  async;
+  async UpdateDefaultPaymentMethod(req, res) {
+    try {
+      const { email, payment_method_id } = req.body;
+      const stripe = StripeClient(STRIPE_SECRET_KEY);
+
+      const customer = await getCustomerDetails(email);
+
+      // Update the default payment method for the customer
+      const updatedCustomer = await stripe.customers.update(customer.id, {
+        invoice_settings: {
+          default_payment_method: payment_method_id,
+        },
+      });
+
+      res.status(200).json({
+        message: "Default payment method updated successfully",
+        customer: updatedCustomer,
+      });
+    } catch (error) {
+      console.error("Error updating default payment method:", error);
+      res.status(500).json({ error: "Unable to update default payment method" });
+    }
+  }
+
+
 
   // Create Subscription route
   async CreateSubscription(req, res) {
@@ -431,7 +459,7 @@ class PaymentController {
       const {
         currency_code = "USD",
         company_id,
-
+        quantity,
         plan_id,
         user_id,
       } = req.body;
@@ -464,10 +492,11 @@ class PaymentController {
         items: [
           {
             price: price_id, // price id is related to the subscription plan
-            quantity: company.policyholder_count, // The company is going to subscribe for the policyholders that they have
+            quantity: quantity, // The company is going to subscribe for the policyholders that they have
           },
         ],
         metadata: {
+          policyholders_count: quantity,
           user_id,
           company_id,
           plan_id,
@@ -479,10 +508,10 @@ class PaymentController {
         },
         expand: ["latest_invoice.payment_intent"],
       });
-
+      console.log("subscription", subscription);
       res.status(200).json({
         message: "Subscription initiated successfully",
-        clientSecret: subscription.latest_invoice.payment_intent.client_secret,
+        clientSecret: subscription?.latest_invoice?.payment_intent?.client_secret,
       });
     } catch (error) {
       console.error("Error creating subscription:", error);
@@ -538,6 +567,28 @@ class PaymentController {
       res.status(500).json({ error: "Unable to cancel subscription" });
     }
   }
+
+  GetAllPlans = async (req, res) => {
+    try {
+      // Fetch all plans from the database
+      const plans = await Plans.findAll();
+
+      // Return the plans as a response
+      res.status(200).json({
+        success: true,
+        data: plans,
+      });
+    } catch (error) {
+      console.error("Error fetching plans:", error);
+
+      // Return an error response
+      res.status(500).json({
+        success: false,
+        message: "Failed to fetch plans",
+        error: error.message,
+      });
+    }
+  };
 }
 module.exports = new PaymentController();
-// Changed
+// 28 april 2025

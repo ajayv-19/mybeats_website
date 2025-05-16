@@ -198,7 +198,8 @@ export type SettingsSecurity = {
   askPasswordChange?: boolean;
 };
 export type SettingsPlanBilling = {
-  plan: string;
+  policyholderCount?: number;
+  plan_id: number;
 };
 export type SettingsTeamMember = {
   avatar?: string;

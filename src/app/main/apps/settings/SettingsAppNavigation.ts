@@ -26,10 +26,10 @@ const SettingsAppNavigation: FuseNavItemType = {
 		{
 			id: 'apps.settings.planBilling',
 			icon: 'heroicons-outline:credit-card',
-			title: 'Plan subscription',
+			title: 'Subscription',
 			type: 'item',
 			url: '/apps/settings/plan-billing',
-			subtitle: 'Manage subscription plan and payment method'
+			subtitle: 'Manage subscription and payment method'
 		},
 		{
 			id: 'apps.settings.team',
@@ -37,7 +37,7 @@ const SettingsAppNavigation: FuseNavItemType = {
 			title: 'Team',
 			type: 'item',
 			url: '/apps/settings/team',
-			subtitle: 'Manage your existing team and change roles/permissions'
+			subtitle: 'Manage team and roles'
 		},
 		{
 			id: 'apps.settings.policyholders',
@@ -45,7 +45,7 @@ const SettingsAppNavigation: FuseNavItemType = {
 			title: 'Policyholders',
 			type: 'item',
 			url: '/apps/settings/policyholders',
-			subtitle: 'Manage your password and 2-step verification preferences'
+			subtitle: 'Upload unique IDs'
 		},
 		// {
 		// 	id: 'apps.settings.notifications',

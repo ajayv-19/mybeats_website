@@ -7,6 +7,7 @@ import { addOrUpdateUser } from "src/app/main/apps/settings/apis/Accountapis";
 import { fetchAuthSession } from "@aws-amplify/auth";
 import axios from "axios";
 import { CompanyFormInput } from "src/app/main/apps/settings/types/CompanyTypes.types";
+import { toast } from "sonner";
 
 type UserDetails = {
   id?: number;
@@ -14,6 +15,7 @@ type UserDetails = {
   email?: string;
   image?: string;
   role_id?: number;
+  company_id?: string;
 };
 
 type CompanyDetails = {
@@ -26,11 +28,39 @@ type CompanyDetails = {
   plan_type: string;
   address: string;
   policyholder_count: number;
+  
+};
+
+type PlanSubscription = {
+  amount: string;               // e.g., "25.87"
+  bill_start: string;           // ISO timestamp string
+  bill_end: string;             // ISO timestamp string
+  company_id: number;
+  id: number;
+  plan_id: number;
+  status: "ACTIVE" | "INACTIVE" | string; // enum can be refined
+  sub_id: string;              // Stripe subscription ID
+  user_id: number;
+};
+
+type PlanDetails = {
+  id: number;
+  name: string;
+  description: string;
+  feature_description: string;
+  interval: "day" | "week" | "month" | "year" | string; // can be refined
+  interval_count: number;
+  days: number;
+  pricing: number; // e.g., 0.9 means 90% or $0.90
+  price_id: string; // Stripe price ID
+  team_size: number;
 };
 
 type AccountState = {
   user: UserDetails;
   company: CompanyDetails;
+  subscription: PlanSubscription;
+  plan: PlanDetails,
   loading: boolean;
   error: string;
   success: boolean;
@@ -44,6 +74,8 @@ type AccountState = {
 const initialState: AccountState = {
   user: null,
   company: null,
+  subscription: null,
+  plan: null,
   loading: false,
   error: null,
   success: false,
@@ -94,11 +126,14 @@ export const submitAccountDetails = createAsyncThunk(
       const response = await addOrUpdateUser(formData);
 
       if (response.status === 200) {
+        toast.success("User details added successfully");
         return response.data.userdata as UserDetails;
+        
       }
 
       return rejectWithValue("Failed to submit account details");
     } catch (error) {
+      toast.success("User Update failed");
       console.error("Failed to update account settings:", error);
       return rejectWithValue(error.message || "Unknown error");
     }
@@ -143,6 +178,11 @@ export const submitCompanyDetails = createAsyncThunk(
           },
         }
       );
+
+      if (response.status === 200) { 
+        toast.success("Company details added successfully");
+
+      }
 
       dispatch(fetchAccountDetails());
 
@@ -277,5 +317,8 @@ export const selectAccountName = (state: RootState) =>
 
 export const selectAccountFetched = (state: RootState) =>
   state.account.fetched; // Selector for fetched flag
+
+export const selectCompanySubscription = (state: RootState) =>
+  state.account.subscription;
 
 export default accountSlice.reducer;
