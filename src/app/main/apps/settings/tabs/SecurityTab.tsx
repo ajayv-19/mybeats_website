@@ -126,6 +126,7 @@ function PolicyHolders() {
       company_id: accountData?.company?.id,
       policyId: policyId,
     });
+    toast.success("Policyholder deleted successfully.");
   };
 
   // Handle CSV file upload

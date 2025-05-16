@@ -8,6 +8,8 @@ import {
 import { useSelector } from 'react-redux';
 import { selectAccount } from "src/app/features/account/accountSlice";
 import axios from 'axios';
+import { log } from 'console';
+import { toast } from 'sonner';
 
 function UpdatePaymentMethodForm(props) {
     const { subscription, customer, stripePromise, clientSecret } = props;
@@ -25,18 +27,27 @@ function UpdatePaymentMethodForm(props) {
     const handleSubmit = async (event) => {
         event.preventDefault();
         if (!stripe || !elements || !email) {
+            console.log('Stripe is not ready or email is missing.');
             setMessage('Stripe is not ready or email is missing.');
             return;
         }
 
-        setLoading(true);
+        //setLoading(true);
         setMessage('');
 
         try {
+            const { error: submitError } = await elements.submit()
+            if (submitError) {
+                console.log('Error submitting form:', submitError);
+                setMessage(submitError.message);
+                setLoading(false);
+                return;
+            }
             console.log('Submitting payment method update...');
             console.log({ paymentType, clientSecret, stripe, elements });
             // return setLoading(false);
-            let result = await stripe.confirmSetup({
+
+            let result: any = await stripe.confirmSetup({
                 elements,
                 confirmParams: {
                     // return_url: window.location.href,
@@ -45,6 +56,8 @@ function UpdatePaymentMethodForm(props) {
                 clientSecret,
             });
 
+            console.log('Result:', result);
+
             if (result.error) {
                 console.error('Error confirming setup:', result.error);
                 setMessage(result.error.message);
@@ -52,17 +65,20 @@ function UpdatePaymentMethodForm(props) {
                 return;
             }
             console.log('Payment method updated successfully:', result);
-            const paymentMethodId = 1;
+            const paymentMethodId = result.setupIntent.payment_method;
 
             const subscriptionId = subscription.sub_id; // Replace with actual
+            console.log('Subscription ID:=> ', subscriptionId), customerId, paymentMethodId;
 
-            const updateResponse = await axios.post('/update-payment-method', {
+            const updateResponse = await axios.post('/update-payment-methods', {
                 customerId,
                 paymentMethodId,
                 subscriptionId,
             });
+            console.log('Update response:', updateResponse);
 
             if (updateResponse.status === 200) {
+                toast.success('Payment method updated successfully.');
                 setMessage('Payment method updated successfully.');
             } else {
                 setMessage(updateResponse.data.error || 'Failed to update payment method.');
