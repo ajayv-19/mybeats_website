@@ -17,9 +17,8 @@ const ConsentFormPage = () => {
             <p>
               You are invited to participate in a pilot study aimed at
               evaluating an AI-based health monitoring application designed to
-              improve firefighter health and provide advanced insurance
-              analytics. We are conducting this pilot test in collaboration with
-              your insurance company.
+              improve firefighter health and provide risk
+              analytics.
             </p>
 
             <h2 className="mt-20 font-bold text-xl mb-2">
@@ -53,8 +52,7 @@ const ConsentFormPage = () => {
                 enabling them to improve their health.
               </li>
               <li>
-                Use wearable health tracker data to create analytics for
-                insurance companies.
+                Use wearable health tracker data to create risk analytics.
               </li>
             </ul>
 
@@ -141,7 +139,7 @@ const ConsentFormPage = () => {
               the app and continue to use your devices the way you were using it
               before participating in the pilot test. At the end of the pilot
               test, if you were provided with a health tracker by us, please
-              return it. Please contact us at{" "}
+              return it. Please contact Dr. Prabodh Panindre at{" "}
               <a href="mailto:contact@mybeatshealth.com" className="font-bold">
                 contact@mybeatshealth.com
               </a>{" "}
@@ -170,8 +168,7 @@ const ConsentFormPage = () => {
                 To provide real-time, AI-driven health insights tailored to you.
               </li>
               <li>
-                To create analytics, insights, and information for insurance
-                companies.
+                To create risk analytics, insights, and information.
               </li>
               <li>
                 Any identifiable data will not be shared with your employer.
@@ -182,7 +179,22 @@ const ConsentFormPage = () => {
               c. Data Security &amp; Confidentiality:
             </h3>
             <ul className="list-disc list-inside space-y-2">
-              <li>All data is stored securely on cloud servers.</li>
+              <li>All data is stored securely on cloud servers.Access to data is limited to authorized personnel for
+                system monitoring and support. We do not share your personally identifiable information with third
+                parties except in the following circumstances:</li>
+              <li>
+                With your explicit consent, when you authorize additional sharing.
+              </li>
+              <li>
+                With trusted third-party service providers who help operate our Services (these providers are
+                contractually required to protect your data).
+              </li>
+              <li>
+                As required by law, regulation, or legal process (such as subpoenas or court orders).
+              </li>
+              <li>
+                To protect our rights, property, or safety, and that of our users and others.
+              </li>
             </ul>
 
             <h3 className="font-bold text-lg mb-2">d. Future Use of Data:</h3>
@@ -195,10 +207,10 @@ const ConsentFormPage = () => {
 
             <p className="mt-20">
               Additionally, the analytics generated through your data may be
-              shared with your insurance company for risk assessment, product
-              development, and improving insurance-related analytics. Any
+              used for risk assessment analytics and, application
+              development. Any
               decisions made based on such analytics are solely at the user’s
-              risk. 
+              risk.
             </p>
 
             <h2 className="mt-20 font-bold text-xl mb-2">
@@ -258,7 +270,7 @@ const ConsentFormPage = () => {
               </li>
               <li>
                 Upon withdrawal, you may request the deletion of any remaining
-                personal data by contacting us at:{" "}
+                personal data by contacting Dr. Prabodh Panindre at:{" "}
                 <a
                   href="mailto:contact@mybeatshealth.com"
                   className="font-bold"
@@ -275,7 +287,7 @@ const ConsentFormPage = () => {
             <p>
               You may chat with our team through the app if you face any issues.
               For questions about your rights as a participant and concerns
-              regarding your data or about this pilot study, please contact us
+              regarding your data or about this pilot study, please contact Dr. Prabodh Panindre
               at:{" "}
               <a href="mailto:contact@mybeatshealth.com" className="font-bold">
                 contact@mybeatshealth.com

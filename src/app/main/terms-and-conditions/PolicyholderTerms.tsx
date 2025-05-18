@@ -40,15 +40,14 @@ function PolicyholderTerms() {
         Our applications connect to your wearable health trackers to collect and
         analyze physiological data. By using our applications, you grant us
         permission to access, collect, store, and use this data for providing
-        personalized health insights and for generating insurance analytics. You
-        acknowledge and agree that analytics generated using your health data
-        may be shared with your insurance company for analytics purposes.
+        personalized health insights and for generating risk analytics. You
+        acknowledge and agree that insights generated using your health data
+        may be shared for analytics purposes.
       </p>
       <p className="mb-8">
         You acknowledge and agree that any analytics, insights, or
         recommendations generated using your health data are provided for
-        informational purposes only, and any use of such analytics by you or
-        your insurance company is at your sole risk. Novel AI Technologies, Inc.
+        informational purposes only, and any use of such analytics by you is at your sole risk. We
         shall not be liable for any decisions or actions taken based on these
         analytics.
       </p>
@@ -68,9 +67,8 @@ function PolicyholderTerms() {
       <h2 className="font-bold text-xl mb-2">7. Intellectual Property</h2>
       <p className="mb-8">
         All content, materials, and software provided on our applications,
-        including text, graphics, logos, images, and code, are the intellectual
-        property of Novel AI Technologies, Inc. and are protected by
-        intellectual property laws. Nothing in these Terms grants you any rights
+        including text, graphics, logos, images, and code, are our intellectual
+        property. Nothing in these Terms grants you any rights
         to our Intellectual Property.
       </p>
 
@@ -125,8 +123,7 @@ function PolicyholderTerms() {
 
       <h2 className="font-bold text-xl mb-2">12. Indemnification</h2>
       <p className="mb-10">
-        You agree to indemnify, defend, and hold harmless Novel AI Technologies,
-        Inc. and its affiliates, officers, directors, employees, and agents from
+        You agree to indemnify, defend, and hold harmless our Institute and its affiliates, officers, directors, employees, and agents from
         any claims, damages, liabilities, costs, or expenses (including legal
         fees) arising from your use of our applications or your breach of these Terms.
       </p>
@@ -152,7 +149,7 @@ function PolicyholderTerms() {
       <h2 className="font-bold text-xl mb-2">15. Entire Agreement</h2>
       <p className="mb-10">
         These Terms, together with our Privacy Policy, constitute the entire
-        agreement between you and Novel AI Technologies, Inc. regarding your use
+        agreement regarding your use
         of our applications and supersede all prior agreements or
         understandings.
       </p>
@@ -163,7 +160,7 @@ function PolicyholderTerms() {
       <p className="mb-10">
         Your use of our applications constitutes your acceptance of our Terms.
         Your electronic acceptance of these Terms constitutes a binding
-        agreement between you and Novel AI Technologies, Inc.
+        agreement.
       </p>
     </div>
   );
