@@ -40,14 +40,14 @@ function PolicyholderTerms() {
         Our applications connect to your wearable health trackers to collect and
         analyze physiological data. By using our applications, you grant us
         permission to access, collect, store, and use this data for providing
-        personalized health insights and for generating risk analytics. You
-        acknowledge and agree that insights generated using your health data
-        may be shared for analytics purposes.
+        personalized health insights and for generating insurance analytics. You
+        acknowledge and agree that analytics generated using your health data
+        may be shared with your insurance company for analytics purposes.
       </p>
       <p className="mb-8">
         You acknowledge and agree that any analytics, insights, or
         recommendations generated using your health data are provided for
-        informational purposes only, and any use of such analytics by you is at your sole risk. We
+        informational purposes only, and any use of such analytics by you or your insurance company is at your sole risk. We
         shall not be liable for any decisions or actions taken based on these
         analytics.
       </p>
@@ -68,7 +68,7 @@ function PolicyholderTerms() {
       <p className="mb-8">
         All content, materials, and software provided on our applications,
         including text, graphics, logos, images, and code, are our intellectual
-        property. Nothing in these Terms grants you any rights
+        property and are protected by intellectual property laws. Nothing in these Terms grants you any rights
         to our Intellectual Property.
       </p>
 

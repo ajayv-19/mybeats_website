@@ -55,7 +55,7 @@ function PolicyholdersPrivacy() {
           purposes only and do not constitute medical advice.
         </li>
         <li>
-          Developing analytics for risk assessment and product
+          Developing analytics for insurance risk assessment and product
           development.
         </li>
         <li>
@@ -70,8 +70,8 @@ function PolicyholdersPrivacy() {
 
       <h2 className="font-bold text-xl mb-2">3. Data Sharing and Disclosure</h2>
       <p className="mb-20">
-        The analytics generated through your data may be used for risk assessment, product development, and
-        improving analytics. We do not share your personally
+        The analytics generated through your data may be shared with your insurance company for risk assessment, product development, and
+        improving insurance-related analytics. We do not share your personally
         identifiable information with third parties except in the following
         circumstances:
       </p>

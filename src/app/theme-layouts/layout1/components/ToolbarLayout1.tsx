@@ -128,14 +128,14 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
 
             <div className="flex flex-col">
               <Typography className="text-lg font-semibold truncate">
-                Welcome back, {fullName || "Guest"}!
+                Welcome, {fullName || "Guest"}!
               </Typography>
               <Typography className="text-sm px-2 font-medium text-gray-500 truncate">
                 You have two new messages!
               </Typography>
             </div>
           </div>
-       
+
 
           {/* Navbar Toggle and Shortcuts */}
           <div className="flex flex-1 px-8 md:px-16 space-x-8">
@@ -144,8 +144,8 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
                 <Hidden lgDown>
                   {(config.navbar.style === "style-3" ||
                     config.navbar.style === "style-3-dense") && (
-                    <NavbarToggleButton className="mx-0 h-40 w-40 p-0" />
-                  )}
+                      <NavbarToggleButton className="mx-0 h-40 w-40 p-0" />
+                    )}
 
                   {config.navbar.style === "style-1" && !navbar.open && (
                     <NavbarToggleButton className="mx-0 h-40 w-40 p-0" />
@@ -164,7 +164,7 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
           </div>
 
 
-          
+
 
           {/* Right Section: Buttons and Toggles */}
           <div className="flex items-center overflow-x-auto px-8 md:px-16 space-x-6">
@@ -206,8 +206,8 @@ function ToolbarLayout1(props: ToolbarLayout1Props) {
               <Hidden lgDown>
                 {(config.navbar.style === "style-3" ||
                   config.navbar.style === "style-3-dense") && (
-                  <NavbarToggleButton className="mx-0 h-40 w-40 p-0" />
-                )}
+                    <NavbarToggleButton className="mx-0 h-40 w-40 p-0" />
+                  )}
 
                 {config.navbar.style === "style-1" && !navbar.open && (
                   <NavbarToggleButton className="mx-0 h-40 w-40 p-0" />

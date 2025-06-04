@@ -17,8 +17,8 @@ const ConsentFormPage = () => {
             <p>
               You are invited to participate in a pilot study aimed at
               evaluating an AI-based health monitoring application designed to
-              improve firefighter health and provide risk
-              analytics.
+              improve firefighter health and provide advanced insurance
+              analytics. We are conducting this pilot test in collaboration with your insurance company.
             </p>
 
             <h2 className="mt-20 font-bold text-xl mb-2">
@@ -52,7 +52,7 @@ const ConsentFormPage = () => {
                 enabling them to improve their health.
               </li>
               <li>
-                Use wearable health tracker data to create risk analytics.
+                Use wearable health tracker data to create analytics for insurance companies.
               </li>
             </ul>
 
@@ -139,7 +139,7 @@ const ConsentFormPage = () => {
               the app and continue to use your devices the way you were using it
               before participating in the pilot test. At the end of the pilot
               test, if you were provided with a health tracker by us, please
-              return it. Please contact Dr. Prabodh Panindre at{" "}
+              return it. Please contact us at{" "}
               <a href="mailto:contact@mybeatshealth.com" className="font-bold">
                 contact@mybeatshealth.com
               </a>{" "}
@@ -168,7 +168,7 @@ const ConsentFormPage = () => {
                 To provide real-time, AI-driven health insights tailored to you.
               </li>
               <li>
-                To create risk analytics, insights, and information.
+                To create analytics, insights, and information for insurance companies.
               </li>
               <li>
                 Any identifiable data will not be shared with your employer.
@@ -203,13 +203,13 @@ const ConsentFormPage = () => {
                 Data may be used for future research and further enhancement of
                 our AI models.
               </li>
+
             </ul>
 
             <p className="mt-20">
               Additionally, the analytics generated through your data may be
-              used for risk assessment analytics and, application
-              development. Any
-              decisions made based on such analytics are solely at the user’s
+              shared with your insurance company for risk assessment analytics, application
+              development, and improving insurance-related analytics. Any decisions made based on such analytics are solely at the user’s
               risk.
             </p>
 
@@ -270,7 +270,7 @@ const ConsentFormPage = () => {
               </li>
               <li>
                 Upon withdrawal, you may request the deletion of any remaining
-                personal data by contacting Dr. Prabodh Panindre at:{" "}
+                personal data by contacting us:{" "}
                 <a
                   href="mailto:contact@mybeatshealth.com"
                   className="font-bold"
@@ -287,7 +287,7 @@ const ConsentFormPage = () => {
             <p>
               You may chat with our team through the app if you face any issues.
               For questions about your rights as a participant and concerns
-              regarding your data or about this pilot study, please contact Dr. Prabodh Panindre
+              regarding your data or about this pilot study, please contact us
               at:{" "}
               <a href="mailto:contact@mybeatshealth.com" className="font-bold">
                 contact@mybeatshealth.com

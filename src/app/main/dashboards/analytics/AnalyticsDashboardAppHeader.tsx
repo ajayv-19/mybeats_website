@@ -84,7 +84,7 @@ function AnalyticsDashboardAppHeader({
           <div className="flex flex-col min-w-0 mx-16">
             <PageBreadcrumb />
             <Typography className="text-2xl md:text-5xl font-semibold tracking-tight leading-7 md:leading-snug truncate">
-              {`Welcome back, ${fullName || user?.email || "Guest"}!`}
+              {`Welcome, ${fullName || user?.email || "Guest"}!`}
             </Typography>
 
             <div className="flex items-center">
@@ -115,9 +115,9 @@ function AnalyticsDashboardAppHeader({
             // style={{ width: '200px' }}
             classes={{ startIcon: "mr-4" }}
             onClick={() => onFinnClick && onFinnClick()}
-            // startIcon={
-            //   <FuseSvgIcon size={20}>heroicons-solid:envelope</FuseSvgIcon>
-            // }
+          // startIcon={
+          //   <FuseSvgIcon size={20}>heroicons-solid:envelope</FuseSvgIcon>
+          // }
           >
             Ask FINN
           </Button>

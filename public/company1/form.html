@@ -1,0 +1,977 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fire Districts of NY - Insurance Application</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            body { 
+                font-size: 11px; 
+                line-height: 1.2;
+                margin: 0;
+                padding: 0;
+            }
+            .page-break { 
+                page-break-before: always; 
+            }
+            .no-print { 
+                display: none; 
+            }
+            .print-only { 
+                display: block; 
+            }
+            input, textarea, select {
+                border: none !important;
+                border-bottom: 1px solid #000 !important;
+                background: transparent !important;
+                box-shadow: none !important;
+                outline: none !important;
+                padding: 2px 0 !important;
+            }
+            table {
+                border-collapse: collapse;
+                width: 100%;
+            }
+            table, th, td {
+                border: 1px solid #000;
+            }
+            th, td {
+                padding: 4px;
+                text-align: left;
+            }
+            .checkbox-print {
+                width: 12px;
+                height: 12px;
+                border: 1px solid #000;
+                display: inline-block;
+                margin-right: 5px;
+            }
+            .underline-field {
+                border-bottom: 1px solid #000;
+                min-height: 20px;
+                display: inline-block;
+                min-width: 200px;
+            }
+        }
+        
+        .form-container {
+            max-width: 8.5in;
+            margin: 0 auto;
+            background: white;
+            padding: 0.5in;
+        }
+        
+        .header-section {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        
+        .logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 10px;
+        }
+        
+        .company-info {
+            font-size: 14px;
+            line-height: 1.3;
+        }
+        
+        .form-title {
+            font-size: 16px;
+            font-weight: bold;
+            text-decoration: underline;
+            margin: 20px 0;
+        }
+        
+        .form-field {
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .form-field label {
+            font-weight: bold;
+            margin-right: 10px;
+            min-width: 120px;
+        }
+        
+        .form-field input {
+            border: none;
+            border-bottom: 1px solid #000;
+            background: transparent;
+            padding: 2px 0;
+            flex: 1;
+            margin-right: 20px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-right: 20px;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: 15px;
+            height: 15px;
+            margin-right: 5px;
+            border: 1px solid #000;
+        }
+        
+        .table-section {
+            margin: 20px 0;
+        }
+        
+        .form-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+        
+        .form-table th,
+        .form-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .form-table th {
+            background-color: #f5f5f5;
+            font-weight: bold;
+        }
+        
+        .form-table input {
+            width: 100%;
+            border: none;
+            background: transparent;
+            padding: 2px;
+        }
+        
+        .section-header {
+            background-color: #4a90e2;
+            color: white;
+            padding: 8px;
+            font-weight: bold;
+            margin: 20px 0 10px 0;
+        }
+        
+        .blue-bar {
+            background-color: #4a90e2;
+            height: 3px;
+            margin: 15px 0;
+        }
+        
+        .signature-section {
+            margin-top: 30px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .signature-field {
+            border-bottom: 1px solid #000;
+            width: 200px;
+            height: 30px;
+            margin: 0 10px;
+        }
+        
+        .fraud-warning {
+            font-size: 10px;
+            margin: 20px 0;
+            text-align: justify;
+        }
+        
+        .page-footer {
+            margin-top: 30px;
+            font-size: 10px;
+            display: flex;
+            justify-content: space-between;
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <!-- Page 1 -->
+        <div class="header-section">
+            <div class="logo">
+                <img src="/images/fire-districts-logo.jpg" alt="Fire Districts Logo" class="w-20 h-20 mx-auto">
+            </div>
+            <div class="company-info">
+                <div class="text-lg font-bold">Fire Districts of NY Mutual Insurance Co.</div>
+                <div>1 Blue Hill Plaza, PO Box 1609, Pearl River, New York 10965</div>
+                <div>Attn: Underwriting Dept.</div>
+                <div>Phone (845) 352-8855</div>
+                <div>Fax #: (845) 352-2022</div>
+            </div>
+            <div class="form-title">
+                Worker's Compensation and Volunteer Firefighters' Benefit Law New Business Application
+            </div>
+        </div>
+
+        <!-- Coverage Section -->
+        <div class="form-field">
+            <label>Coverage Requested</label>
+            <div class="checkbox-group">
+                <input type="checkbox" id="vfbl" name="coverage" value="VFBL">
+                <label for="vfbl">VFBL</label>
+            </div>
+            <div class="checkbox-group">
+                <input type="checkbox" id="wc" name="coverage" value="WC">
+                <label for="wc">WC</label>
+            </div>
+            <label style="margin-left: 40px;">Requested Effective Date</label>
+            <input type="date" name="effectiveDate" style="width: 200px;">
+        </div>
+
+        <!-- Entity Information -->
+        <div class="form-field">
+            <label>Name of Entity</label>
+            <input type="text" name="entityName" required style="width: 100%;">
+        </div>
+
+        <div class="form-field">
+            <label>Mailing Address</label>
+            <textarea name="mailingAddress" required style="width: 100%; height: 60px;"></textarea>
+        </div>
+
+        <div class="form-field">
+            <label>FEIN #</label>
+            <input type="text" name="fein" required style="width: 200px;">
+            <label style="margin-left: 40px;">County</label>
+            <input type="text" name="county" required style="width: 200px;">
+        </div>
+
+        <div class="form-field">
+            <label>Primary Contact Name</label>
+            <input type="text" name="contactName" required style="width: 200px;">
+            <label style="margin-left: 40px;">Title</label>
+            <input type="text" name="contactTitle" required style="width: 200px;">
+        </div>
+
+        <div class="form-field">
+            <label>Telephone #</label>
+            <input type="tel" name="phone" required style="width: 200px;">
+            <label style="margin-left: 40px;">Fax #</label>
+            <input type="tel" name="fax" style="width: 200px;">
+        </div>
+
+        <div class="form-field">
+            <label>Website</label>
+            <input type="url" name="website" style="width: 100%;">
+        </div>
+
+        <div class="form-field">
+            <label>E-mail Address</label>
+            <input type="email" name="email" required style="width: 100%;">
+        </div>
+
+        <div class="form-field">
+            <label>Broker Name</label>
+            <input type="text" name="brokerName" style="width: 200px;">
+            <label style="margin-left: 40px;">Broker Address</label>
+            <input type="text" name="brokerAddress" style="width: 200px;">
+        </div>
+
+        <div class="blue-bar"></div>
+
+        <!-- Officers Table -->
+        <div class="table-section">
+            <div style="font-weight: bold; margin-bottom: 10px;">Please list all elected or appointed officers of the applicant:</div>
+            <table class="form-table" id="officers-table">
+                <thead>
+                    <tr>
+                        <th style="width: 40%;">Name</th>
+                        <th style="width: 30%;">Title</th>
+                        <th style="width: 30%;">Daytime Phone Number</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td><input type="text" name="officer1Name" style="width: 100%;"></td><td><input type="text" name="officer1Title" style="width: 100%;"></td><td><input type="tel" name="officer1Phone" style="width: 100%;"></td></tr>
+                    <tr><td><input type="text" name="officer2Name" style="width: 100%;"></td><td><input type="text" name="officer2Title" style="width: 100%;"></td><td><input type="tel" name="officer2Phone" style="width: 100%;"></td></tr>
+                    <tr><td><input type="text" name="officer3Name" style="width: 100%;"></td><td><input type="text" name="officer3Title" style="width: 100%;"></td><td><input type="tel" name="officer3Phone" style="width: 100%;"></td></tr>
+                    <tr><td><input type="text" name="officer4Name" style="width: 100%;"></td><td><input type="text" name="officer4Title" style="width: 100%;"></td><td><input type="tel" name="officer4Phone" style="width: 100%;"></td></tr>
+                    <tr><td><input type="text" name="officer5Name" style="width: 100%;"></td><td><input type="text" name="officer5Title" style="width: 100%;"></td><td><input type="tel" name="officer5Phone" style="width: 100%;"></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Fire Department Locations -->
+        <div class="table-section">
+            <div style="font-weight: bold; margin-bottom: 10px;">Please list all Fire Department Names and Firehouse Locations: <em>(attach additional sheet if needed)</em></div>
+            <div class="form-field">
+                <label>1. Main Location:</label>
+                <input type="text" name="mainLocation" required style="width: 100%;">
+            </div>
+            <div class="form-field">
+                <label>2. Other Location(s):</label>
+                <input type="text" name="otherLocation1" style="width: 100%;">
+            </div>
+            <div class="form-field">
+                <label>3.</label>
+                <input type="text" name="otherLocation2" style="width: 100%;">
+            </div>
+            <div class="form-field">
+                <label>4.</label>
+                <input type="text" name="otherLocation3" style="width: 100%;">
+            </div>
+            <div class="form-field">
+                <label>5.</label>
+                <input type="text" name="otherLocation4" style="width: 100%;">
+            </div>
+        </div>
+
+        <!-- Current Insurance Information -->
+        <div class="table-section">
+            <div style="font-weight: bold; margin-bottom: 10px;">Current Insurance Information:</div>
+            <table class="form-table" id="insurance-table">
+                <thead>
+                    <tr>
+                        <th>Line of Business</th>
+                        <th>Carrier Name</th>
+                        <th>Policy Number</th>
+                        <th>Policy Period</th>
+                        <th>Annual Premium</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>VFBL</td>
+                        <td><input type="text" name="vfblCarrier" style="width: 100%;"></td>
+                        <td><input type="text" name="vfblPolicy" style="width: 100%;"></td>
+                        <td><input type="text" name="vfblPeriod" style="width: 100%;"></td>
+                        <td><input type="text" name="vfblPremium" style="width: 100%;"></td>
+                    </tr>
+                    <tr>
+                        <td>Workers' Compensation</td>
+                        <td><input type="text" name="wcCarrier" style="width: 100%;"></td>
+                        <td><input type="text" name="wcPolicy" style="width: 100%;"></td>
+                        <td><input type="text" name="wcPeriod" style="width: 100%;"></td>
+                        <td><input type="text" name="wcPremium" style="width: 100%;"></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="page-footer">
+            <div>2020 Edition 11/20 NBS app<br>Fire Districts of New York Mutual Insurance Co.</div>
+            <div>Applicant's Initial ___________</div>
+        </div>
+
+        <!-- Page 2 -->
+        <div class="page-break">
+            <div class="section-header">Information required for Volunteer Firefighters' Benefit Law Coverage:</div>
+            
+            <!-- VFBL Section inputs -->
+            <div style="margin: 15px 0;">
+                <strong>1) Current Estimated Population of your Fire District/Department is:</strong>
+                <input type="number" name="population" required style="width: 200px; margin-left: 10px;">
+            </div>
+
+            <div style="margin: 10px 0;">
+                Please provide a description below of how you arrived at that number, or attach documentation (i.e. U.S. Census, Tax Rolls, 911 information, GIS mapping, etc.):
+                <input type="text" name="populationDescription" style="width: 100%; margin-top: 5px;">
+            </div>
+
+            <div style="margin: 10px 0;">
+                a) What is the square mileage served?
+                <input type="number" name="squareMileage" required step="0.1" style="width: 200px; margin-left: 10px;">
+            </div>
+            
+            <div style="margin: 10px 0;">
+                b) Attach home area description <em>(i.e. all or part of what towns, boundaries, and / or a map)</em>
+            </div>
+
+            <!-- Contract questions with radio buttons -->
+            <div style="margin: 20px 0;">
+                <strong>2) Do you have a contract to provide service to an area <em>outside</em> of your home area?</strong>
+                <div style="margin-left: 20px;">
+                    <input type="radio" name="contractOutsideArea" value="yes" id="contractYes">
+                    <label for="contractYes">YES</label>
+                    <input type="radio" name="contractOutsideArea" value="no" id="contractNo" style="margin-left: 20px;">
+                    <label for="contractNo">NO</label>
+                </div>
+                
+                <div style="margin: 10px 0 10px 20px;">
+                    a) If YES, is this contract for you to assist another Fire District or Department?
+                    <div style="margin-left: 20px;">
+                        <input type="radio" name="assistOtherDistrict" value="yes" id="assistYes">
+                        <label for="assistYes">YES</label>
+                        <input type="radio" name="assistOtherDistrict" value="no" id="assistNo" style="margin-left: 20px;">
+                        <label for="assistNo">NO</label>
+                    </div>
+                </div>
+                
+                <div style="margin: 10px 0 10px 20px;">
+                    b) Attach a copy of all current contracts.
+                    <input type="checkbox" name="contractsAttached">
+                </div>
+                
+                <div style="margin: 10px 0 10px 20px;">
+                    c) Complete the below information for each Fire District you assist with protection and/or outside area you are protecting:
+                </div>
+                
+                <!-- Assisted Districts Table -->
+                <table class="form-table" id="assisted-districts-table" style="margin: 10px 0;">
+                    <thead>
+                        <tr>
+                            <th>Fire Dept. or Outside Area</th>
+                            <th>Population Served</th>
+                            <th>Square Mileage Served</th>
+                            <th>Description</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr><td><input type="text" name="assistedDept1" style="width: 100%;"></td><td><input type="number" name="assistedPop1" style="width: 100%;"></td><td><input type="number" name="assistedMiles1" step="0.1" style="width: 100%;"></td><td><input type="text" name="assistedDesc1" style="width: 100%;"></td></tr>
+                        <tr><td><input type="text" name="assistedDept2" style="width: 100%;"></td><td><input type="number" name="assistedPop2" style="width: 100%;"></td><td><input type="number" name="assistedMiles2" step="0.1" style="width: 100%;"></td><td><input type="text" name="assistedDesc2" style="width: 100%;"></td></tr>
+                        <tr><td><input type="text" name="assistedDept3" style="width: 100%;"></td><td><input type="number" name="assistedPop3" style="width: 100%;"></td><td><input type="number" name="assistedMiles3" step="0.1" style="width: 100%;"></td><td><input type="text" name="assistedDesc3" style="width: 100%;"></td></tr>
+                        <tr><td><input type="text" name="assistedDept4" style="width: 100%;"></td><td><input type="number" name="assistedPop4" style="width: 100%;"></td><td><input type="number" name="assistedMiles4" step="0.1" style="width: 100%;"></td><td><input type="text" name="assistedDesc4" style="width: 100%;"></td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Mutual Aid -->
+            <div style="margin: 20px 0;">
+                <strong>3) Do you provide mutual aid to other fire entities?</strong>
+                <div style="margin-left: 20px;">
+                    <input type="radio" name="mutualAid" value="yes" id="mutualYes">
+                    <label for="mutualYes">YES</label>
+                    <input type="radio" name="mutualAid" value="no" id="mutualNo" style="margin-left: 20px;">
+                    <label for="mutualNo">NO</label>
+                </div>
+                <textarea name="mutualAidList" placeholder="List Fire Districts or Departments" style="width: 100%; margin: 5px 0; height: 60px;"></textarea>
+            </div>
+
+            <!-- Rescue/Ambulance -->
+            <div style="margin: 20px 0;">
+                <strong>4) Do you have a rescue or ambulance operation and provide transport for victims?</strong>
+                <div style="margin-left: 20px;">
+                    <input type="radio" name="rescueAmbulance" value="yes" id="rescueYes">
+                    <label for="rescueYes">YES</label>
+                    <input type="radio" name="rescueAmbulance" value="no" id="rescueNo" style="margin-left: 20px;">
+                    <label for="rescueNo">NO</label>
+                </div>
+                <div style="margin: 10px 0 10px 20px;">
+                    a) If YES, how many ambulances do you have? <input type="number" name="ambulanceCount" style="width: 100px;"> Number of active EMT's <input type="number" name="activeEMTs" style="width: 100px;">
+                </div>
+            </div>
+
+            <!-- Annual Calls -->
+            <div style="margin: 20px 0;">
+                <strong>5) Annual Number of Fire Calls</strong> <input type="number" name="annualFireCalls" required style="width: 100px;"> <strong>Annual Number of Ambulance / EMS Calls</strong> <input type="number" name="annualEmsCalls" style="width: 100px;">
+            </div>
+
+            <!-- Juniors Program -->
+            <div style="margin: 20px 0;">
+                <strong>6) Do you have a Juniors program?</strong>
+                <div style="margin-left: 20px;">
+                    <input type="radio" name="juniorsProgram" value="yes" id="juniorsYes">
+                    <label for="juniorsYes">YES</label>
+                    <input type="radio" name="juniorsProgram" value="no" id="juniorsNo" style="margin-left: 20px;">
+                    <label for="juniorsNo">NO</label>
+                </div>
+                <div style="margin-left: 10px;"><em>If yes, please submit a copy of the resolution.</em></div>
+            </div>
+
+            <!-- Racing Team -->
+            <div style="margin: 20px 0;">
+                <strong>7) Do you have a Racing / Drill team?</strong>
+                <div style="margin-left: 20px;">
+                    <div>
+                        <input type="checkbox" name="racingMotorized" id="racingMotorized">
+                        <label for="racingMotorized">Yes, we have a motorized racing/drill team. How many races do you compete in annually?</label> 
+                        <input type="number" name="motorizedRaces" style="width: 100px;">
+                    </div>
+                    <div style="margin: 5px 0;">
+                        <input type="checkbox" name="racingOldFashioned" id="racingOldFashioned">
+                        <label for="racingOldFashioned">Yes, we have an old-fashioned (non-motorized) racing/drill team. How many races do you compete in annually?</label> 
+                        <input type="number" name="oldFashionedRaces" style="width: 100px;">
+                    </div>
+                    <div>
+                        <input type="checkbox" name="racingNone" id="racingNone">
+                        <label for="racingNone">No, we do not have a racing/drill team</label>
+                    </div>
+                    <div style="margin: 10px 0 10px 20px;">
+                        a) If NO, do any of your members participate in a racing team outside your district AND are authorized by a Director, Officer or Commissioner to do so?
+                        <div style="margin-left: 20px;">
+                            <input type="radio" name="outsideRacing" value="yes" id="outsideRacingYes">
+                            <label for="outsideRacingYes">YES</label>
+                            <input type="radio" name="outsideRacing" value="no" id="outsideRacingNo" style="margin-left: 20px;">
+                            <label for="outsideRacingNo">NO</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Safety Officer -->
+            <div style="margin: 20px 0;">
+                <strong>8) Do you have New York State Certified Health and Safety Officer?</strong>
+                <div style="margin-left: 20px;">
+                    <input type="radio" name="safetyOfficer" value="yes" id="safetyOfficerYes">
+                    <label for="safetyOfficerYes">YES</label>
+                    <input type="radio" name="safetyOfficer" value="no" id="safetyOfficerNo" style="margin-left: 20px;">
+                    <label for="safetyOfficerNo">NO</label>
+                </div>
+                <div style="margin: 10px 0 10px 20px;">
+                    If yes, how many <em>active member</em> Certified Safety Officers do you have? <input type="number" name="safetyOfficerCount" style="width: 100px;">
+                </div>
+            </div>
+
+            <!-- Safety Committee -->
+            <div style="margin: 20px 0;">
+                <strong>9) Do you have a Safety Committee?</strong>
+                <div style="margin-left: 20px;">
+                    <input type="radio" name="safetyCommittee" value="yes" id="safetyCommitteeYes">
+                    <label for="safetyCommitteeYes">YES</label>
+                    <input type="radio" name="safetyCommittee" value="no" id="safetyCommitteeNo" style="margin-left: 20px;">
+                    <label for="safetyCommitteeNo">NO</label>
+                </div>
+            </div>
+
+            <!-- Safety Procedures -->
+            <div style="margin: 20px 0;">
+                <strong>10) Do you have written Safety Procedures in place?</strong>
+                <div style="margin-left: 20px;">
+                    <input type="radio" name="safetyProcedures" value="yes" id="safetyProceduresYes">
+                    <label for="safetyProceduresYes">YES</label>
+                    <input type="radio" name="safetyProcedures" value="no" id="safetyProceduresNo" style="margin-left: 20px;">
+                    <label for="safetyProceduresNo">NO</label>
+                </div>
+            </div>
+
+            <div class="page-footer">
+                <div>2020 Edition 11/20 NBS app<br>Fire Districts of New York Mutual Insurance Co.</div>
+                <div>Applicant's Initial ___________</div>
+            </div>
+        </div>
+
+        <!-- Page 3 -->
+        <div class="page-break" style="text-align: right; margin-bottom: 20px;">
+            <strong>- 3 -</strong>
+        </div>
+
+        <!-- Fire Vehicles and Firefighters -->
+        <div style="margin: 20px 0;">
+            <strong>11) Number of active fire emergency vehicles:</strong> <input type="number" name="activeFireVehicles" required style="width: 100px;">
+            <strong style="margin-left: 40px;">Number of active Volunteer Firefighters:</strong> <input type="number" name="activeVolunteerFirefighters" required style="width: 100px;">
+            
+            <div style="margin: 10px 0 10px 20px;">
+                <strong>a) Number of Volunteer Firefighters in each classification:</strong>
+                <div style="margin: 10px 0;">
+                    <strong>Class A</strong> (Interior Structure) <input type="number" name="classA" style="width: 100px;"> 
+                    <strong style="margin-left: 40px;">Class B</strong> (Exterior Structure) <input type="number" name="classB" style="width: 100px;">
+                </div>
+                <div style="margin: 10px 0;">
+                    <strong>Class C</strong> (Fire Police Only) <input type="number" name="classC" style="width: 100px;"> 
+                    <strong style="margin-left: 40px;">Class D</strong> (Administrative Only) <input type="number" name="classD" style="width: 100px;">
+                </div>
+            </div>
+        </div>
+
+        <div class="blue-bar"></div>
+
+        <div class="section-header">Information required for Workers' Compensation Coverage <em>(Fire Districts only)</em>:</div>
+        
+        <div style="margin: 15px 0; font-size: 11px;">
+            Section 54-6a of the Workers' Compensation law requires a Fire District to provide Workers' Compensation coverage for its officers and employees whether or not such persons are paid for their services. This Volunteer Firefighters' Benefit Law policy when issued, will not afford coverage for Workers' Compensation benefits for Fire District officers including Fire Commissioners or employees. A separate Workers' Compensation policy is needed for such coverage.
+        </div>
+
+        <div style="margin: 20px 0;">
+            <strong>Paid Employee Information:</strong>
+        </div>
+
+        <table class="form-table" id="employees-table">
+            <thead>
+                <tr>
+                    <th>CLASSIFICATION</th>
+                    <th>Number Of Employees</th>
+                    <th>Total Annual Payroll Per Classification</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr><td>Paid Firefighters (7710)</td><td><input type="number" name="paidFirefighters" style="width: 100%;"></td><td><input type="text" name="paidFirefightersPayroll" style="width: 100%;"></td></tr>
+                <tr><td>Paid EMT's (8394)</td><td><input type="number" name="paidEMTs" style="width: 100%;"></td><td><input type="text" name="paidEMTsPayroll" style="width: 100%;"></td></tr>
+                <tr><td>Dispatchers (8810)</td><td><input type="number" name="dispatchers" style="width: 100%;"></td><td><input type="text" name="dispatchersPayroll" style="width: 100%;"></td></tr>
+                <tr><td>Clerical (Sec/Treas, etc.) (8810)</td><td><input type="number" name="clerical" style="width: 100%;"></td><td><input type="text" name="clericalPayroll" style="width: 100%;"></td></tr>
+                <tr><td>Bldg. Maint. – Janitorial (9026)</td><td><input type="number" name="maintenance" style="width: 100%;"></td><td><input type="text" name="maintenancePayroll" style="width: 100%;"></td></tr>
+                <tr><td>Mechanics (8391)</td><td><input type="number" name="mechanics" style="width: 100%;"></td><td><input type="text" name="mechanicsPayroll" style="width: 100%;"></td></tr>
+                <tr><td>Bldg. Inspectors (8720)</td><td><input type="number" name="inspectors" style="width: 100%;"></td><td><input type="text" name="inspectorsPayroll" style="width: 100%;"></td></tr>
+                <tr><td><input type="text" name="otherClass1" placeholder="Other Classification" style="width: 100%;"></td><td><input type="number" name="other1Count" style="width: 100%;"></td><td><input type="text" name="other1Payroll" style="width: 100%;"></td></tr>
+                <tr><td><input type="text" name="otherClass2" placeholder="Other Classification" style="width: 100%;"></td><td><input type="number" name="other2Count" style="width: 100%;"></td><td><input type="text" name="other2Payroll" style="width: 100%;"></td></tr>
+            </tbody>
+        </table>
+
+        <!-- Fire Commissioners -->
+        <div style="margin: 20px 0;">
+            <strong>Number of Fire Commissioners:</strong> <input type="number" name="fireCommissioners" style="width: 200px;">
+        </div>
+
+        <!-- Additional Information -->
+        <div style="margin: 20px 0;">
+            <strong>Additional Comments or Information:</strong>
+            <textarea name="additionalInfo" rows="4" placeholder="Please provide any additional information that may be relevant to your application..." style="width: 100%; margin-top: 5px;"></textarea>
+        </div>
+
+        <div class="blue-bar"></div>
+
+        <div class="fraud-warning">
+            Any person who knowingly and with intent to defraud any insurance company or other person files an application for insurance or statement of claim containing any materially false information or conceals, for the purpose of misleading, information concerning any facts material thereto, commits a fraudulent insurance act, which is a crime, and shall also be subject to a civil penalty not to exceed five thousand dollars and the stated value of the claim for each such violation.
+        </div>
+
+        <!-- Signature Section -->
+        <div style="margin: 30px 0;">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+                <div>
+                    <strong>Authorized Officer's Signature</strong> 
+                    <input type="text" name="officerSignature" style="width: 200px; border-bottom: 1px solid #000; margin-left: 10px;">
+                </div>
+                <div>
+                    <strong>Print Name</strong> 
+                    <input type="text" name="printName" required style="width: 200px; border-bottom: 1px solid #000; margin-left: 10px;">
+                </div>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between;">
+                <div>
+                    <strong>Title</strong> 
+                    <input type="text" name="signatureTitle" required style="width: 200px; border-bottom: 1px solid #000; margin-left: 10px;">
+                </div>
+                <div>
+                    <strong>Date</strong> 
+                    <input type="date" name="signatureDate" required style="width: 200px; border-bottom: 1px solid #000; margin-left: 10px;">
+                </div>
+            </div>
+        </div>
+
+        <div style="font-size: 10px; margin: 20px 0;">
+            <em>Premiums for Volunteer Firefighters' Benefit Law and Workers' Compensation Insurance are set by the New York Compensation Insurance Rating Board and not by FDM. All premiums are subject to annual audit.</em>
+        </div>
+
+        <div class="page-footer">
+            <div>2020 Edition 11/20 NBS app<br>Fire Districts of New York Mutual Insurance Co.</div>
+            <div></div>
+        </div>
+    </div>
+
+    <div class="no-print" style="text-align: center; margin: 20px;">
+        <button type="button" id="submitBtn" 
+            style="background-color: #dc2626; color: white; padding: 12px 30px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+        Submit Application
+    </button>
+    </div>
+
+    <script>
+    // Form data collection and submission
+    function collectFormData() {
+        const formData = {
+            // Coverage Information
+            coverage: {
+                vfbl: document.getElementById('vfbl')?.checked || false,
+                wc: document.getElementById('wc')?.checked || false,
+                effectiveDate: document.querySelector('input[name="effectiveDate"]')?.value || ''
+            },
+            
+            // Entity Information
+            entityInfo: {
+                name: document.querySelector('input[name="entityName"]')?.value || '',
+                mailingAddress: document.querySelector('[name="mailingAddress"]')?.value || '',
+                fein: document.querySelector('input[name="fein"]')?.value || '',
+                county: document.querySelector('input[name="county"]')?.value || '',
+                primaryContactName: document.querySelector('input[name="contactName"]')?.value || '',
+                title: document.querySelector('input[name="contactTitle"]')?.value || '',
+                telephone: document.querySelector('input[name="phone"]')?.value || '',
+                fax: document.querySelector('input[name="fax"]')?.value || '',
+                website: document.querySelector('input[name="website"]')?.value || '',
+                email: document.querySelector('input[name="email"]')?.value || '',
+                brokerName: document.querySelector('input[name="brokerName"]')?.value || '',
+                brokerAddress: document.querySelector('input[name="brokerAddress"]')?.value || ''
+            },
+            
+            // Officers Table Data
+            officers: collectTableData('officers-table', ['name', 'title', 'phone']),
+            
+            // Fire Department Locations
+            fireLocations: {
+                mainLocation: document.querySelector('input[name="mainLocation"]')?.value || '',
+                otherLocations: [
+                    document.querySelector('input[name="otherLocation1"]')?.value || '',
+                    document.querySelector('input[name="otherLocation2"]')?.value || '',
+                    document.querySelector('input[name="otherLocation3"]')?.value || '',
+                    document.querySelector('input[name="otherLocation4"]')?.value || ''
+                ].filter(location => location.trim() !== '')
+            },
+            
+            // Current Insurance Information
+            currentInsurance: collectTableData('insurance-table', ['lineOfBusiness', 'carrierName', 'policyNumber', 'policyPeriod', 'annualPremium']),
+            
+            // VFBL Information
+            vfblInfo: {
+                population: document.querySelector('input[name="population"]')?.value || '',
+                populationDescription: document.querySelector('input[name="populationDescription"]')?.value || '',
+                squareMileage: document.querySelector('input[name="squareMileage"]')?.value || '',
+                contractOutsideArea: getRadioValue('contractOutsideArea'),
+                assistOtherDistrict: getRadioValue('assistOtherDistrict'),
+                contractsAttached: document.querySelector('input[name="contractsAttached"]')?.checked || false,
+                assistedDistricts: collectTableData('assisted-districts-table', ['department', 'population', 'squareMileage', 'description']),
+                mutualAid: getRadioValue('mutualAid'),
+                mutualAidList: document.querySelector('textarea[name="mutualAidList"]')?.value || '',
+                rescueAmbulance: getRadioValue('rescueAmbulance'),
+                ambulanceCount: document.querySelector('input[name="ambulanceCount"]')?.value || '',
+                activeEMTs: document.querySelector('input[name="activeEMTs"]')?.value || '',
+                annualFireCalls: document.querySelector('input[name="annualFireCalls"]')?.value || '',
+                annualEmsCalls: document.querySelector('input[name="annualEmsCalls"]')?.value || '',
+                juniorsProgram: getRadioValue('juniorsProgram'),
+                racingTeam: {
+                    motorized: document.querySelector('input[name="racingMotorized"]')?.checked || false,
+                    motorizedRaces: document.querySelector('input[name="motorizedRaces"]')?.value || '',
+                    oldFashioned: document.querySelector('input[name="racingOldFashioned"]')?.checked || false,
+                    oldFashionedRaces: document.querySelector('input[name="oldFashionedRaces"]')?.value || '',
+                    none: document.querySelector('input[name="racingNone"]')?.checked || false,
+                    outsideParticipation: getRadioValue('outsideRacing')
+                },
+                safetyOfficer: getRadioValue('safetyOfficer'),
+                safetyOfficerCount: document.querySelector('input[name="safetyOfficerCount"]')?.value || '',
+                safetyCommittee: getRadioValue('safetyCommittee'),
+                safetyProcedures: getRadioValue('safetyProcedures'),
+                activeFireVehicles: document.querySelector('input[name="activeFireVehicles"]')?.value || '',
+                activeVolunteerFirefighters: document.querySelector('input[name="activeVolunteerFirefighters"]')?.value || '',
+                firefighterClassifications: {
+                    classA: document.querySelector('input[name="classA"]')?.value || '',
+                    classB: document.querySelector('input[name="classB"]')?.value || '',
+                    classC: document.querySelector('input[name="classC"]')?.value || '',
+                    classD: document.querySelector('input[name="classD"]')?.value || ''
+                }
+            },
+            
+            // Workers Compensation Information
+            workersComp: {
+                paidEmployees: collectTableData('employees-table', ['classification', 'numberOfEmployees', 'totalAnnualPayroll']),
+                fireCommissioners: document.querySelector('input[name="fireCommissioners"]')?.value || ''
+            },
+            
+            // Additional Information
+            additionalInfo: document.querySelector('textarea[name="additionalInfo"]')?.value || '',
+            
+            // Signature Information
+            signature: {
+                authorizedOfficerSignature: document.querySelector('input[name="officerSignature"]')?.value || '',
+                printName: document.querySelector('input[name="printName"]')?.value || '',
+                title: document.querySelector('input[name="signatureTitle"]')?.value || '',
+                date: document.querySelector('input[name="signatureDate"]')?.value || ''
+            },
+            
+            // Metadata
+            submissionDate: new Date().toISOString(),
+            formVersion: '2020 Edition 11/20 NBS app'
+        };
+        
+        return formData;
+    }
+    
+    // Helper function to collect table data
+    function collectTableData(tableId, columnNames) {
+        const table = document.getElementById(tableId);
+        if (!table) return [];
+        
+        const rows = table.querySelectorAll('tbody tr');
+        const data = [];
+        
+        rows.forEach(row => {
+            const cells = row.querySelectorAll('td input, td textarea, td select');
+            if (cells.length > 0) {
+                const rowData = {};
+                cells.forEach((cell, index) => {
+                    if (columnNames[index] && cell.value.trim() !== '') {
+                        rowData[columnNames[index]] = cell.value.trim();
+                    }
+                });
+                if (Object.keys(rowData).length > 0) {
+                    data.push(rowData);
+                }
+            }
+        });
+        
+        return data;
+    }
+    
+    // Helper function to get radio button values
+    function getRadioValue(name) {
+        const radio = document.querySelector(`input[name="${name}"]:checked`);
+        return radio ? radio.value : '';
+    }
+    
+    // Form validation
+    function validateForm() {
+        const errors = [];
+        
+        // Required fields validation
+        const requiredFields = [
+            { name: 'entityName', label: 'Entity Name' },
+            { name: 'mailingAddress', label: 'Mailing Address' },
+            { name: 'fein', label: 'FEIN Number' },
+            { name: 'county', label: 'County' },
+            { name: 'contactName', label: 'Primary Contact Name' },
+            { name: 'contactTitle', label: 'Contact Title' },
+            { name: 'phone', label: 'Telephone Number' },
+            { name: 'email', label: 'Email Address' },
+            { name: 'population', label: 'Population' },
+            { name: 'squareMileage', label: 'Square Mileage' },
+            { name: 'annualFireCalls', label: 'Annual Fire Calls' },
+            { name: 'activeFireVehicles', label: 'Active Fire Vehicles' },
+            { name: 'activeVolunteerFirefighters', label: 'Active Volunteer Firefighters' },
+            { name: 'printName', label: 'Print Name' },
+            { name: 'signatureTitle', label: 'Signature Title' },
+            { name: 'signatureDate', label: 'Signature Date' }
+        ];
+        
+        requiredFields.forEach(field => {
+            const element = document.querySelector(`input[name="${field.name}"]`);
+            if (!element || !element.value.trim()) {
+                errors.push(`${field.label} is required`);
+                if (element) {
+                    element.style.borderColor = 'red';
+                    element.style.borderWidth = '2px';
+                }
+            } else {
+                if (element) {
+                    element.style.borderColor = '#000';
+                    element.style.borderWidth = '1px';
+                }
+            }
+        });
+        
+        // Email validation
+        const emailField = document.querySelector('input[name="email"]');
+        if (emailField && emailField.value) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(emailField.value)) {
+                errors.push('Please enter a valid email address');
+                emailField.style.borderColor = 'red';
+                emailField.style.borderWidth = '2px';
+            }
+        }
+        
+        // Coverage selection validation
+        const vfbl = document.getElementById('vfbl')?.checked;
+        const wc = document.getElementById('wc')?.checked;
+        if (!vfbl && !wc) {
+            errors.push('Please select at least one coverage type (VFBL or WC)');
+        }
+        
+        return errors;
+    }
+    
+    // Submit form function
+    async function submitForm() {
+        const errors = validateForm();
+        
+        if (errors.length > 0) {
+            alert('Please correct the following errors:\n\n' + errors.join('\n'));
+            return;
+        }
+        
+        const formData = collectFormData();
+        
+        try {
+            // Show loading state
+            const submitBtn = document.getElementById('submitBtn');
+            const originalText = submitBtn.textContent;
+            submitBtn.textContent = 'Submitting...';
+            submitBtn.disabled = true;
+            
+            // Log the JSON data (for development)
+            console.log('Form Data JSON:', JSON.stringify(formData, null, 2));
+            
+            // Submit to backend
+            const response = await fetch('/api/submit-application', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData)
+            });
+            
+            if (response.ok) {
+                const result = await response.json();
+                alert('Application submitted successfully! Reference ID: ' + (result.referenceId || 'N/A'));
+                
+                // Optionally reset form or redirect
+                // window.location.href = '/confirmation';
+            } else {
+                throw new Error('Submission failed');
+            }
+            
+        } catch (error) {
+            console.error('Submission error:', error);
+            alert('There was an error submitting your application. Please try again or contact support.');
+        } finally {
+            // Reset button state
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.textContent = originalText;
+            submitBtn.disabled = false;
+        }
+    }
+    
+    // Auto-calculate total firefighters when individual classes are entered
+    function updateTotal() {
+        const classA = parseInt(document.querySelector('input[name="classA"]')?.value || 0);
+        const classB = parseInt(document.querySelector('input[name="classB"]')?.value || 0);
+        const classC = parseInt(document.querySelector('input[name="classC"]')?.value || 0);
+        const classD = parseInt(document.querySelector('input[name="classD"]')?.value || 0);
+        
+        const total = classA + classB + classC + classD;
+        const totalField = document.querySelector('input[name="activeVolunteerFirefighters"]');
+        if (totalField && total > 0) {
+            totalField.value = total;
+        }
+    }
+    
+    // Phone number formatting
+    function formatPhoneNumber(input) {
+        const value = input.value.replace(/\D/g, '');
+        const formattedValue = value.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+        if (value.length === 10) {
+            input.value = formattedValue;
+        }
+    }
+    
+    // FEIN formatting
+    function formatFEIN(input) {
+        const value = input.value.replace(/\D/g, '');
+        if (value.length >= 2) {
+            input.value = value.replace(/(\d{2})(\d{0,7})/, '$1-$2');
+        }
+    }
+    
+    // Initialize form
+    document.addEventListener('DOMContentLoaded', function() {
+        // Add event listeners for auto-calculation
+        const classInputs = ['classA', 'classB', 'classC', 'classD'];
+        classInputs.forEach(className => {
+            const input = document.querySelector(`input[name="${className}"]`);
+            if (input) {
+                input.addEventListener('input', updateTotal);
+            }
+        });
+        
+        // Add phone formatting
+        const phoneInputs = document.querySelectorAll('input[name="phone"], input[name="fax"]');
+        phoneInputs.forEach(input => {
+            input.addEventListener('input', () => formatPhoneNumber(input));
+        });
+        
+        // Add FEIN formatting
+        const feinInput = document.querySelector('input[name="fein"]');
+        if (feinInput) {
+            feinInput.addEventListener('input', () => formatFEIN(feinInput));
+        }
+        
+        // Add submit button event listener
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+            submitBtn.addEventListener('click', submitForm);
+        }
+    });
+</script>
+</body>
+</html>

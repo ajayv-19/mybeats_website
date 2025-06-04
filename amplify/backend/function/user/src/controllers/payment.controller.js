@@ -232,6 +232,7 @@ class PaymentController {
       this.CancelSubscription(...arg)
     );
     router.post("/webhook", (...arg) => this.HandleStripeEvent(...arg));
+
     router.post("/create-setup-intent", (...arg) =>
       this.CreateSetupIntent(...arg)
     );
@@ -310,39 +311,42 @@ class PaymentController {
 
   async UpdatePaymentMethods(req, res) {
     try {
-      const { email } = req.body;
+      const { customerId, paymentMethodId, subscriptionId } = req.body;
       const stripe = StripeClient(STRIPE_SECRET_KEY);
+      if (!customerId || !paymentMethodId || !subscriptionId) {
+        return res.status(400).json({ error: 'Missing required parameters.' });
+      }
 
-      const customer = await getCustomerDetails(email);
-
-      // Find existing subscription in Stripe
-      const existingSubscriptions = await stripe.subscriptions.list({
-        limit: 1,
-        customer: customer.id,
-        status: "active",
+      // 1. Attach the payment method to the customer (if not already attached)
+      await stripe.paymentMethods.attach(paymentMethodId, {
+        customer: customerId,
       });
 
-      const currentSubscription = existingSubscriptions.data[0];
+      // 2. Set the default payment method for the customer
+      await stripe.customers.update(customerId, {
+        invoice_settings: {
+          default_payment_method: paymentMethodId,
+        },
+      });
 
-      // Update the subscription
-      const updatedSubscription = await stripe.subscriptions.update(
-        currentSubscription.id,
-        {
-          payment_settings: {
-            payment_method_types: ["card", "us_bank_account"],
-          },
-        }
-      );
+      // 3. Update the subscription to use the new payment method
+      const updatedSubscription = await stripe.subscriptions.update(subscriptionId, {
+        default_payment_method: paymentMethodId,
+      });
 
-      console.log("updated payment", updatedSubscription);
+      console.log('✅ Updated subscription with new payment method');
 
-      res.status(200).json({
-        message: "Subscription updated successfully",
+      return res.status(200).json({
+        success: true,
+        message: 'Payment method updated successfully.',
         subscription: updatedSubscription,
       });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ error: error.message });
+      console.error('❌ Error in updating payment method:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Internal server error',
+      });
     }
   }
 

@@ -7,7 +7,7 @@ import PolicyholdersPrivacy from "./PolicyholdersPrivacy";
 
 const TABS = [
   "Privacy Policy for Policyholders",
-  // "Privacy Policy for Insurance Companies",
+  "Privacy Policy for Insurance Companies",
 ];
 
 const PrivacyPage = () => {
@@ -28,14 +28,14 @@ const PrivacyPage = () => {
                   {tab}
                 </button>
                 {index === 0 && (
-                  <span className="text-4xl text-gray-400"></span>
+                  <span className="text-4xl text-gray-400">|</span>
                 )}
               </React.Fragment>
             ))}
           </div>
 
           {selectedTab === 0 && <PolicyholdersPrivacy />}
-          {/* {selectedTab === 1 && <InsurancePrivacy />} */}
+          {selectedTab === 1 && <InsurancePrivacy />}
         </div>
       </div>
       <Footer />
