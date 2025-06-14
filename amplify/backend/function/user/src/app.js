@@ -12,6 +12,7 @@ const {
   ScheduleController,
   EmailController,
   PolicyholdersController,
+  AgentController
 } = require("./controllers");
 const upload = require("./config/multer");
 
@@ -60,6 +61,7 @@ CompanyController.setupRoutes(router);
 ScheduleController.setupRoutes(router);
 EmailController.setupRoutes(router);
 PolicyholdersController.setupRoutes(router);
+AgentController.setupRoutes(router);
 
 // Use PolicyholdersController router
 //app.use(`${API_PREFIX}/policyholders`, PolicyholdersController.router);

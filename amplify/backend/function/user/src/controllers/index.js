@@ -4,6 +4,7 @@ const CompanyController = require("./company.controller");
 const ScheduleController = require("./schedule.controller");
 const EmailController = require("./email.controller");
 const PolicyholdersController = require("./policyholders.controller");
+const AgentController = require("./agentform.controller");
 module.exports = {
   UserController,
   PaymentController,
@@ -11,4 +12,5 @@ module.exports = {
   ScheduleController,
   EmailController,
   PolicyholdersController,
+  AgentController
 };

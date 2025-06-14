@@ -200,6 +200,59 @@ const Payment = sequelize.define(
   }
 );
 
+// models/FormData.js
+const FormData = sequelize.define(
+  "FormData",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+
+    name: {
+      type: DataTypes.TEXT,      // nullable → allowNull defaults to true
+    },
+
+    company_id: {
+      type: DataTypes.INTEGER,
+    },
+
+    type: {
+      type: DataTypes.TEXT,
+    },
+
+    // Postgres-style JSON/JSONB column
+    data: {
+      type: DataTypes.JSONB,     // use JSON if you’re on MySQL
+    },
+
+    updated_by: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+
+    // created_at / updated_at will be handled by Sequelize
+    created_at: {
+      type: DataTypes.DATE,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+    },
+
+  },
+  {
+    sequelize,
+    modelName: "FormData",
+    tableName: "Form_Data",          // exact DB table name
+    timestamps: true,                // turn on automatic timestamps
+    createdAt: "created_at",         // map to snake-case column names
+    updatedAt: "updated_at",            // turn on automatic timestamps
+    // keeps any future columns snake-cased
+  }
+);
+
+
 const Subscriptions = sequelize.define(
   "Subscriptions",
   {
@@ -376,5 +429,6 @@ module.exports = {
   UserInvites,
   sequelize,
   CustomerQueries,
+  FormData,
 };
 // Changed
