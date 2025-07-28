@@ -8,6 +8,9 @@ const CompanyTab = lazy(() => import('./tabs/CompanyTab'));
 const SecurityTab = lazy(() => import('./tabs/SecurityTab'));
 const PlanBillingTab = lazy(() => import('./tabs/PlanBillingTab'));
 const NotificationsTab = lazy(() => import('./tabs/NotificationsTab'));
+const AgentFormsTab = lazy(() => import('./tabs/AgentForms'));
+const AgentFormsDetails = lazy(() => import('./tabs/AgentFormsDetails'));
+
 const TeamTab = lazy(() => import('./tabs/TeamTab'));
 
 /**
@@ -44,6 +47,14 @@ const SettingsAppRoute: FuseRouteItemType = {
 		{
 			path: 'team',
 			element: <TeamTab />
+		},
+		{
+			path: 'agent-forms',
+			element: <AgentFormsTab />
+		},
+		{
+			path: 'agent-form/:formId',
+			element: <AgentFormsDetails />
 		},
 		{
 			path: '',

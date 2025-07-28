@@ -63,7 +63,8 @@ app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
     `Email: ${email}, JWT Token: ${jwtToken}, PayloadSub: ${payloadSub}`
   );
 
-  // const emaildomain = getDomainFromEmail(email);
+  const emaildomain = getDomainFromEmail(email);
+
   // const companyQuery =
   //   'SELECT subscription_id FROM "public"."Subscribed_Companies" WHERE domain = $1';
   // const selectResult = await client.query(companyQuery, [emaildomain]);
@@ -199,7 +200,8 @@ app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
     //Row  Level Security
     if (userName) {
       console.log("Step 6: Fetching domain and updating PostgreSQL...");
-      const domain = getDomainFromEmail(email);
+      const domain = await getDomainFromEmail(email);
+      console.log(`Domain extracted from email: ${domain}`);
       const rlsQuery =
         'INSERT INTO "public"."Row_level_security"("Company Name", "username") VALUES($1, $2) ON CONFLICT ("username") DO NOTHING;';
       await client.query(rlsQuery, [domain, userName]);

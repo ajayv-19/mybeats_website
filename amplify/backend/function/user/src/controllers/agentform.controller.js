@@ -38,7 +38,10 @@ class AgentController {
       );
       res.status(200).json({
         "message": "Agent form updated successfully",
-        "data": result
+        "data": {
+          id: id,
+          data: data
+        }
       });
     } catch (error) {
       res.status(500).json({

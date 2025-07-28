@@ -44,6 +44,12 @@
 
 <body class="bg-gray-100 text-gray-900">
 
+  <div id="api-loader" class="fixed inset-0 bg-black bg-opacity-40 z-50 flex items-center justify-center hidden">
+    <div class="bg-white px-6 py-3 rounded shadow text-center text-sm font-medium">
+      Submitting form, please wait...
+    </div>
+  </div>
+
   <!-- Navigation (only onscreen) -->
   <div class="fixed bottom-4 right-4 flex gap-2 no-print" id="controls">
     <button id="prevBtn" class="px-4 py-2 bg-gray-700 text-white rounded-lg shadow">Previous</button>
@@ -662,124 +668,110 @@
 
   <script>
     function scrollToTop() {
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     }
-    const apibase = "https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi"
-    // Simple page navigation
+
+    const apibase = "https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi";
     let formId = parseInt(localStorage.getItem(`form-company1_formId`)) || 0;
     const pages = document.querySelectorAll('[data-page]');
     let current = parseInt(localStorage.getItem('form-company1_tab')) || 0;
+
     const showPage = (idx) => {
       pages.forEach((p, i) => p.classList.toggle('hidden', i !== idx));
     };
-    showPage(current);
-    document.getElementById('prevBtn').addEventListener('click', () => {
-      if (current > 0) current--; showPage(current);
-      let totalForms = document.querySelectorAll(`[data-form]`).length;
-      if (current + 1 < totalForms) {
-        document.getElementById('nextBtn').innerText = "Next";
-      }
-    });
-    document.getElementById('nextBtn').addEventListener('click', () => {
-      let totalForms = document.querySelectorAll(`[data-form]`).length;
-      let form = document.querySelector(`[data-form='${(current + 1)}']`);
-      let submitButton = form ? form.querySelector('button[type="submit"]') : null;
-      console.log({ current, form, submitButton });
-      submitButton?.click();
 
+    showPage(current);
+
+    document.getElementById('prevBtn').addEventListener('click', () => {
+      if (current > 0) current--;
+      showPage(current);
+      const totalForms = document.querySelectorAll(`[data-form]`).length;
+      document.getElementById('nextBtn').innerText = current + 1 >= totalForms ? "Submit" : "Next";
     });
+
+    document.getElementById('nextBtn').addEventListener('click', () => {
+      const totalForms = document.querySelectorAll(`[data-form]`).length;
+      if (current >= totalForms) return;
+      const form = document.querySelector(`[data-form='${current + 1}']`);
+      form?.querySelector('button[type="submit"]')?.click();
+    });
+
     const forms = document.querySelectorAll('form');
     forms.forEach(form => {
-      form.addEventListener('submit', (e) => {
+      form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        let totalForms = document.querySelectorAll(`[data-form]`).length;
+        document.getElementById('api-loader').classList.remove('hidden');
+
+        const totalForms = document.querySelectorAll(`[data-form]`).length;
         const formNumber = e.target.dataset.form;
-        const formEntires = Array.from(new FormData(e.target).entries());
-        const formData = Object.fromEntries(formEntires);
-        current++;
-        localStorage.setItem(`form-${formNumber}-comapnay1`, JSON.stringify({
-          formNumber: formNumber,
+        const formEntries = Array.from(new FormData(e.target).entries());
+        const formData = Object.fromEntries(formEntries);
+
+        localStorage.setItem(`form-${formNumber}-company1`, JSON.stringify({
+          formNumber,
           data: formData
         }));
-        let prevData = [];
+
+        const prevData = [];
         for (let i = 0; i < totalForms; i++) {
-          const prevFormData = localStorage.getItem(`form-${i + 1}-comapnay1`);
-          if (prevFormData) {
-            prevData.push({
-              formNumber: i + 1,
-              data: JSON.parse(prevFormData)
-            });
-          }
+          const local = localStorage.getItem(`form-${i + 1}-company1`);
+          if (local) prevData.push(JSON.parse(local));
         }
-        let hasData = prevData.find(item => item.formNumber == formNumber);
-        if (hasData) {
-          prevData.data = formData;
-        } else {
-          prevData.push({
-            formNumber: formNumber,
-            data: formData
+
+        const action = formId ? "update" : "submit";
+
+        try {
+          const { data: response } = await axios.post(`${apibase}/agentform/${action}`, {
+            ...(action === "update" ? { id: formId } : {}),
+            company_id: 1,
+            data: prevData
           });
-        }
-        let action = "submit";
-        formId = parseInt(localStorage.getItem(`form-company1_formId`)) || 0;
-        action = formId ? "update" : "submit";
-        ///*
-        axios.post(`${apibase}/agentform/${action}`, {
-          ...(action == "update" ? { id: formId } : {}),
-          company_id: 1,
-          data: prevData
-        }).then(({ data: response }) => {
-          if (current + 1 >= totalForms) {
-            document.getElementById('nextBtn').innerText = "Submit";
+
+          formId = response.data.id;
+          localStorage.setItem('form-company1_formId', formId);
+          current++;
+          localStorage.setItem('form-company1_tab', current);
+
+          if (current >= totalForms) {
+            formCompleteAction();
+          } else {
+            showPage(current);
+            document.getElementById('nextBtn').innerText = current + 1 >= totalForms ? "Submit" : "Next";
           }
-          if (current < totalForms) showPage(current);
-          localStorage.setItem('form-company1_formId', response.data.id);
-          console.log('Form submitted successfully:', response.data);
-          scrollToTop();
-          if (current == totalForms) formCompleteAction();
-        }).catch(error => {
-          current--;
+
+        } catch (error) {
           console.error('Error submitting form:', error);
-        });
-        //*/
-        //if (current < pages.length - 1) showPage(current);
-        console.log({ formNumber, data: formData, current, totalForms, prevData });
-        localStorage.setItem('form-company1_tab', current);
-
-
+          current--;
+        } finally {
+          document.getElementById('api-loader').classList.add('hidden');
+        }
       });
     });
+
     function formCompleteAction() {
       document.querySelector("#controls").classList.add('hidden');
-      showPage(3);
+      showPage(pages.length - 1);
       localStorage.setItem('form-company1_status', 'true');
-      //location.href = "https://www.nbsbrokerage.com/thank-you";
     }
+
     document.addEventListener('DOMContentLoaded', () => {
-      let totalForms = document.querySelectorAll(`[data-form]`).length;
+      const totalForms = document.querySelectorAll(`[data-form]`).length;
+
       for (let i = 0; i < totalForms; i++) {
-        const formData = localStorage.getItem(`form-${i + 1}-comapnay1`);
+        const formData = localStorage.getItem(`form-${i + 1}-company1`);
         if (formData) {
           const data = JSON.parse(formData);
           const form = document.querySelector(`[data-form='${data.formNumber}']`);
           if (form) {
             for (const [key, value] of Object.entries(data.data)) {
               const input = form.querySelector(`[name="${key}"]`);
-              if (input) {
-                input.value = value;
-              }
+              if (input) input.value = value;
             }
           }
         }
       }
-      if (current + 1 >= totalForms) {
-        document.getElementById('nextBtn').innerText = "Submit";
-      } else {
-        document.getElementById('nextBtn').innerText = "Next";
-      }
+
+      document.getElementById('nextBtn').innerText = current + 1 >= totalForms ? "Submit" : "Next";
     });
   </script>
 
