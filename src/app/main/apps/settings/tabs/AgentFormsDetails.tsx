@@ -4,11 +4,22 @@ import { useAgentForm } from '../apis/AgentFormsapis';
 import filedsMapping from './_data/fileds_mapping';
 
 function MultiPageForm(props) {
-    const { formsData, companyId } = props;
+    const { formsData, companyId, formId } = props;
     const [currentPage, setCurrentPage] = useState(0);
     const currentForm = formsData[currentPage];
     const items = Object.entries(currentForm.data || {});
     const mappedLabels = filedsMapping[companyId] || {};
+    //const brokerDomain = "https://broker.mybeatshealth.com/";
+    const brokerDomain = "http://localhost:5173/";
+    const docurl = `${brokerDomain}agent_forms/${companyId}/form.html?editFormId=${formId}`;
+
+
+    console.log({ formsData, companyId }, "formdata and companyid")
+    return (
+        <div className='max-w-lg h-auto'>
+            <iframe className='w-full h-full' src={docurl} />
+        </div>
+    );
 
     return (
         <div className="p-4 max-w-2xl mx-auto">
@@ -62,7 +73,7 @@ export default function AgentFormsDetails() {
             ) : (
                 <div>
                     {formPages.length > 0 ? (
-                        <MultiPageForm formsData={formPages} companyId={companyId} />
+                        <MultiPageForm formsData={formPages} companyId={companyId} formId={formId} />
                     ) : (
                         <p>No form data available.</p>
                     )}

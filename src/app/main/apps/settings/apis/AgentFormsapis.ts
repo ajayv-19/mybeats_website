@@ -23,6 +23,7 @@ export const useAgentForms = (company_id: number, page?: number, search?: string
         }
       );
       keepPreviousData: true;
+      console.log("The data from GetForms", response.data);
       return response.data;
     },
     enabled: !!company_id, // Prevents execution if company_id is undefined
