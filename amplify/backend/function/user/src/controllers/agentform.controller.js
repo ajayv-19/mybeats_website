@@ -4,10 +4,19 @@ class AgentController {
   setupRoutes(app) {
     app.post("/agentform/submit", (...args) => this.submitAgentForm(...args));
     app.post("/agentform/update", (...args) => this.updateAgentForm(...args));
+    app.get("/agentform/:formId", (...args) => this.showAgenForm(...args));
   }
 
 
-
+  //  async showAgenForm(req,res) {
+  //    const formId = 
+  //    const data = await FormData.find(formId);
+  //    res.status(200).json({
+  //     "message":"",
+  //     data:data,
+  //     error: false
+  //    });
+  //  }
 
 
 
