@@ -40,6 +40,10 @@ const SettingsAppRoute: FuseRouteItemType = {
 		// 	path: 'security',
 		// 	element: <SecurityTab />
 		// },
+		// {
+		// 	path: 'agent-forms',
+		// 	element: <AgentFormsTab />
+		// },
 		{
 			path: 'notifications',
 			element: <NotificationsTab />
@@ -48,14 +52,10 @@ const SettingsAppRoute: FuseRouteItemType = {
 			path: 'team',
 			element: <TeamTab />
 		},
-		{
-			path: 'agent-forms',
-			element: <AgentFormsTab />
-		},
-		{
-			path: 'agent-form/:formId',
-			element: <AgentFormsDetails />
-		},
+		// {
+		// 	path: 'agent-form/:formId',
+		// 	element: <AgentFormsDetails />
+		// },
 		{
 			path: '',
 			element: <Navigate to="account" />

@@ -47,14 +47,14 @@ const SettingsAppNavigation: FuseNavItemType = {
 			url: '/apps/settings/policyholders',
 			subtitle: 'Upload unique IDs'
 		},
-		{
-			id: 'apps.settings.agent_froms',
-			icon: 'heroicons-outline:lock-closed',
-			title: 'Agent Forms',
-			type: 'item',
-			url: '/apps/settings/agent-forms',
-			subtitle: 'Manage agent forms'
-		},
+		// {
+		// 	id: 'apps.settings.agent_froms',
+		// 	icon: 'heroicons-outline:lock-closed',
+		// 	title: 'Agent Forms',
+		// 	type: 'item',
+		// 	url: '/apps/settings/agent-forms',
+		// 	subtitle: 'Manage agent forms'
+		// },
 		// {
 		// 	id: 'apps.settings.notifications',
 		// 	icon: 'heroicons-outline:bell',

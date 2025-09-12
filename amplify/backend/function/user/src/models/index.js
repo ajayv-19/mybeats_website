@@ -232,13 +232,28 @@ const FormData = sequelize.define(
       allowNull: true,
     },
 
+    insurance_company: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+
+    fire_department: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+
+    status: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+
     // created_at / updated_at will be handled by Sequelize
     created_at: {
       type: DataTypes.DATE,
     },
     updated_at: {
       type: DataTypes.DATE,
-    },
+    }
 
   },
   {

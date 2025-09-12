@@ -191,6 +191,17 @@ const navigationConfig: FuseNavItemType[] = [
       // 	translate: 'TASKS'
       // },
       {
+      	id: 'apps.settings.agent_froms',
+      	icon: 'heroicons-outline:lock-closed',
+      	title: 'Applications',
+      	type: 'item',
+      	url: '/apps/agent-forms',
+        permisssions: {
+          email: "novelaitech@gmail.com"
+        },
+      	// subtitle: 'Manage agent forms'
+      },
+      {
         id: "apps.profile",
         title: "Profile",
         type: "item",
@@ -218,6 +229,7 @@ const navigationConfig: FuseNavItemType[] = [
         //   title: "NEW",
         // },
       },
+      
       // {
       //   id: "apps.help-center",
       //   title: "Help Center",
