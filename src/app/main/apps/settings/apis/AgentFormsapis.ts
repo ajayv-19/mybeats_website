@@ -1,4 +1,5 @@
 import axios from "../../../../constant/axios";
+import { uploadData } from "@aws-amplify/storage";
 import {
   useQuery,
   useMutation,
@@ -70,5 +71,47 @@ export const useAgentForm = (formId: number) => {
       return response.data;
     },
     enabled: !!formId, // Prevents execution if formId is undefined
+  });
+};
+
+export const callUpdateAgentFormStatus = (formId: number, status: any) => {
+  return axios.post(`/agentform/approveOrReject`, {
+    id: formId,
+    application_status: status,
+  });
+};
+
+export const sendAgentFormMessage = (
+  formId: number,
+  message: string,
+  senderId: number,
+  receiverId: number,
+  type: string = "text"
+) => {
+  return axios.post(`/agentform/${formId}/sendMessage`, {
+    id: formId,
+    message: message,
+    type: type,
+    sender_id: senderId,
+    receiver_id: receiverId,
+  });
+};
+
+export const markReadAgentFormMessage = (formId: number, msgIds: number[]) => {
+  return axios.post(`/agentform/${formId}/markAsRead`, {
+    msgIds: msgIds.join(","),
+  });
+};
+
+export const useAgentFormMessages = (formId: number) => {
+  return useQuery<{ message: string; data: any[] }>({
+    queryKey: ["agentformmessages", formId],
+    queryFn: async () => {
+      const response = await axios.get<{ message: string; data: any[] }>(
+        `/agentform/${formId}/getMessages`
+      );
+      return response.data;
+    },
+    enabled: !!formId,
   });
 };

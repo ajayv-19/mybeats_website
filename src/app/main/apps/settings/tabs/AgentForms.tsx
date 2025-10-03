@@ -1,5 +1,8 @@
 import React, { useEffect, useState } from "react";
-import { useAgentForms } from "../apis/AgentFormsapis";
+import {
+  useAgentForms,
+  callUpdateAgentFormStatus,
+} from "../apis/AgentFormsapis";
 import {
   TableContainer,
   Table,
@@ -15,11 +18,17 @@ import {
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import { fetchAuthSession } from "@aws-amplify/auth";
+import AgentFormAnalyticsDialog from "./AgentFormAnalyticsDialog";
+import AgentFormChatBox from "./AgentFormChatBox";
+import AgentFormMessageDialog from "./AgentFormMessageDialog";
 
 // Icons
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 import InfoIcon from "@mui/icons-material/Info";
+import CheckIcon from "@mui/icons-material/Check";
+import CancelIcon from "@mui/icons-material/Cancel";
+import { toast } from "sonner";
 
 export default function AgentFormsTab() {
   const [state, setState] = useState({
@@ -29,6 +38,16 @@ export default function AgentFormsTab() {
     error: null,
     company_id: 496,
     user: null,
+    chatBox: {
+      open: false,
+      selectedForm: null,
+    },
+  });
+
+  // Analytics dialog state
+  const [analyticsDialog, setAnalyticsDialog] = useState({
+    open: false,
+    formData: null,
   });
 
   // Fetch user session on mount
@@ -63,6 +82,67 @@ export default function AgentFormsTab() {
       error: agentForms.error,
     }));
   }, [agentForms.data, agentForms.isLoading, agentForms.error]);
+
+  // Handler for opening analytics dialog
+  const handleOpenAnalytics = (formData: any) => {
+    setAnalyticsDialog({
+      open: true,
+      formData: formData,
+    });
+  };
+
+  // Handler for closing analytics dialog
+  const handleCloseAnalytics = () => {
+    setAnalyticsDialog({
+      open: false,
+      formData: null,
+    });
+  };
+
+  const handleUpdateAgentFormStatus = (formId: number, status: any) => {
+    callUpdateAgentFormStatus(formId, status).then((response) => {
+      console.log("Response from update agent form status", response);
+      if (response.status === 200) {
+        toast.success("Agent form status updated successfully");
+        // Refresh the data after successful update
+        agentForms.refetch();
+      } else {
+        toast.error("Failed to update agent form status");
+      }
+    });
+  };
+
+  // Handler for approve action
+  const handleApprove = (formId: number) => {
+    handleUpdateAgentFormStatus(formId, "Approved");
+  };
+
+  // Handler for reject action
+  const handleReject = (formId: number) => {
+    handleUpdateAgentFormStatus(formId, "Rejected");
+  };
+
+  // Handler for opening chat box
+  const handleOpenChatBox = (formData: any) => {
+    setState((prevState) => ({
+      ...prevState,
+      chatBox: {
+        open: true,
+        selectedForm: formData,
+      },
+    }));
+  };
+
+  // Handler for closing chat box
+  const handleCloseChatBox = () => {
+    setState((prevState) => ({
+      ...prevState,
+      chatBox: {
+        open: false,
+        selectedForm: null,
+      },
+    }));
+  };
 
   return (
     <div className="flex flex-col flex-1 p-24">
@@ -109,6 +189,11 @@ export default function AgentFormsTab() {
               <TableCell
                 style={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
               >
+                Approve
+              </TableCell>
+              <TableCell
+                style={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
+              >
                 Actions
               </TableCell>
             </TableRow>
@@ -116,7 +201,7 @@ export default function AgentFormsTab() {
           <TableBody>
             {state.loading ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={7} align="center">
                   Loading...
                 </TableCell>
               </TableRow>
@@ -129,22 +214,22 @@ export default function AgentFormsTab() {
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Chip
                         label={
-                          form.status === "Active"
-                            ? "Active"
-                            : form.status === "InActive"
-                              ? "InActive"
-                              : form.status === "Suspended"
-                                ? "Suspended"
+                          form.status === "Approved"
+                            ? "Approved"
+                            : form.status === "Rejected"
+                              ? "Rejected"
+                              : form.status === "Pending"
+                                ? "Pending"
                                 : "Unknown"
                         }
                         size="small"
                         color={
-                          form.status === "Active"
+                          form.status === "Approved"
                             ? "success"
-                            : form.status === "InActive"
-                              ? "default"
-                              : form.status === "Suspended"
-                                ? "error"
+                            : form.status === "Rejected"
+                              ? "error"
+                              : form.status === "Pending"
+                                ? "warning"
                                 : "default"
                         }
                         variant="outlined"
@@ -154,6 +239,53 @@ export default function AgentFormsTab() {
                   <TableCell>{form.updated_by || "-"}</TableCell>
                   <TableCell>
                     {new Date(form.created_at).toLocaleDateString()}
+                  </TableCell>
+                  <TableCell>
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      {["Pending", "Rejected"].includes(form.status) && (
+                        <>
+                          <Tooltip title="Approve">
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<CheckIcon />}
+                              onClick={() => handleApprove(form.id)}
+                              sx={{
+                                border: "none",
+                                minWidth: "auto",
+                                padding: "4px",
+                                color: "green",
+                                "&:hover": {
+                                  backgroundColor: "rgba(76, 175, 80, 0.1)",
+                                },
+                              }}
+                            />
+                          </Tooltip>
+                        </>
+                      )}
+
+                      {["Pending", "Approved"].includes(form.status) && (
+                        <>
+                          <Tooltip title="Reject">
+                            <Button
+                              size="small"
+                              variant="outlined"
+                              startIcon={<CancelIcon />}
+                              onClick={() => handleReject(form.id)}
+                              sx={{
+                                border: "none",
+                                minWidth: "auto",
+                                padding: "4px",
+                                color: "red",
+                                "&:hover": {
+                                  backgroundColor: "rgba(244, 67, 54, 0.1)",
+                                },
+                              }}
+                            />
+                          </Tooltip>
+                        </>
+                      )}
+                    </Stack>
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1} alignItems="center">
@@ -179,6 +311,7 @@ export default function AgentFormsTab() {
                           size="small"
                           variant="outlined"
                           startIcon={<AnalyticsIcon />}
+                          onClick={() => handleOpenAnalytics(form.data)}
                           sx={{
                             border: "none",
                             minWidth: "auto",
@@ -190,7 +323,10 @@ export default function AgentFormsTab() {
                         <Button
                           size="small"
                           variant="outlined"
-                          startIcon={<InfoIcon />}
+                          startIcon={
+                            <Chip label={form.unreads} icon={<InfoIcon />} />
+                          }
+                          onClick={() => handleOpenChatBox(form)}
                           sx={{
                             border: "none",
                             minWidth: "auto",
@@ -205,7 +341,7 @@ export default function AgentFormsTab() {
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={6}
+                  colSpan={7}
                   align="center"
                   style={{ color: "#999", fontSize: "1rem" }}
                 >
@@ -216,6 +352,27 @@ export default function AgentFormsTab() {
           </TableBody>
         </Table>
       </TableContainer>
+
+      {/* Analytics Dialog */}
+      <AgentFormAnalyticsDialog
+        open={analyticsDialog.open}
+        onClose={handleCloseAnalytics}
+        formData={analyticsDialog.formData}
+      />
+
+      {/* <AgentFormChatBox
+        open={state.chatBox.open}
+        onClose={handleCloseChatBox}
+        formData={state.chatBox.selectedForm}
+        loogedInUser={state.user}
+      ></AgentFormChatBox> */}
+
+      <AgentFormMessageDialog
+        open={state.chatBox.open}
+        onClose={handleCloseChatBox}
+        formData={state.chatBox.selectedForm}
+        loogedInUser={state.user}
+      ></AgentFormMessageDialog>
     </div>
   );
 }

@@ -4,6 +4,7 @@ class AgentController {
   setupRoutes(app) {
     app.post("/agentform/submit", (...args) => this.submitAgentForm(...args));
     app.post("/agentform/update", (...args) => this.updateAgentForm(...args));
+    app.post("/agentform/approveOrReject", (...args) => this.approveOrRejectAgentForm(...args));
     app.get("/agentforms", (...args) => this.getAgentForms(...args));
     app.get("/agentform/:formId", (...args) => this.getAgentFormById(...args));
   }
@@ -61,7 +62,7 @@ class AgentController {
       type: "agent_form",
       insurance_company: insurance_company || null,
       fire_department: fire_department || null,
-      status: status || "active",
+      status: status || "Pending",
       updated_by: updated_by || null
     });
     try {
@@ -114,6 +115,47 @@ class AgentController {
     } catch (error) {
       res.status(500).json({
         "message": "Error updating agent form",
+        "error": error.message
+      });
+    }
+  }
+
+  async approveOrRejectAgentForm(req, res) {
+    const { id, application_status } = req.body;
+    try {
+      // Map the application_status to the new status values
+      let newStatus;
+      if (application_status === "approve") {
+        newStatus = "Approved";
+      } else if (application_status === "reject") {
+        newStatus = "Rejected";
+      } else {
+        return res.status(400).json({
+          "message": "Invalid application_status. Must be 'approve' or 'reject'"
+        });
+      }
+
+      const result = await FormData.update(
+        { status: newStatus },
+        { where: { id: id, type: "agent_form" } }
+      );
+
+      if (result[0] === 0) {
+        return res.status(404).json({
+          "message": "Agent form not found"
+        });
+      }
+
+      res.status(200).json({
+        "message": `Agent form ${application_status === "approve" ? "approved" : "rejected"} successfully`,
+        "data": {
+          id: id,
+          status: newStatus
+        }
+      });
+    } catch (error) {
+      res.status(500).json({
+        "message": "Error updating agent form status",
         "error": error.message
       });
     }

@@ -25,7 +25,9 @@ export const useCompany = (company_id: number) => {
   return useQuery<CompanyResponse>({
     queryKey: ["company", company_id],
     queryFn: async () => {
-      const response = await axios.get<CompanyResponse>(`/company/${company_id}`);
+      const response = await axios.get<CompanyResponse>(
+        `/company/${company_id}`
+      );
       return response.data;
     },
     enabled: !!company_id, // Prevents execution if company_id is undefined
@@ -35,4 +37,4 @@ export const useCompany = (company_id: number) => {
 export const sendMembersEmail = async (email: string) => {
   //const response = await axios.get<CompanyResponse>(`/company/${company_id}`);
   return null;
-}
+};
