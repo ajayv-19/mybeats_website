@@ -1,17 +1,34 @@
 import React, { useState, useRef, useEffect } from "react";
-import IconButton from "@mui/material/IconButton";
-import CloseIcon from "@mui/icons-material/Close";
-import MinimizeIcon from "@mui/icons-material/Minimize";
-import ChatBubbleOutlineIcon from "@mui/icons-material/ChatBubbleOutline";
-import Badge from "@mui/material/Badge";
-import SendIcon from "@mui/icons-material/Send";
-import MarkEmailReadIcon from "@mui/icons-material/MarkEmailRead";
-import Paper from "@mui/material/Paper";
-import Button from "@mui/material/Button";
-import Dialog from "@mui/material/Dialog";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogActions from "@mui/material/DialogActions";
+import {
+  IconButton,
+  Badge,
+  Button,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogActions,
+  TextField,
+  Typography,
+  Box,
+  Avatar,
+  Chip,
+  Fade,
+  CircularProgress,
+  Tooltip,
+  Card,
+  CardContent,
+  CardActions,
+} from "@mui/material";
+import {
+  Close as CloseIcon,
+  ChatBubbleOutline as ChatBubbleOutlineIcon,
+  Send as SendIcon,
+  MarkEmailRead as MarkEmailReadIcon,
+  Person as PersonIcon,
+  SupportAgent as AgentIcon,
+  Visibility as VisibilityIcon,
+  Download as DownloadIcon,
+} from "@mui/icons-material";
 import { styled } from "@mui/material/styles";
 import {
   useAgentFormMessages,
@@ -19,6 +36,133 @@ import {
   markReadAgentFormMessage,
 } from "../apis/AgentFormsapis";
 import { toast } from "sonner";
+
+// Styled components for better UI
+const StyledDialog = styled(Dialog)(({ theme }) => ({
+  "& .MuiDialog-paper": {
+    borderRadius: 16,
+    minHeight: 500,
+    maxHeight: "90vh",
+    width: "100%",
+    [theme.breakpoints.up("sm")]: {
+      width: 500,
+    },
+  },
+}));
+
+const MessageBubble = styled(Box)<{ isUser: boolean }>(({ theme, isUser }) => ({
+  maxWidth: "70%",
+  padding: theme.spacing(1.5, 2),
+  borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+  backgroundColor: isUser
+    ? theme.palette.primary.main
+    : theme.palette.grey[100],
+  color: isUser
+    ? theme.palette.primary.contrastText
+    : theme.palette.text.primary,
+  marginBottom: theme.spacing(1),
+  wordWrap: "break-word",
+  position: "relative",
+  "&:hover": {
+    boxShadow: theme.shadows[2],
+  },
+}));
+
+const FileMessageCard = styled(Card)(({ theme }) => ({
+  maxWidth: "70%",
+  borderRadius: 12,
+  backgroundColor: theme.palette.background.paper,
+  border: `1px solid ${theme.palette.divider}`,
+  boxShadow: theme.shadows[1],
+  "&:hover": {
+    boxShadow: theme.shadows[3],
+  },
+}));
+
+const MessageTime = styled(Typography)(({ theme }) => ({
+  fontSize: "0.75rem",
+  opacity: 0.7,
+  marginTop: theme.spacing(0.5),
+  textAlign: "right",
+}));
+
+const EmptyState = styled(Box)(({ theme }) => ({
+  display: "flex",
+  flexDirection: "column",
+  alignItems: "center",
+  justifyContent: "center",
+  padding: theme.spacing(4),
+  textAlign: "center",
+  color: theme.palette.text.secondary,
+}));
+
+// Component to render different message types
+const RenderMessage = ({ msg, isUser }: { msg: any; isUser: boolean }) => {
+  if (msg.type === "file") {
+    return (
+      <FileMessageCard>
+        <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
+          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+            <Typography
+              variant="body2"
+              sx={{ fontWeight: 600, color: "success.main" }}
+            >
+              File uploaded
+            </Typography>
+          </Box>
+          <Typography
+            variant="body2"
+            sx={{ color: "text.secondary", mb: 2, wordBreak: "break-all" }}
+          >
+            {msg.text}
+          </Typography>
+          <CardActions sx={{ p: 0, gap: 1 }}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<VisibilityIcon />}
+              onClick={() => window.open(msg.text, "_blank")}
+              sx={{ textTransform: "none" }}
+            >
+              View
+            </Button>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<DownloadIcon />}
+              onClick={() => {
+                const link = document.createElement("a");
+                link.href = msg.text;
+                link.download = msg.text.split("/").pop() || "file";
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              }}
+              sx={{ textTransform: "none" }}
+            >
+              Download
+            </Button>
+          </CardActions>
+        </CardContent>
+      </FileMessageCard>
+    );
+  }
+
+  // Default text message
+  return (
+    <MessageBubble isUser={isUser}>
+      <Typography variant="body2" sx={{ lineHeight: 1.4 }}>
+        {msg.text}
+      </Typography>
+      <MessageTime>
+        {new Date(msg.time).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        })}
+      </MessageTime>
+    </MessageBubble>
+  );
+};
 
 const AgentFormMessageDialog = (props: AgentFormMessageDialogProps) => {
   const { open, onClose, formData, loogedInUser } = props;
@@ -35,8 +179,9 @@ const AgentFormMessageDialog = (props: AgentFormMessageDialogProps) => {
   >([]);
   const [input, setInput] = useState("");
   const [unread, setUnread] = useState(0);
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { data: formMessages } = useAgentFormMessages(formData?.id);
+  const { data: formMessages, isLoading } = useAgentFormMessages(formData?.id);
   const getUserId = () => loogedInUser?.tokens?.signInDetails?.loginId;
   const unreadCount = messages.filter(
     (row) => row.read == false && row.sender === "Agent"
@@ -44,6 +189,13 @@ const AgentFormMessageDialog = (props: AgentFormMessageDialogProps) => {
 
   useEffect(() => {
     setUnread(unreadCount);
+  }, [messages]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
 
   useEffect(() => {
@@ -74,35 +226,38 @@ const AgentFormMessageDialog = (props: AgentFormMessageDialogProps) => {
   }
 
   // Send message handler
-  const handleSend = () => {
-    if (input.trim() === "") return;
+  const handleSend = async () => {
+    if (input.trim() === "" || isSending) return;
 
-    sendAgentFormMessage(
-      formData?.id,
-      input,
-      getUserId(),
-      formData?.updated_by,
-      "text"
-    )
-      .then(({ data: response }) => {
-        let newMessage = response.data;
-        let msgObj = JSON.parse(newMessage.message);
-        setMessages((prev) => [
-          ...prev,
-          {
-            sender: "You",
-            text: msgObj.message,
-            time: newMessage.created_at,
-            read: false,
-            type: msgObj.type,
-            id: newMessage.id,
-          },
-        ]);
-        setInput("");
-      })
-      .catch((err) => {
-        toast.error(err.response.data.message);
-      });
+    setIsSending(true);
+    try {
+      const { data: response } = await sendAgentFormMessage(
+        formData?.id,
+        input,
+        getUserId(),
+        formData?.updated_by,
+        "text"
+      );
+
+      let newMessage = response.data;
+      let msgObj = JSON.parse(newMessage.message);
+      setMessages((prev) => [
+        ...prev,
+        {
+          sender: "You",
+          text: msgObj.message,
+          time: newMessage.created_at,
+          read: false,
+          type: msgObj.type,
+          id: newMessage.id,
+        },
+      ]);
+      setInput("");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message || "Failed to send message");
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleMarkRead = (formId: number, msg: any) => {
@@ -119,161 +274,217 @@ const AgentFormMessageDialog = (props: AgentFormMessageDialogProps) => {
       });
   };
 
-  console.log({ messages, formData, loogedInUser, open });
+  // Helper function to format time
+  const formatTime = (time: string) => {
+    if (!time) return "";
+    const now = new Date();
+    const msgDate = new Date(time);
+    const diff = Math.floor((now.getTime() - msgDate.getTime()) / 1000);
+
+    if (isNaN(diff)) return time;
+    if (diff < 60) return "just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)} min ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)} hr ago`;
+    if (diff < 604800)
+      return `${Math.floor(diff / 86400)} day${Math.floor(diff / 86400) > 1 ? "s" : ""} ago`;
+    return msgDate.toLocaleDateString();
+  };
 
   return (
-    <Dialog
+    <StyledDialog
       open={open}
       onClose={onClose}
-      maxWidth="xs"
+      maxWidth="sm"
       fullWidth
-      PaperProps={{
-        className: "!rounded-xl",
-        style: {
-          width: 370,
-          maxWidth: "95vw",
-        },
-      }}
+      TransitionComponent={Fade}
+      TransitionProps={{ timeout: 300 }}
     >
       {/* Header */}
-      <div className="bg-blue-700 text-white flex items-center justify-between px-4 py-2.5">
-        <div className="font-semibold text-base flex items-center">
-          <ChatBubbleOutlineIcon className="mr-2" />
-          Agent Form Chat |{" "}
-          {formData?.updated_by || "Form ID: " + formData?.id || `N/A`}
-        </div>
-        <div className="flex items-center space-x-1">
-          <IconButton
-            size="small"
-            onClick={() => onClose()}
-            sx={{ color: "#fff" }}
-            aria-label="Close"
-            className="hover:bg-blue-800"
-          >
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </div>
-      </div>
-      <DialogContent
-        dividers
+      <DialogTitle
         sx={{
-          padding: 0,
-          background: "#f3f4f6",
+          background: "linear-gradient(135deg, #1976d2 0%, #1565c0 100%)",
+          color: "white",
           display: "flex",
-          flexDirection: "column",
-          minHeight: 350,
-          maxHeight: 480,
+          alignItems: "center",
+          justifyContent: "space-between",
+          py: 2,
+          px: 3,
         }}
       >
-        <div
-          className="flex-1 bg-gray-100 px-3 pt-3 pb-0 overflow-y-auto flex flex-col"
-          style={{ minHeight: 300 }}
+        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+          <ChatBubbleOutlineIcon />
+          <Box>
+            <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+              Agent Form Chat
+            </Typography>
+            <Typography variant="body2" sx={{ opacity: 0.9 }}>
+              {formData?.updated_by || `Form ID: ${formData?.id}` || "N/A"}
+            </Typography>
+          </Box>
+        </Box>
+        <IconButton
+          onClick={onClose}
+          sx={{ color: "white" }}
+          aria-label="Close"
         >
-          <div className="mb-2 text-gray-500 text-xs">
-            <b>Form:</b> {formData?.name || "N/A"}
-          </div>
-          {messages.length === 0 ? (
-            <div className="text-gray-400 text-center mt-10">
-              No messages yet. Start the conversation!
-            </div>
+          <CloseIcon />
+        </IconButton>
+      </DialogTitle>
+
+      {/* Form Info */}
+      <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
+        <Chip
+          label={`Form: ${formData?.name || "N/A"}`}
+          size="small"
+          color="primary"
+          variant="outlined"
+        />
+      </Box>
+
+      {/* Messages Area */}
+      <DialogContent
+        sx={{
+          p: 0,
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 400,
+          maxHeight: 500,
+          overflow: "hidden",
+        }}
+      >
+        <Box
+          sx={{
+            flex: 1,
+            overflowY: "auto",
+            p: 2,
+            display: "flex",
+            flexDirection: "column",
+            gap: 1,
+          }}
+        >
+          {isLoading ? (
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                height: 200,
+              }}
+            >
+              <CircularProgress />
+            </Box>
+          ) : messages.length === 0 ? (
+            <EmptyState>
+              <ChatBubbleOutlineIcon
+                sx={{ fontSize: 48, mb: 2, opacity: 0.5 }}
+              />
+              <Typography variant="h6" gutterBottom>
+                No messages yet
+              </Typography>
+              <Typography variant="body2">
+                Start the conversation with the agent!
+              </Typography>
+            </EmptyState>
           ) : (
             messages.map((msg, idx) => (
-              <div
+              <Box
                 key={idx}
-                className={`flex ${msg.sender === "You" ? "flex-row-reverse" : "flex-row"} items-end mb-2`}
+                sx={{
+                  display: "flex",
+                  alignItems: "flex-end",
+                  justifyContent:
+                    msg.sender === "You" ? "flex-end" : "flex-start",
+                  gap: 1,
+                  mb: 1,
+                }}
               >
-                <div
-                  className={`${
-                    msg.sender === "You"
-                      ? "bg-blue-700 text-white ml-0 mr-2"
-                      : "bg-gray-200 text-gray-900 ml-2 mr-0"
-                  } rounded-2xl px-8 py-4 max-w-[70%] text-sm break-words`}
-                >
-                  {msg.text}
-                  <div className="text-[11px] text-gray-400 mt-1 text-right">
-                    {msg.time ? (
-                      <span>
-                        {(() => {
-                          const now = new Date();
-                          const msgDate = new Date(msg.time);
-                          const diff = Math.floor(
-                            (now.getTime() - msgDate.getTime()) / 1000
-                          );
-                          if (isNaN(diff)) return msg.time;
-                          if (diff < 60) return "just now";
-                          if (diff < 3600)
-                            return `${Math.floor(diff / 60)} min ago`;
-                          if (diff < 86400)
-                            return `${Math.floor(diff / 3600)} hr ago`;
-                          if (diff < 604800)
-                            return `${Math.floor(diff / 86400)} day${Math.floor(diff / 86400) > 1 ? "s" : ""} ago`;
-                          return msgDate.toLocaleDateString();
-                        })()}
-                      </span>
-                    ) : null}
-                  </div>
-                </div>
-                {/* Envelope icon for agent messages */}
-                {msg.sender === "Agent" && !msg.read && (
-                  <IconButton
-                    size="small"
-                    aria-label="Mark as read"
-                    sx={{ ml: 1, color: "#1976d2" }}
-                    onClick={() => {
-                      handleMarkRead(formData?.id, msg);
-                    }}
+                {msg.sender === "Agent" && (
+                  <Avatar
+                    sx={{ width: 32, height: 32, bgcolor: "secondary.main" }}
                   >
-                    <MarkEmailReadIcon />
-                  </IconButton>
+                    <AgentIcon fontSize="small" />
+                  </Avatar>
                 )}
-              </div>
+
+                <RenderMessage msg={msg} isUser={msg.sender === "You"} />
+
+                {msg.sender === "You" && (
+                  <Avatar
+                    sx={{ width: 32, height: 32, bgcolor: "primary.main" }}
+                  >
+                    <PersonIcon fontSize="small" />
+                  </Avatar>
+                )}
+
+                {/* Mark as read button for agent messages */}
+                {msg.sender === "Agent" && !msg.read && (
+                  <Tooltip title="Mark as read">
+                    <IconButton
+                      size="small"
+                      onClick={() => handleMarkRead(formData?.id, msg)}
+                      sx={{ color: "primary.main" }}
+                    >
+                      <MarkEmailReadIcon fontSize="small" />
+                    </IconButton>
+                  </Tooltip>
+                )}
+              </Box>
             ))
           )}
           <div ref={messagesEndRef} />
-        </div>
+        </Box>
       </DialogContent>
+
+      {/* Input Area */}
       <DialogActions
         sx={{
-          padding: "4px 16px",
-          borderTop: "1px solid #e5e7eb",
-          background: "#fff",
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
+          p: 2,
+          borderTop: 1,
+          borderColor: "divider",
+          gap: 1,
         }}
       >
-        <input
-          type="text"
-          className="flex-1 h-full bg-gray-100 rounded px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-200"
+        <TextField
+          fullWidth
           placeholder="Type your message..."
           value={input}
-          maxLength={500}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === "Enter") handleSend();
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              handleSend();
+            }
           }}
-          style={{ flex: 1 }}
+          disabled={isSending}
+          inputProps={{ maxLength: 500 }}
+          variant="outlined"
+          size="small"
+          helperText={`${input.length}/500 characters`}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: 2,
+            },
+            "& .MuiFormHelperText-root": {
+              textAlign: "right",
+              fontSize: "0.75rem",
+            },
+          }}
         />
         <Button
           variant="contained"
           color="primary"
-          endIcon={<SendIcon />}
           onClick={handleSend}
-          disabled={input.trim() === ""}
+          disabled={input.trim() === "" || isSending}
+          startIcon={isSending ? <CircularProgress size={16} /> : <SendIcon />}
           sx={{
-            minWidth: 0,
-            px: 2,
-            py: 1,
-            fontSize: "0.95rem",
-            borderRadius: "0.5rem",
-            textTransform: "none",
+            minWidth: 100,
+            borderRadius: 2,
           }}
-          className="!shadow-none"
         >
-          Send
+          {isSending ? "Sending..." : "Send"}
         </Button>
       </DialogActions>
-    </Dialog>
+    </StyledDialog>
   );
 };
 
