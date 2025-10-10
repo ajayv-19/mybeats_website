@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { useAgentForm } from "../apis/AgentFormsapis";
 import filedsMapping from "./_data/fileds_mapping";
 import axios from "axios";
+import Button from "@mui/material/Button";
 
 function MultiPageForm(props) {
   const { formsData, companyId, formId } = props;
@@ -84,9 +85,16 @@ export default function AgentFormsDetails() {
     <div className="flex flex-col flex-1">
       <div className="p-6 border-b">
         <h2 className="text-2xl font-bold">Agent Form Details</h2>
-        <p className="text-gray-600 mt-1">
+        {/* <p className="text-gray-600 mt-1">
           Form ID: {formId} | Company ID: {companyId}
-        </p>
+        </p> */}
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={() => window.history.back()}
+        >
+          Back
+        </Button>
       </div>
 
       <div className="flex-1">

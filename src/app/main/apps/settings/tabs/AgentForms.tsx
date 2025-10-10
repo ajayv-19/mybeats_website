@@ -28,6 +28,7 @@ import AnalyticsIcon from "@mui/icons-material/Analytics";
 import InfoIcon from "@mui/icons-material/Info";
 import CheckIcon from "@mui/icons-material/Check";
 import CancelIcon from "@mui/icons-material/Cancel";
+import MessageIcon from "@mui/icons-material/Message";
 import { toast } from "sonner";
 
 export default function AgentFormsTab() {
@@ -290,14 +291,11 @@ export default function AgentFormsTab() {
                   <TableCell>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Tooltip title="View Form">
-                        <Link
-                          to={`/apps/agent-forms/form/${form.id}`}
-                          target="__blank"
-                        >
+                        <Link to={`/apps/agent-forms/form/${form.id}`}>
                           <Button
                             size="small"
                             variant="outlined"
-                            startIcon={<VisibilityIcon />}
+                            startIcon={<VisibilityIcon color="primary" />}
                             sx={{
                               border: "none",
                               minWidth: "auto",
@@ -310,7 +308,7 @@ export default function AgentFormsTab() {
                         <Button
                           size="small"
                           variant="outlined"
-                          startIcon={<AnalyticsIcon />}
+                          startIcon={<AnalyticsIcon color="primary" />}
                           onClick={() => handleOpenAnalytics(form.data)}
                           sx={{
                             border: "none",
@@ -324,7 +322,21 @@ export default function AgentFormsTab() {
                           size="small"
                           variant="outlined"
                           startIcon={
-                            <Chip label={form.unreads} icon={<InfoIcon />} />
+                            <>
+                              <MessageIcon color="primary" />
+                              {form.unreads > 0 ? (
+                                <span
+                                  className="!text-xs rounded-full bg-blue-500 text-white px-2 py-1"
+                                  style={{
+                                    transform: "translateY(-10px)",
+                                  }}
+                                >
+                                  {form.unreads}
+                                </span>
+                              ) : (
+                                ""
+                              )}
+                            </>
                           }
                           onClick={() => handleOpenChatBox(form)}
                           sx={{

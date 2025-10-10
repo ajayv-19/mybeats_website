@@ -96,26 +96,51 @@ const EmptyState = styled(Box)(({ theme }) => ({
   color: theme.palette.text.secondary,
 }));
 
+const RenderFile = ({ data }: { data: string }) => {
+  const extension = data.split(".").pop();
+  const fileName = data.split("/").pop();
+  let previewComponent = null;
+  switch (extension) {
+    case "pdf":
+      previewComponent = (
+        <object
+          data={data}
+          type="application/pdf"
+          className="object-contain"
+          width={250}
+          height={200}
+        />
+      );
+      break;
+    default:
+      previewComponent = (
+        <img src={data} alt="file" className="w-full h-80 object-contain" />
+      );
+      break;
+  }
+
+  return (
+    <>
+      <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 600, color: "success.main" }}
+        >
+          {fileName}
+        </Typography>
+      </Box>
+      {previewComponent}
+    </>
+  );
+};
+
 // Component to render different message types
 const RenderMessage = ({ msg, isUser }: { msg: any; isUser: boolean }) => {
   if (msg.type === "file") {
     return (
       <FileMessageCard>
         <CardContent sx={{ p: 2, "&:last-child": { pb: 2 } }}>
-          <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-            <Typography
-              variant="body2"
-              sx={{ fontWeight: 600, color: "success.main" }}
-            >
-              File uploaded
-            </Typography>
-          </Box>
-          <Typography
-            variant="body2"
-            sx={{ color: "text.secondary", mb: 2, wordBreak: "break-all" }}
-          >
-            {msg.text}
-          </Typography>
+          <RenderFile data={msg.text} />
           <CardActions sx={{ p: 0, gap: 1 }}>
             <Button
               size="small"
@@ -126,7 +151,7 @@ const RenderMessage = ({ msg, isUser }: { msg: any; isUser: boolean }) => {
             >
               View
             </Button>
-            <Button
+            {/* <Button
               size="small"
               variant="outlined"
               startIcon={<DownloadIcon />}
@@ -141,7 +166,7 @@ const RenderMessage = ({ msg, isUser }: { msg: any; isUser: boolean }) => {
               sx={{ textTransform: "none" }}
             >
               Download
-            </Button>
+            </Button> */}
           </CardActions>
         </CardContent>
       </FileMessageCard>
@@ -315,7 +340,7 @@ const AgentFormMessageDialog = (props: AgentFormMessageDialogProps) => {
           <ChatBubbleOutlineIcon />
           <Box>
             <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
-              Agent Form Chat
+              Messages
             </Typography>
             <Typography variant="body2" sx={{ opacity: 0.9 }}>
               {formData?.updated_by || `Form ID: ${formData?.id}` || "N/A"}
