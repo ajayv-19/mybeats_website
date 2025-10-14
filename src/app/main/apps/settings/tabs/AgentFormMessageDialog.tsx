@@ -359,7 +359,7 @@ const AgentFormMessageDialog = (props: AgentFormMessageDialogProps) => {
       {/* Form Info */}
       <Box sx={{ px: 3, py: 2, borderBottom: 1, borderColor: "divider" }}>
         <Chip
-          label={`Form: ${formData?.name || "N/A"}`}
+          label={`Application Form: ${formData?.id || "N/A"}`}
           size="small"
           color="primary"
           variant="outlined"

@@ -84,7 +84,7 @@ export default function AgentFormsDetails() {
   return (
     <div className="flex flex-col flex-1">
       <div className="p-6 border-b">
-        <h2 className="text-2xl font-bold">Agent Form Details</h2>
+        <h2 className="text-2xl font-bold">Application Form</h2>
         {/* <p className="text-gray-600 mt-1">
           Form ID: {formId} | Company ID: {companyId}
         </p> */}
