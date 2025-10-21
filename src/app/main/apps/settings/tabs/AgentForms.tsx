@@ -15,6 +15,8 @@ import {
   Chip,
   Stack,
   Tooltip,
+  Switch,
+  FormControlLabel,
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import { fetchAuthSession } from "@aws-amplify/auth";
@@ -26,9 +28,9 @@ import AgentFormMessageDialog from "./AgentFormMessageDialog";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import AnalyticsIcon from "@mui/icons-material/Analytics";
 import InfoIcon from "@mui/icons-material/Info";
-import CheckIcon from "@mui/icons-material/Check";
-import CancelIcon from "@mui/icons-material/Cancel";
 import MessageIcon from "@mui/icons-material/Message";
+import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
+import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import { toast } from "sonner";
 
 export default function AgentFormsTab() {
@@ -49,6 +51,12 @@ export default function AgentFormsTab() {
   const [analyticsDialog, setAnalyticsDialog] = useState({
     open: false,
     formData: null,
+  });
+
+  // Sort state
+  const [sortConfig, setSortConfig] = useState({
+    key: "created_at",
+    direction: "desc", // 'asc' or 'desc'
   });
 
   // Fetch user session on mount
@@ -74,15 +82,32 @@ export default function AgentFormsTab() {
   // Fetch agent forms using the custom hook
   const agentForms = useAgentForms(state.company_id, 1);
 
+  // Sort function
+  const sortData = (data: any[], key: string, direction: string) => {
+    return [...data].sort((a, b) => {
+      if (key === "created_at") {
+        const dateA = new Date(a[key]);
+        const dateB = new Date(b[key]);
+        return direction === "asc"
+          ? dateA.getTime() - dateB.getTime()
+          : dateB.getTime() - dateA.getTime();
+      }
+      return 0;
+    });
+  };
+
   // Update state when agent forms data changes
   useEffect(() => {
+    const rawData = agentForms.data?.data || [];
+    const sortedData = sortData(rawData, sortConfig.key, sortConfig.direction);
+
     setState((prevState) => ({
       ...prevState,
       loading: agentForms.isLoading,
-      agentForms: agentForms.data?.data || [],
+      agentForms: sortedData,
       error: agentForms.error,
     }));
-  }, [agentForms.data, agentForms.isLoading, agentForms.error]);
+  }, [agentForms.data, agentForms.isLoading, agentForms.error, sortConfig]);
 
   // Handler for opening analytics dialog
   const handleOpenAnalytics = (formData: any) => {
@@ -113,16 +138,6 @@ export default function AgentFormsTab() {
     });
   };
 
-  // Handler for approve action
-  const handleApprove = (formId: number) => {
-    handleUpdateAgentFormStatus(formId, "Approved");
-  };
-
-  // Handler for reject action
-  const handleReject = (formId: number) => {
-    handleUpdateAgentFormStatus(formId, "Rejected");
-  };
-
   // Handler for opening chat box
   const handleOpenChatBox = (formData: any) => {
     setState((prevState) => ({
@@ -145,10 +160,23 @@ export default function AgentFormsTab() {
     }));
   };
 
+  // Handler for sorting
+  const handleSort = (key: string) => {
+    setSortConfig((prevConfig) => ({
+      key,
+      direction:
+        prevConfig.key === key && prevConfig.direction === "desc"
+          ? "asc"
+          : "desc",
+    }));
+  };
+
   return (
     <div className="flex flex-col flex-1 p-24">
-      <div className="flex justify-between items-center mb-16">
-        <h2 className="text-lg font-bold">Agent Forms</h2>
+      <div className="flex items-center mb-16 relative">
+        <h2 className="text-lg font-bold flex-1 text-center">
+          Application Forms
+        </h2>
       </div>
 
       <TableContainer
@@ -183,9 +211,23 @@ export default function AgentFormsTab() {
                 Updated By
               </TableCell>
               <TableCell
-                style={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
+                style={{
+                  fontWeight: "bold",
+                  backgroundColor: "#f5f5f5",
+                  cursor: "pointer",
+                  userSelect: "none",
+                }}
+                onClick={() => handleSort("created_at")}
               >
-                Submitted At
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <span>Submitted On</span>
+                  {sortConfig.key === "created_at" &&
+                    (sortConfig.direction === "desc" ? (
+                      <ArrowDownwardIcon fontSize="small" />
+                    ) : (
+                      <ArrowUpwardIcon fontSize="small" />
+                    ))}
+                </Stack>
               </TableCell>
               <TableCell
                 style={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
@@ -243,49 +285,51 @@ export default function AgentFormsTab() {
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1} alignItems="center">
-                      {["Pending", "Rejected"].includes(form.status) && (
-                        <>
-                          <Tooltip title="Approve">
-                            <Button
-                              size="small"
-                              variant="outlined"
-                              startIcon={<CheckIcon />}
-                              onClick={() => handleApprove(form.id)}
-                              sx={{
-                                border: "none",
-                                minWidth: "auto",
-                                padding: "4px",
-                                color: "green",
-                                "&:hover": {
-                                  backgroundColor: "rgba(76, 175, 80, 0.1)",
-                                },
+                      <Tooltip
+                        title={
+                          form.status === "Pending"
+                            ? "Click to approve"
+                            : form.status === "Approved"
+                              ? "Click to reject"
+                              : "Click to set pending"
+                        }
+                      >
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={form.status === "Approved"}
+                              onChange={(event) => {
+                                let newStatus;
+                                if (form.status === "Pending") {
+                                  newStatus = "Approved";
+                                } else if (form.status === "Approved") {
+                                  newStatus = "Rejected";
+                                } else {
+                                  newStatus = "Pending";
+                                }
+                                handleUpdateAgentFormStatus(form.id, newStatus);
                               }}
-                            />
-                          </Tooltip>
-                        </>
-                      )}
-
-                      {["Pending", "Approved"].includes(form.status) && (
-                        <>
-                          <Tooltip title="Reject">
-                            <Button
+                              color="success"
                               size="small"
-                              variant="outlined"
-                              startIcon={<CancelIcon />}
-                              onClick={() => handleReject(form.id)}
-                              sx={{
-                                border: "none",
-                                minWidth: "auto",
-                                padding: "4px",
-                                color: "red",
-                                "&:hover": {
-                                  backgroundColor: "rgba(244, 67, 54, 0.1)",
-                                },
-                              }}
                             />
-                          </Tooltip>
-                        </>
-                      )}
+                          }
+                          label={form.status}
+                          labelPlacement="end"
+                          sx={{
+                            margin: 0,
+                            "& .MuiFormControlLabel-label": {
+                              fontSize: "0.75rem",
+                              color:
+                                form.status === "Approved"
+                                  ? "green"
+                                  : form.status === "Rejected"
+                                    ? "red"
+                                    : "orange",
+                              fontWeight: "bold",
+                            },
+                          }}
+                        />
+                      </Tooltip>
                     </Stack>
                   </TableCell>
                   <TableCell>

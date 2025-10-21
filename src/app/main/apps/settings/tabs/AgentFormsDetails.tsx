@@ -84,17 +84,24 @@ export default function AgentFormsDetails() {
   return (
     <div className="flex flex-col flex-1">
       <div className="p-6 border-b">
-        <h2 className="text-2xl font-bold">Application Form</h2>
+        <div className="flex items-center justify-between">
+          <div className="flex-1"></div>
+          <h2 className="text-2xl font-bold text-center flex-1">
+            Application Form #{formId}
+          </h2>
+          <div className="flex-1 flex justify-end">
+            <Button
+              variant="contained"
+              color="primary"
+              onClick={() => window.history.back()}
+            >
+              Back
+            </Button>
+          </div>
+        </div>
         {/* <p className="text-gray-600 mt-1">
           Form ID: {formId} | Company ID: {companyId}
         </p> */}
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => window.history.back()}
-        >
-          Back
-        </Button>
       </div>
 
       <div className="flex-1">
