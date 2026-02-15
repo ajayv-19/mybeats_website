@@ -336,8 +336,9 @@ export default function AgentFormAnalyticsDialog({
 
       <DialogContent dividers sx={{ maxHeight: "90vh", overflow: "auto" }}>
         <Box sx={{ mb: 4 }}>
+          {/* OLD ANALYTICS SECTIONS - COMMENTED OUT FOR NOW */}
           {/* Coverage Summary */}
-          <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
+          {/* <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
             Coverage Requested
           </Typography>
           <Box sx={{ display: "flex", gap: 1, mb: 3 }}>
@@ -356,10 +357,10 @@ export default function AgentFormAnalyticsDialog({
                 variant="outlined"
               />
             )}
-          </Box>
+          </Box> */}
 
           {/* Key Metrics Grid */}
-          <Typography variant="h6" gutterBottom>
+          {/* <Typography variant="h6" gutterBottom>
             Key Metrics
           </Typography>
           <Grid container spacing={2} sx={{ mb: 4 }}>
@@ -413,10 +414,10 @@ export default function AgentFormAnalyticsDialog({
             </Grid>
           </Grid>
 
-          <Divider sx={{ my: 3 }} />
+          <Divider sx={{ my: 3 }} /> */}
 
           {/* Personnel Breakdown */}
-          <Typography variant="h6" gutterBottom>
+          {/* <Typography variant="h6" gutterBottom>
             Personnel Breakdown
           </Typography>
           <Grid container spacing={2} sx={{ mb: 4 }}>
@@ -504,10 +505,10 @@ export default function AgentFormAnalyticsDialog({
             </Grid>
           </Grid>
 
-          <Divider sx={{ my: 3 }} />
+          <Divider sx={{ my: 3 }} /> */}
 
           {/* Financial Analysis */}
-          <Typography variant="h6" gutterBottom>
+          {/* <Typography variant="h6" gutterBottom>
             Financial Analysis
           </Typography>
           <Grid container spacing={2} sx={{ mb: 4 }}>
@@ -549,10 +550,10 @@ export default function AgentFormAnalyticsDialog({
             </Grid>
           </Grid>
 
-          <Divider sx={{ my: 3 }} />
+          <Divider sx={{ my: 3 }} /> */}
 
           {/* Operations Analysis */}
-          <Typography variant="h6" gutterBottom>
+          {/* <Typography variant="h6" gutterBottom>
             Operations & Safety
           </Typography>
           <Grid container spacing={2} sx={{ mb: 4 }}>
@@ -632,10 +633,10 @@ export default function AgentFormAnalyticsDialog({
             </Grid>
           </Grid>
 
-          <Divider sx={{ my: 3 }} />
+          <Divider sx={{ my: 3 }} /> */}
 
           {/* Geographic & Coverage Analysis */}
-          <Typography variant="h6" gutterBottom>
+          {/* <Typography variant="h6" gutterBottom>
             Coverage & Geographic Analysis
           </Typography>
           <Grid container spacing={2}>
@@ -695,7 +696,7 @@ export default function AgentFormAnalyticsDialog({
             </Grid>
           </Grid>
 
-          <Divider sx={{ my: 4 }} />
+          <Divider sx={{ my: 4 }} /> */}
 
           {/* ========== WORKSHEET SECTION ========== */}
           <Typography variant="h5" gutterBottom sx={{ mt: 4, mb: 2 }}>

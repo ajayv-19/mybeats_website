@@ -202,6 +202,16 @@ const navigationConfig: FuseNavItemType[] = [
       	// subtitle: 'Manage agent forms'
       },
       {
+        id: 'apps.analysis',
+        icon: 'heroicons-outline:chart-bar',
+        title: 'Analysis',
+        type: 'item',
+        url: '/apps/analysis',
+        permisssions: {
+          email: "novelaitech@gmail.com"
+        },
+      },
+      {
         id: "apps.profile",
         title: "Profile",
         type: "item",

@@ -1,11 +1,11 @@
 const { Sequelize, DataTypes } = require("sequelize");
 
 const sequelize = new Sequelize(
-  "d4cndihsitnn9n", // Database name
+  "de4endh728bucn", // Database name
   "u7de1gksepndnt", // Username
-  "pc9cf448765b86e4e33da258b19cb59a9c52c61efcea2fa686a2cd24170ef2bd0", // Password
+  "p1c2333014360621da7529c12e4913683745a2a7fbbd989c81b27cdcd6ff192bb", // Password
   {
-    host: "c3gtj1dt5vh48j.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com",
+    host: "cc01ok1186700o.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com",
     dialect: "postgres",
     port: 5432,
     logging: false, // Optional: Disables logging of SQL queries to console
@@ -16,10 +16,11 @@ const sequelize = new Sequelize(
       },
     },
     pool: {
-      max: 10, // Max 10 connections
-      min: 2, // Keep 2 connections open
-      acquire: 30000, // Wait before throwing error
-      idle: 10000, // Close idle connections after 10 seconds
+      max: 1, // One connection per Lambda to avoid DB role connection limit
+      min: 0,
+      acquire: 30000,
+      idle: 3000, // Release idle connection quickly
+      evict: 1000,
     },
   }
   

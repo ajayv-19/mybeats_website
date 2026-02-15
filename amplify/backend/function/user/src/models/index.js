@@ -247,6 +247,25 @@ const FormData = sequelize.define(
       allowNull: true,
     },
 
+    application_status: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+
+    year: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+
+    fire_department_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "fire_departments",
+        key: "fire_department_id",
+      },
+    },
+
     // created_at / updated_at will be handled by Sequelize
     created_at: {
       type: DataTypes.DATE,
@@ -433,6 +452,589 @@ User.belongsTo(Company, { foreignKey: "company_id" });
 User.hasMany(UserInvites, { foreignKey: "invitedBy", as: "Invitations" });
 UserInvites.belongsTo(User, { foreignKey: "invitedBy", as: "Inviter" });
 
+// Fire Departments Model
+const FireDepartment = sequelize.define(
+  "FireDepartment",
+  {
+    fire_department_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    company_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "Subscribed_Companies",
+        key: "id",
+      },
+    },
+    fire_department_name: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    county: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    state: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    website: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "FireDepartment",
+    tableName: "fire_departments",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+  }
+);
+
+// Fire Department Profile Model
+const FireDepartmentProfile = sequelize.define(
+  "FireDepartmentProfile",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    fire_department_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "fire_departments",
+        key: "fire_department_id",
+      },
+    },
+    company_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "Subscribed_Companies",
+        key: "id",
+      },
+    },
+    population: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    square_miles: {
+      type: DataTypes.DECIMAL(10, 2),
+      allowNull: true,
+    },
+    fire_calls: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    ems_calls: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    motorized_racing_team: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    hs_officers: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    safety_committee: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    customer_since: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
+    renewal_date: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
+    valuation_date: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
+    agent: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    effective_from: {
+      type: DataTypes.DATEONLY,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    effective_to: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
+    updated_by: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "FireDepartmentProfile",
+    tableName: "fire_department_profile",
+    timestamps: false,
+    indexes: [
+      {
+        unique: true,
+        fields: ["fire_department_id", "company_id", "effective_from"],
+        name: "uq_fd_profile_effective",
+      },
+    ],
+  }
+);
+
+// Underwriting Model
+const Underwriting = sequelize.define(
+  "Underwriting",
+  {
+    uw_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    fire_department_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "fire_departments",
+        key: "fire_department_id",
+      },
+    },
+    company_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "Subscribed_Companies",
+        key: "id",
+      },
+    },
+    underwriting_year: {
+      type: DataTypes.STRING(9),
+      allowNull: false,
+    },
+    vfbl: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true,
+    },
+    wc: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true,
+    },
+    total_premium: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true,
+    },
+    losses: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true,
+    },
+    lae: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true,
+    },
+    total_loss_lae: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true,
+    },
+    loss_ratio: {
+      type: DataTypes.DECIMAL(10, 4),
+      allowNull: true,
+    },
+    points: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    number_of_claims: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    pr_factor: {
+      type: DataTypes.DECIMAL(10, 4),
+      allowNull: true,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "Underwriting",
+    tableName: "underwriting",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+    indexes: [
+      {
+        unique: true,
+        fields: ["fire_department_id", "underwriting_year"],
+        name: "uq_underwriting_fd_year",
+      },
+    ],
+  }
+);
+
+// Underwriting Results Model
+const UnderwritingResults = sequelize.define(
+  "UnderwritingResults",
+  {
+    uw_result_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    fire_department_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "fire_departments",
+        key: "fire_department_id",
+      },
+    },
+    underwriting_year: {
+      type: DataTypes.STRING(9),
+      allowNull: false,
+    },
+    loss_ratio_points: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    density_points: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    call_volume_points: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    frequency_factor_points: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    safety_points: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    hso_points: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    racing_penalty: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    adjustments: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    total_points: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    assigned_company_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "Subscribed_Companies",
+        key: "id",
+      },
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "UnderwritingResults",
+    tableName: "underwriting_results",
+    timestamps: false,
+    indexes: [
+      {
+        unique: true,
+        fields: ["fire_department_id", "underwriting_year"],
+        name: "uq_uw_results_fd_year",
+      },
+    ],
+  }
+);
+
+// Policies Model
+const Policy = sequelize.define(
+  "Policy",
+  {
+    policy_id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    fire_department_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "fire_departments",
+        key: "fire_department_id",
+      },
+    },
+    underwriting_year: {
+      type: DataTypes.STRING(9),
+      allowNull: false,
+    },
+    assigned_company_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "Subscribed_Companies",
+        key: "id",
+      },
+    },
+    policy_value: {
+      type: DataTypes.DECIMAL(12, 2),
+      allowNull: true,
+    },
+    policy_number: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    effective_date: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
+    expiry_date: {
+      type: DataTypes.DATEONLY,
+      allowNull: true,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "Policy",
+    tableName: "policies",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+    indexes: [
+      {
+        unique: true,
+        fields: ["fire_department_id", "underwriting_year"],
+        name: "uq_policy_fd_year",
+      },
+    ],
+  }
+);
+
+// Lookup Tables
+const LookupLossRatioPoints = sequelize.define(
+  "LookupLossRatioPoints",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    min_value: {
+      type: DataTypes.DECIMAL(10, 4),
+      allowNull: false,
+    },
+    max_value: {
+      type: DataTypes.DECIMAL(10, 4),
+      allowNull: false,
+    },
+    points: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize,
+    modelName: "LookupLossRatioPoints",
+    tableName: "lookup_loss_ratio_points",
+    timestamps: false,
+  }
+);
+
+const LookupDensityPoints = sequelize.define(
+  "LookupDensityPoints",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    min_value: {
+      type: DataTypes.DECIMAL(10, 4),
+      allowNull: false,
+    },
+    max_value: {
+      type: DataTypes.DECIMAL(10, 4),
+      allowNull: false,
+    },
+    points: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize,
+    modelName: "LookupDensityPoints",
+    tableName: "lookup_density_points",
+    timestamps: false,
+  }
+);
+
+const LookupCallVolumePoints = sequelize.define(
+  "LookupCallVolumePoints",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    min_value: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    max_value: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+    points: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize,
+    modelName: "LookupCallVolumePoints",
+    tableName: "lookup_call_volume_points",
+    timestamps: false,
+  }
+);
+
+const LookupFrequencyPoints = sequelize.define(
+  "LookupFrequencyPoints",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    min_value: {
+      type: DataTypes.DECIMAL(10, 4),
+      allowNull: false,
+    },
+    max_value: {
+      type: DataTypes.DECIMAL(10, 4),
+      allowNull: false,
+    },
+    points: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize,
+    modelName: "LookupFrequencyPoints",
+    tableName: "lookup_frequency_points",
+    timestamps: false,
+  }
+);
+
+const LookupPenalties = sequelize.define(
+  "LookupPenalties",
+  {
+    code: {
+      type: DataTypes.STRING(50),
+      primaryKey: true,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    points: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
+  },
+  {
+    sequelize,
+    modelName: "LookupPenalties",
+    tableName: "lookup_penalties",
+    timestamps: false,
+  }
+);
+
+// Define associations
+FireDepartment.belongsTo(Company, { foreignKey: "company_id", as: "company" });
+FireDepartment.hasMany(FireDepartmentProfile, {
+  foreignKey: "fire_department_id",
+  as: "profiles",
+});
+FireDepartment.hasMany(Underwriting, {
+  foreignKey: "fire_department_id",
+  as: "underwriting",
+});
+FireDepartment.hasMany(UnderwritingResults, {
+  foreignKey: "fire_department_id",
+  as: "results",
+});
+FireDepartment.hasMany(Policy, {
+  foreignKey: "fire_department_id",
+  as: "policies",
+});
+
+Underwriting.belongsTo(Company, { foreignKey: "company_id", as: "company" });
+UnderwritingResults.belongsTo(Company, {
+  foreignKey: "assigned_company_id",
+  as: "assignedCompany",
+});
+Policy.belongsTo(Company, {
+  foreignKey: "assigned_company_id",
+  as: "assignedCompany",
+});
+
 module.exports = {
   User,
   Company,
@@ -445,5 +1047,15 @@ module.exports = {
   sequelize,
   CustomerQueries,
   FormData,
+  FireDepartment,
+  FireDepartmentProfile,
+  Underwriting,
+  UnderwritingResults,
+  Policy,
+  LookupLossRatioPoints,
+  LookupDensityPoints,
+  LookupCallVolumePoints,
+  LookupFrequencyPoints,
+  LookupPenalties,
 };
 // Changed

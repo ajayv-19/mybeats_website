@@ -42,7 +42,7 @@ app.use(function (req, res, next) {
 
 const client = new Client({
   connectionString:
-    "postgres://u7de1gksepndnt:pc9cf448765b86e4e33da258b19cb59a9c52c61efcea2fa686a2cd24170ef2bd0@c3gtj1dt5vh48j.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/d4cndihsitnn9n",
+    "postgres://u7de1gksepndnt:p1c2333014360621da7529c12e4913683745a2a7fbbd989c81b27cdcd6ff192bb@cc01ok1186700o.cluster-czrs8kj4isg7.us-east-1.rds.amazonaws.com:5432/de4endh728bucn",
   ssl: {
     rejectUnauthorized: false,
   },

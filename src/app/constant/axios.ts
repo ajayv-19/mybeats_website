@@ -35,10 +35,15 @@ instance.interceptors.response.use(
                 // Redirect to login page or perform any other action
             }
 
-            // Extract and display the error message
-            const errorMessage = data?.error?.message|| "An unknown error occurred.";
+            // Extract and display the error message (API may use data.message or data.error.message)
+            const errorMessage = data?.message || data?.error?.message || "An unknown error occurred.";
             console.error("Error:", errorMessage);
-            toast.error(errorMessage);
+            // 400 = validation/business rule (e.g. duplicate approval) → show as warning notification
+            if (status === 400) {
+                toast.warning(errorMessage);
+            } else {
+                toast.error(errorMessage);
+            }
         } else {
             // Handle network or unknown errors
             toast.error("A network error occurred. Please try again.");

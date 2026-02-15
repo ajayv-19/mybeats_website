@@ -17,21 +17,85 @@ import {
   Tooltip,
   Switch,
   FormControlLabel,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Typography,
+  Box,
+  CircularProgress,
+  InputAdornment,
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import { fetchAuthSession } from "@aws-amplify/auth";
-import AgentFormAnalyticsDialog from "./AgentFormAnalyticsDialog";
 import AgentFormChatBox from "./AgentFormChatBox";
 import AgentFormMessageDialog from "./AgentFormMessageDialog";
 
 // Icons
 import VisibilityIcon from "@mui/icons-material/Visibility";
-import AnalyticsIcon from "@mui/icons-material/Analytics";
 import InfoIcon from "@mui/icons-material/Info";
 import MessageIcon from "@mui/icons-material/Message";
+import EditIcon from "@mui/icons-material/Edit";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
+import WarningIcon from "@mui/icons-material/Warning";
 import { toast } from "sonner";
+import axios from "../../../../constant/axios";
+import { useUpdateCarrierInput } from "../apis/UnderwritingApis";
+
+// Component to show incomplete indicator
+function IncompleteIndicator({ formId, status, refreshKey }: { formId: number; status: string; refreshKey?: number }) {
+  const [isIncomplete, setIsIncomplete] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Only check for approved applications
+    if (status !== "Approved") {
+      setLoading(false);
+      return;
+    }
+
+    // Get fire department ID and check underwriting completeness
+    axios
+      .get(`/agentform/${formId}/fire-department-id`)
+      .then((response) => {
+        const fireDepartmentId = response.data.data.fire_department_id;
+        // Check if current year has losses/lae
+        return axios.get(`/underwriting/${fireDepartmentId}/history`);
+      })
+      .then((response) => {
+        const rows = response.data.data || [];
+        const currentYear = new Date().getFullYear();
+        const currentYearStr = `${currentYear}-${currentYear + 1}`;
+        const currentRow = rows.find((r: any) => r.underwriting_year === currentYearStr);
+        
+        // Incomplete if losses or lae are missing for current year
+        const incomplete = !currentRow || 
+          currentRow.losses === null || 
+          currentRow.losses === undefined ||
+          currentRow.lae === null || 
+          currentRow.lae === undefined;
+        
+        setIsIncomplete(incomplete);
+        setLoading(false);
+      })
+      .catch((error) => {
+        console.error("Error checking completeness:", error);
+        setLoading(false);
+      });
+  }, [formId, status, refreshKey]);
+
+  if (loading || !isIncomplete) {
+    return null;
+  }
+
+  return (
+    <Tooltip title="Incomplete: Missing Losses/LAE for current year">
+      <WarningIcon sx={{ color: "error.main", fontSize: 20 }} />
+    </Tooltip>
+  );
+}
 
 export default function AgentFormsTab() {
   const [state, setState] = useState({
@@ -47,10 +111,15 @@ export default function AgentFormsTab() {
     },
   });
 
-  // Analytics dialog state
-  const [analyticsDialog, setAnalyticsDialog] = useState({
+  // Losses/LAE input dialog state
+  const [lossesLaeDialog, setLossesLaeDialog] = useState({
     open: false,
-    formData: null,
+    form: null,
+    fireDepartmentId: null,
+    currentYear: "",
+    losses: "",
+    lae: "",
+    loading: false,
   });
 
   // Sort state
@@ -58,6 +127,9 @@ export default function AgentFormsTab() {
     key: "created_at",
     direction: "desc", // 'asc' or 'desc'
   });
+
+  // Increment after saving Losses/LAE so incomplete indicators re-check
+  const [underwritingRefreshKey, setUnderwritingRefreshKey] = useState(0);
 
   // Fetch user session on mount
   useEffect(() => {
@@ -109,33 +181,108 @@ export default function AgentFormsTab() {
     }));
   }, [agentForms.data, agentForms.isLoading, agentForms.error, sortConfig]);
 
-  // Handler for opening analytics dialog
-  const handleOpenAnalytics = (formData: any) => {
-    setAnalyticsDialog({
-      open: true,
-      formData: formData,
+  // Handler for opening Losses/LAE dialog
+  const handleOpenLossesLaeDialog = async (form: any) => {
+    try {
+      // Get fire department ID
+      const fdResponse = await axios.get(`/agentform/${form.id}/fire-department-id`);
+      const fireDepartmentId = fdResponse.data.data.fire_department_id;
+      
+      // Get current year
+      const currentYear = new Date().getFullYear();
+      const currentYearStr = `${currentYear}-${currentYear + 1}`;
+      
+      // Get current underwriting data for this year
+      let currentLosses = "";
+      let currentLae = "";
+      try {
+        const uwResponse = await axios.get(`/underwriting/${fireDepartmentId}/history`);
+        const currentRow = uwResponse.data.data.find(
+          (row: any) => row.underwriting_year === currentYearStr
+        );
+        if (currentRow) {
+          currentLosses = currentRow.losses || "";
+          currentLae = currentRow.lae || "";
+        }
+      } catch (err) {
+        console.error("Error fetching current underwriting:", err);
+      }
+      
+      setLossesLaeDialog({
+        open: true,
+        form: form,
+        fireDepartmentId: fireDepartmentId,
+        currentYear: currentYearStr,
+        losses: currentLosses,
+        lae: currentLae,
+        loading: false,
+      });
+    } catch (error: any) {
+      console.error("Error opening Losses/LAE dialog:", error);
+      toast.error(
+        error?.response?.data?.message || "Failed to load fire department information"
+      );
+    }
+  };
+
+  // Handler for closing Losses/LAE dialog
+  const handleCloseLossesLaeDialog = () => {
+    setLossesLaeDialog({
+      open: false,
+      form: null,
+      fireDepartmentId: null,
+      currentYear: "",
+      losses: "",
+      lae: "",
+      loading: false,
     });
   };
 
-  // Handler for closing analytics dialog
-  const handleCloseAnalytics = () => {
-    setAnalyticsDialog({
-      open: false,
-      formData: null,
-    });
+  // Handler for saving Losses/LAE
+  const handleSaveLossesLae = async () => {
+    if (!lossesLaeDialog.fireDepartmentId || !lossesLaeDialog.currentYear) {
+      toast.error("Missing required information");
+      return;
+    }
+
+    setLossesLaeDialog((prev) => ({ ...prev, loading: true }));
+
+    try {
+      await axios.put(
+        `/underwriting/${lossesLaeDialog.fireDepartmentId}/${lossesLaeDialog.currentYear}/carrier-input`,
+        {
+          losses: lossesLaeDialog.losses ? parseFloat(lossesLaeDialog.losses) : null,
+          lae: lossesLaeDialog.lae ? parseFloat(lossesLaeDialog.lae) : null,
+        }
+      );
+
+      toast.success("Losses and LAE saved. Total Loss/LAE and Loss Ratio updated.");
+      agentForms.refetch();
+      setUnderwritingRefreshKey((k) => k + 1);
+      handleCloseLossesLaeDialog();
+    } catch (error: any) {
+      console.error("Error saving Losses/LAE:", error);
+      toast.error(
+        error?.response?.data?.message || "Failed to save Losses and LAE"
+      );
+    } finally {
+      setLossesLaeDialog((prev) => ({ ...prev, loading: false }));
+    }
   };
 
   const handleUpdateAgentFormStatus = (formId: number, status: any) => {
-    callUpdateAgentFormStatus(formId, status).then((response) => {
-      console.log("Response from update agent form status", response);
-      if (response.status === 200) {
-        toast.success("Agent form status updated successfully");
-        // Refresh the data after successful update
-        agentForms.refetch();
-      } else {
-        toast.error("Failed to update agent form status");
-      }
-    });
+    callUpdateAgentFormStatus(formId, status)
+      .then((response) => {
+        if (response.status === 200) {
+          toast.success("Agent form status updated successfully");
+          agentForms.refetch();
+        } else {
+          toast.warning(response.data?.message || "Failed to update agent form status");
+        }
+      })
+      .catch(() => {
+        // Error toast/warning is shown by axios interceptor (400 → warning, others → error)
+      });
   };
 
   // Handler for opening chat box
@@ -334,6 +481,7 @@ export default function AgentFormsTab() {
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1} alignItems="center">
+                      <IncompleteIndicator formId={form.id} status={form.status} refreshKey={underwritingRefreshKey} />
                       <Tooltip title="View Form">
                         <Link to={`/apps/agent-forms/form/${form.id}`}>
                           <Button
@@ -348,12 +496,12 @@ export default function AgentFormsTab() {
                           />
                         </Link>
                       </Tooltip>
-                      <Tooltip title="View Analytics">
+                      <Tooltip title="Enter Losses/LAE">
                         <Button
                           size="small"
                           variant="outlined"
-                          startIcon={<AnalyticsIcon color="primary" />}
-                          onClick={() => handleOpenAnalytics(form.data)}
+                          startIcon={<EditIcon color="primary" />}
+                          onClick={() => handleOpenLossesLaeDialog(form)}
                           sx={{
                             border: "none",
                             minWidth: "auto",
@@ -409,12 +557,78 @@ export default function AgentFormsTab() {
         </Table>
       </TableContainer>
 
-      {/* Analytics Dialog */}
-      <AgentFormAnalyticsDialog
-        open={analyticsDialog.open}
-        onClose={handleCloseAnalytics}
-        formData={analyticsDialog.formData}
-      />
+      {/* Losses/LAE Input Dialog */}
+      <Dialog
+        open={lossesLaeDialog.open}
+        onClose={handleCloseLossesLaeDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Typography variant="h6">
+            Enter Losses and LAE
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {lossesLaeDialog.form?.fire_department || "Fire Department"} - {lossesLaeDialog.currentYear}
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Losses"
+              type="number"
+              value={lossesLaeDialog.losses}
+              onChange={(e) =>
+                setLossesLaeDialog((prev) => ({
+                  ...prev,
+                  losses: e.target.value,
+                }))
+              }
+              margin="normal"
+              InputProps={{
+                startAdornment: <InputAdornment position="start">$</InputAdornment>,
+              }}
+              helperText="Enter total losses for this year"
+            />
+            <TextField
+              fullWidth
+              label="LAE (Loss Adjustment Expense)"
+              type="number"
+              value={lossesLaeDialog.lae}
+              onChange={(e) =>
+                setLossesLaeDialog((prev) => ({
+                  ...prev,
+                  lae: e.target.value,
+                }))
+              }
+              margin="normal"
+              InputProps={{
+                startAdornment: <InputAdornment position="start">$</InputAdornment>,
+              }}
+              helperText="Enter LAE for this year"
+            />
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+              <strong>Note:</strong> These values are for the current underwriting year ({lossesLaeDialog.currentYear}).
+              Total Loss/LAE and Loss Ratio will be calculated automatically.
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseLossesLaeDialog} disabled={lossesLaeDialog.loading}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveLossesLae}
+            variant="contained"
+            color="primary"
+            disabled={lossesLaeDialog.loading}
+            startIcon={lossesLaeDialog.loading ? <CircularProgress size={16} /> : null}
+          >
+            {lossesLaeDialog.loading ? "Saving..." : "Save"}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* <AgentFormChatBox
         open={state.chatBox.open}
@@ -429,6 +643,79 @@ export default function AgentFormsTab() {
         formData={state.chatBox.selectedForm}
         loogedInUser={state.user}
       ></AgentFormMessageDialog>
+
+      {/* Losses/LAE Input Dialog */}
+      <Dialog
+        open={lossesLaeDialog.open}
+        onClose={handleCloseLossesLaeDialog}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogTitle>
+          <Typography variant="h6">
+            Enter Losses and LAE
+          </Typography>
+          <Typography variant="body2" color="text.secondary">
+            {lossesLaeDialog.form?.fire_department || "Fire Department"} - {lossesLaeDialog.currentYear}
+          </Typography>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <TextField
+              fullWidth
+              label="Losses"
+              type="number"
+              value={lossesLaeDialog.losses}
+              onChange={(e) =>
+                setLossesLaeDialog((prev) => ({
+                  ...prev,
+                  losses: e.target.value,
+                }))
+              }
+              margin="normal"
+              InputProps={{
+                startAdornment: <InputAdornment position="start">$</InputAdornment>,
+              }}
+              helperText="Enter total losses for this year"
+            />
+            <TextField
+              fullWidth
+              label="LAE (Loss Adjustment Expense)"
+              type="number"
+              value={lossesLaeDialog.lae}
+              onChange={(e) =>
+                setLossesLaeDialog((prev) => ({
+                  ...prev,
+                  lae: e.target.value,
+                }))
+              }
+              margin="normal"
+              InputProps={{
+                startAdornment: <InputAdornment position="start">$</InputAdornment>,
+              }}
+              helperText="Enter LAE for this year"
+            />
+            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+              <strong>Note:</strong> These values are for the current underwriting year ({lossesLaeDialog.currentYear}).
+              Total Loss/LAE and Loss Ratio will be calculated automatically.
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseLossesLaeDialog} disabled={lossesLaeDialog.loading}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSaveLossesLae}
+            variant="contained"
+            color="primary"
+            disabled={lossesLaeDialog.loading}
+            startIcon={lossesLaeDialog.loading ? <CircularProgress size={16} /> : null}
+          >
+            {lossesLaeDialog.loading ? "Saving..." : "Save"}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }
