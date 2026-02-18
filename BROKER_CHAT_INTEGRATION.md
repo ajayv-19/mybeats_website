@@ -18,6 +18,7 @@ The carrier portal includes a messaging/chat feature that allows communication b
 ## API Endpoints
 
 ### Base URL
+
 Use the `carrierApiBase` parameter passed in the iframe URL (same as form data API).
 
 ### 1. Get Messages for a Form
@@ -27,9 +28,11 @@ Use the `carrierApiBase` parameter passed in the iframe URL (same as form data A
 **Description:** Retrieves all messages for a specific form.
 
 **Parameters:**
+
 - `formId` (path parameter): The form ID
 
 **Response:**
+
 ```json
 {
   "message": "Messages retrieved successfully",
@@ -65,6 +68,7 @@ Use the `carrierApiBase` parameter passed in the iframe URL (same as form data A
 ```
 
 **Message Format:**
+
 - The `message` field is a JSON object (not a string)
 - For text messages: `{"message": "text content", "type": "text"}`
 - For file uploads: `{"message": "https://...", "type": "file"}`
@@ -78,6 +82,7 @@ Use the `carrierApiBase` parameter passed in the iframe URL (same as form data A
 **Description:** Sends a text message for a form.
 
 **Request Body:**
+
 ```json
 {
   "message": "Hello, I need your certificate",
@@ -88,6 +93,7 @@ Use the `carrierApiBase` parameter passed in the iframe URL (same as form data A
 ```
 
 **Parameters:**
+
 - `formId` (path parameter): The form ID
 - `message` (body): The message text content
 - `type` (body): Message type - "text" for text messages
@@ -95,6 +101,7 @@ Use the `carrierApiBase` parameter passed in the iframe URL (same as form data A
 - `receiver_id` (body): Email address of the receiver
 
 **Response:**
+
 ```json
 {
   "message": "Message sent successfully",
@@ -125,16 +132,19 @@ Use the `carrierApiBase` parameter passed in the iframe URL (same as form data A
 **Request Format:** `multipart/form-data`
 
 **Form Fields:**
+
 - `file`: The document file (PDF, Word, Excel, Images, Text files)
 - `sender_id`: Email address of the sender
 - `receiver_id`: Email address of the receiver
 
 **File Requirements:**
+
 - **Allowed Types:** PDF, Word (.doc, .docx), Excel (.xls, .xlsx), Images (JPEG, PNG, GIF), Text files
 - **Max Size:** 50 MB
 - **Storage:** Files are uploaded to S3 bucket `brokerassets2` and stored at `uploads/{timestamp}-{filename}`
 
 **Response:**
+
 ```json
 {
   "message": "Document uploaded and message created successfully",
@@ -165,6 +175,7 @@ Use the `carrierApiBase` parameter passed in the iframe URL (same as form data A
 **Description:** Marks one or more messages as read.
 
 **Request Body:**
+
 ```json
 {
   "msgIds": "123,124,125"
@@ -172,10 +183,12 @@ Use the `carrierApiBase` parameter passed in the iframe URL (same as form data A
 ```
 
 **Parameters:**
+
 - `formId` (path parameter): The form ID
 - `msgIds` (body): Comma-separated string of message IDs to mark as read
 
 **Response:**
+
 ```json
 {
   "message": "Messages marked as read successfully",
@@ -206,7 +219,7 @@ Use the `carrierApiBase` parameter passed in the iframe URL (same as form data A
 ### 3. Message Type Handling
 
 - **Text Messages:** Display the message text directly
-- **File Messages:** 
+- **File Messages:**
   - Display as a clickable link or download button
   - Show file name if available
   - Open/download the file from the S3 URL
@@ -218,17 +231,17 @@ The `message` field in the API response is a JSON object. Handle it as follows:
 ```javascript
 // Example JavaScript/TypeScript
 let msgObj;
-if (typeof message.message === 'string') {
+if (typeof message.message === "string") {
   // If it's a string, parse it
   msgObj = JSON.parse(message.message);
-} else if (typeof message.message === 'object') {
+} else if (typeof message.message === "object") {
   // If it's already an object, use it directly
   msgObj = message.message;
 }
 
 // Access message content
 const messageText = msgObj.message; // "Hello" or "https://..."
-const messageType = msgObj.type;    // "text" or "file"
+const messageType = msgObj.type; // "text" or "file"
 ```
 
 ### 5. Real-time Updates (Optional)
@@ -294,6 +307,7 @@ const messageType = msgObj.type;    // "text" or "file"
 ## Testing
 
 Test the following scenarios:
+
 1. Send text message successfully
 2. Upload document successfully
 3. Retrieve messages for a form

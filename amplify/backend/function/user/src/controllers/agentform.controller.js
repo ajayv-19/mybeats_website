@@ -38,7 +38,7 @@ class AgentController {
     while (retries < maxRetries) {
       try {
         console.log(`[getAgentFormById] Fetching form with ID: ${parsedFormId}, attempt ${retries + 1}`);
-        
+
         const result = await FormData.findOne({
           where: { id: parsedFormId }
         });
@@ -59,7 +59,7 @@ class AgentController {
       } catch (error) {
         console.error(`[getAgentFormById] Error on attempt ${retries + 1}:`, error);
         console.error(`[getAgentFormById] Error stack:`, error.stack);
-        
+
         // Check if it's a connection error
         if (error.message && (
           error.message.includes('too many connections') ||
@@ -182,7 +182,7 @@ class AgentController {
   async approveOrRejectAgentForm(req, res) {
     const { id, application_status } = req.body;
     const updatedBy = req.user?.email || req.user?.username || "system"; // Get user from auth context
-    
+
     try {
       // Map the application_status to the new status values
       // Frontend sends "Approved" | "Rejected" | "Pending"; also accept "approve" | "reject"
@@ -230,7 +230,7 @@ class AgentController {
               Object.assign(flattenedData, section.data);
             }
           });
-          
+
           if (flattenedData.effective_date) {
             const date = new Date(flattenedData.effective_date);
             const year = date.getFullYear();
@@ -367,7 +367,7 @@ class AgentController {
   async getFireDepartments(req, res) {
     try {
       let { company_id, editFormId, form_id } = req.query;
-      
+
       // If company_id not provided, try to get it from editFormId (broker forms use this)
       if (!company_id && editFormId) {
         try {
@@ -380,7 +380,7 @@ class AgentController {
           console.warn(`[getFireDepartments] Could not extract company_id from editFormId ${editFormId}:`, formError.message);
         }
       }
-      
+
       // If company_id still not provided, try to get it from form_id (alternative parameter name)
       if (!company_id && form_id) {
         try {
@@ -393,7 +393,7 @@ class AgentController {
           console.warn(`[getFireDepartments] Could not extract company_id from form_id ${form_id}:`, formError.message);
         }
       }
-      
+
       // If still no company_id, return error
       if (!company_id) {
         return res.status(400).json({
@@ -508,7 +508,7 @@ class AgentController {
 
       // Ensure message is properly serialized for JSON response
       const messageResponse = newMessage.toJSON();
-      
+
       res.status(200).json({
         message: "Message sent successfully",
         data: messageResponse,

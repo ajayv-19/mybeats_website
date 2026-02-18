@@ -8,13 +8,13 @@ The carrier portal embeds broker forms in an iframe: `form.html` for initial app
 
 ## URL Parameters the Carrier Sends
 
-| Parameter | Purpose |
-|-----------|--------|
-| `company_id` | Company ID (e.g. 496) |
-| `editFormId` | Form ID to load (e.g. 501) |
-| `isReadOnly` | `"true"` = form is read-only |
-| `isHideButtons` | `"true"` = only Previous and Next should work (see below) |
-| `carrierApiBase` | URL-encoded API base URL for fetching form data |
+| Parameter        | Purpose                                                   |
+| ---------------- | --------------------------------------------------------- |
+| `company_id`     | Company ID (e.g. 496)                                     |
+| `editFormId`     | Form ID to load (e.g. 501)                                |
+| `isReadOnly`     | `"true"` = form is read-only                              |
+| `isHideButtons`  | `"true"` = only Previous and Next should work (see below) |
+| `carrierApiBase` | URL-encoded API base URL for fetching form data           |
 
 Example path: `agent_forms/{companyId}/form.html` or `agent_forms/{companyId}/renewal.html` with the above query params.
 
