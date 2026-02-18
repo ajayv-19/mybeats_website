@@ -73,6 +73,30 @@ AnalysisController.setupRoutes(router);
 // Use router for other paths
 app.use(API_PREFIX, router);
 
+// 404 handler for routes that don't exist
+app.use((req, res) => {
+  console.error(`[404] Route not found: ${req.method} ${req.path}`);
+  res.status(404).json({
+    message: "Route not found",
+    path: req.path,
+    method: req.method,
+  });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error("[Global Error Handler]", err);
+  console.error("[Global Error Handler] Stack:", err.stack);
+  console.error("[Global Error Handler] Path:", req.path);
+  console.error("[Global Error Handler] Method:", req.method);
+  
+  res.status(err.status || 500).json({
+    message: err.message || "Internal server error",
+    error: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    path: req.path,
+  });
+});
+
 // Start the server
 const PORT = 3000;
 app.listen(PORT, () => {

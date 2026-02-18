@@ -36,7 +36,8 @@ const validateUser = async (req, res) => {
     });
   } catch (error) {
     console.error("Authorization failed:", error);
-    res.status(401).json({ message: "Unauthorized" });
+    res.status(401).json({ message: "Unauthorized", error: error.message });
+    return null; // Return null to indicate failure
   }
 };
 
@@ -52,22 +53,53 @@ const conditionalAuthMiddleware = async (req, res, next) => {
     `${API_PREFIX}/agentform/submit`,
     `${API_PREFIX}/agentform/update`
   ];
-  console.log({ currentPath: req.path, bypassRoutes });
-  if (bypassRoutes.includes(req.path)) {
-    // Skip AWS Serverless Middleware for these routes
+  
+  // Allow broker forms to fetch form data without auth (read-only GET requests)
+  // Broker forms are embedded in iframes and don't have access to carrier auth tokens
+  const isBrokerFormReadRequest = 
+    req.method === 'GET' && 
+    req.path.match(new RegExp(`^${API_PREFIX}/agentform/\\d+$`)); // Matches /backendapi/agentform/:formId
+  
+  // Allow broker forms to fetch fire departments list without auth (read-only GET requests)
+  const isFireDepartmentsReadRequest = 
+    req.method === 'GET' && 
+    req.path === `${API_PREFIX}/fire-departments`; // Matches /backendapi/fire-departments
+  
+  console.log({ currentPath: req.path, method: req.method, bypassRoutes, isBrokerFormReadRequest, isFireDepartmentsReadRequest });
+  
+  if (bypassRoutes.includes(req.path) || isBrokerFormReadRequest || isFireDepartmentsReadRequest) {
+    // Skip authentication for these routes
     return next();
   }
-  const cuser = await validateUser(req, res, next);
-  cuser.username = cuser.username || cuser["cognito:username"];
-  const user = await User.findOne({ where: { username: cuser.username } });
-  const hasUser = !!user || !!cuser;
-  console.log({ user, cuser, hasUser });
-  if (hasUser) {
-    req.isAuthenticated = true;
-    req.user = user;
-    req.cognitoUser = cuser;
-  } else return res.status(401).json({ message: "Unauthorized" });
-  next();
+  
+  try {
+    const cuser = await validateUser(req, res, next);
+    
+    // If validateUser returned null, it already sent a 401 response
+    if (!cuser) {
+      return; // Stop processing, response already sent
+    }
+    
+    cuser.username = cuser.username || cuser["cognito:username"];
+    const user = await User.findOne({ where: { username: cuser.username } });
+    const hasUser = !!user || !!cuser;
+    console.log({ user, cuser, hasUser });
+    
+    if (hasUser) {
+      req.isAuthenticated = true;
+      req.user = user;
+      req.cognitoUser = cuser;
+      next();
+    } else {
+      return res.status(401).json({ message: "Unauthorized", error: "User not found" });
+    }
+  } catch (error) {
+    console.error("Error in conditionalAuthMiddleware:", error);
+    return res.status(500).json({ 
+      message: "Internal server error", 
+      error: error.message || "Authentication middleware error" 
+    });
+  }
   // Apply AWS Serverless Middleware for all other routes
 };
 

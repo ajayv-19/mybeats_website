@@ -43,9 +43,9 @@ function ProjectDashboardApp() {
   const isMobile = useThemeMediaQuery((theme) => theme.breakpoints.down("lg"));
 
   const [loader, setLoader] = useState(true);
-  const [qaModel, setQaModel] = useState(false);
+  // const [qaModel, setQaModel] = useState(false); // Turned off topic / Ask FINN
   const [url, setUrl] = useState("");
-  const [qaUrl, setQaUrl] = useState("");
+  // const [qaUrl, setQaUrl] = useState(""); // Turned off topic / Ask FINN
   const [companyName, setCompanyName] = useState(""); // State to store the company name
 
   useEffect(() => {
@@ -101,10 +101,10 @@ function ProjectDashboardApp() {
         const data2 = await data1.body;
         const data3 = (await data2.json()) as {
           embedUrl: string;
-          generativeQnAEmbedUrl: string;
+          // generativeQnAEmbedUrl: string; // Turned off topic / Ask FINN
         };
         setUrl(data3.embedUrl);
-        setQaUrl(data3.generativeQnAEmbedUrl);
+        // setQaUrl(data3.generativeQnAEmbedUrl); // Turned off topic / Ask FINN
 
         console.log(data3.embedUrl);
 
@@ -153,10 +153,11 @@ function ProjectDashboardApp() {
     <Root
       header={
         <ProjectDashboardAppHeader
-          onFinnClick={() => setQaModel(true)}
+          // onFinnClick={() => setQaModel(true)} // Turned off topic / Ask FINN
           content={
             <>
-              <div
+              {/* Turned off topic / Ask FINN Q&A overlay */}
+              {/* <div
                 className={
                   "absolute top-5 left-10 rounded-md w-full h-full z-10 " +
                   (qaModel ? "" : "hidden")
@@ -170,11 +171,10 @@ function ProjectDashboardApp() {
                     onClick={() => setQaModel(false)}
                   >
                     <span>CLOSE</span>
-                    {/* <Close /> */}
                   </button>
                 </div>
                 <iframe width="100%" height={"100%"} src={qaUrl}></iframe>
-              </div>
+              </div> */}
             </>
           }
         />

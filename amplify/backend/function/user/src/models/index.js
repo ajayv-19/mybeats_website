@@ -638,6 +638,19 @@ const Underwriting = sequelize.define(
       type: DataTypes.STRING(9),
       allowNull: false,
     },
+    form_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "Form_Data",
+        key: "id",
+      },
+    },
+    type: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: "category", // DB column is "category"; we use "type" in code (initial/renewal)
+    },
     vfbl: {
       type: DataTypes.DECIMAL(12, 2),
       allowNull: true,
@@ -1035,6 +1048,61 @@ Policy.belongsTo(Company, {
   as: "assignedCompany",
 });
 
+// Form Message Model (matches Agent_Messages table)
+const FormMessage = sequelize.define(
+  "FormMessage",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    form_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "Form_Data",
+        key: "id",
+      },
+    },
+    sender_id: {
+      type: DataTypes.STRING, // VARCHAR - stores email addresses
+      allowNull: true,
+    },
+    receiver_id: {
+      type: DataTypes.STRING, // VARCHAR - stores email addresses
+      allowNull: true,
+    },
+    message: {
+      type: DataTypes.JSONB, // JSON type for storing structured message data
+      allowNull: true,
+    },
+    read: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "FormMessage",
+    tableName: "Agent_Messages", // Matches actual table name
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+  }
+);
+
 module.exports = {
   User,
   Company,
@@ -1057,5 +1125,6 @@ module.exports = {
   LookupCallVolumePoints,
   LookupFrequencyPoints,
   LookupPenalties,
+  FormMessage,
 };
 // Changed

@@ -11,13 +11,26 @@ const getAuth = async()=>((await fetchAuthSession()).tokens?.accessToken?.toStri
 
 instance.interceptors.request.use(
     async (config) => {
-        const token = await getAuth();
-        if (token) {
-            config.headers.Authorization = token;
+        try {
+            const token = await getAuth();
+            if (token) {
+                config.headers.Authorization = token;
+            } else {
+                console.warn("No auth token available. Request may fail if auth is required.");
+            }
+        } catch (error) {
+            console.error("Failed to get auth token:", error);
+            // Continue - let the backend handle auth requirement
+            // This allows requests from broker forms that don't have tokens
         }
         // Add any custom headers or configurations here   ;
         return config;
-    },);
+    },
+    (error) => {
+        // Handle request setup errors
+        return Promise.reject(error);
+    }
+);
 
 
 

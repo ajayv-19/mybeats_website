@@ -3,7 +3,7 @@ const {
   RegisterUserCommand,
   GetDashboardEmbedUrlCommand,
   ListUsersCommand,
-  UpdateTopicPermissionsCommand,
+  // UpdateTopicPermissionsCommand, // Turned off topic / Generative Q&A
   GenerateEmbedUrlForRegisteredUserCommand,
 } = require("@aws-sdk/client-quicksight");
 
@@ -104,7 +104,7 @@ app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
     "arn:aws:iam::185329004895:role/amplify-amplifyquicksightdas-dev-dd445-authRole";
   const region = "us-east-1";
   const sessionName = payloadSub;
-  const topicId = "mKV8habamEDfLN80sBbVuqTpkVm1QV3M"; // Replace with your Topic ID
+  // const topicId = "mKV8habamEDfLN80sBbVuqTpkVm1QV3M"; // Replace with your Topic ID - turned off
   const dashboardId = "147334e5-b3cb-4c6b-ab90-dde2ff305707";
 
   const cognitoClient = new CognitoIdentityClient({ region });
@@ -221,22 +221,23 @@ app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
     //   await client.query(rlsQuery, [company, userName]);
     // }
 
-    console.log("Step 7: Granting access to QuickSight topic...");
-    const topicPermissionParams = {
-      AwsAccountId: "185329004895",
-      TopicId: topicId,
-      GrantPermissions: [
-        {
-          Principal: `arn:aws:quicksight:${region}:${roleArn.split(":")[4]}:user/default/${userName}`,
-          Actions: ["quicksight:DescribeTopic"],
-        },
-      ],
-    };
-    //Q Registration
-    await quickSightClientWithCreds.send(
-      new UpdateTopicPermissionsCommand(topicPermissionParams)
-    );
-    console.log("Topic permissions granted successfully.");
+    // Turned off topic / Generative Q&A
+    // console.log("Step 7: Granting access to QuickSight topic...");
+    // const topicPermissionParams = {
+    //   AwsAccountId: "185329004895",
+    //   TopicId: topicId,
+    //   GrantPermissions: [
+    //     {
+    //       Principal: `arn:aws:quicksight:${region}:${roleArn.split(":")[4]}:user/default/${userName}`,
+    //       Actions: ["quicksight:DescribeTopic"],
+    //     },
+    //   ],
+    // };
+    // //Q Registration
+    // await quickSightClientWithCreds.send(
+    //   new UpdateTopicPermissionsCommand(topicPermissionParams)
+    // );
+    // console.log("Topic permissions granted successfully.");
 
     console.log("Step 8: Generating dashboard embed URL...");
     const userArn = `arn:aws:quicksight:${region}:185329004895:user/default/${userName}`;
@@ -257,27 +258,28 @@ app.get("/getQuickSightDashboardEmbedURL", async function (req, res) {
     );
 
     console.log("Dashboard Embed URL:", dashboardResponse.EmbedUrl);
-    console.log("Step 6: Generating embed URL for Generative Q&A...");
-    const generativeQnAParams = {
-      AwsAccountId: "185329004895",
-      ExperienceConfiguration: {
-        GenerativeQnA: {
-          InitialTopicId: topicId,
-        },
-      },
-      UserArn: userArn,
-      SessionLifetimeInMinutes: 100,
-    };
+    // Turned off topic / Generative Q&A
+    // console.log("Step 6: Generating embed URL for Generative Q&A...");
+    // const generativeQnAParams = {
+    //   AwsAccountId: "185329004895",
+    //   ExperienceConfiguration: {
+    //     GenerativeQnA: {
+    //       InitialTopicId: topicId,
+    //     },
+    //   },
+    //   UserArn: userArn,
+    //   SessionLifetimeInMinutes: 100,
+    // };
 
-    const generativeQnAResponse = await quickSightClientWithCreds.send(
-      new GenerateEmbedUrlForRegisteredUserCommand(generativeQnAParams)
-    );
+    // const generativeQnAResponse = await quickSightClientWithCreds.send(
+    //   new GenerateEmbedUrlForRegisteredUserCommand(generativeQnAParams)
+    // );
 
-    console.log("Generative Q&A Embed URL:", generativeQnAResponse.EmbedUrl);
+    // console.log("Generative Q&A Embed URL:", generativeQnAResponse.EmbedUrl);
 
     res.status(200).json({
       embedUrl: dashboardResponse.EmbedUrl,
-      generativeQnAEmbedUrl: generativeQnAResponse.EmbedUrl,
+      // generativeQnAEmbedUrl: generativeQnAResponse.EmbedUrl, // Turned off
     });
   } catch (err) {
     console.error("Error occurred:", err);

@@ -98,7 +98,8 @@ function AnalyticsDashboardAppHeader({
             </div>
           </div>
         </div>
-        <div className="flex flex-col items-center mb-12 sm:mt-0 sm:mx-8 space-x-8 space-y-2 bottom-4">
+        {/* Turned off topic / Ask FINN */}
+        {/* <div className="flex flex-col items-center mb-12 sm:mt-0 sm:mx-8 space-x-8 space-y-2 bottom-4">
           <img
             className="w-auto h-[100px] sm:h-[100px] cursor-pointer"
             src="assets/images/pages/dashboard/finn.png"
@@ -108,20 +109,15 @@ function AnalyticsDashboardAppHeader({
 
           <Button
             variant="contained"
-            // onClick={handleButtonClick}
             size="small"
             color="secondary"
             className="m-6 z-10 rounded p-0 text-md min-h-0 h-32 w-auto min-w-0 px-24 !mt-0 "
-            // style={{ width: '200px' }}
             classes={{ startIcon: "mr-4" }}
             onClick={() => onFinnClick && onFinnClick()}
-          // startIcon={
-          //   <FuseSvgIcon size={20}>heroicons-solid:envelope</FuseSvgIcon>
-          // }
           >
             Ask FINN
           </Button>
-        </div>
+        </div> */}
       </div>
       {content}
     </div>

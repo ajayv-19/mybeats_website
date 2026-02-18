@@ -44,59 +44,6 @@ import { toast } from "sonner";
 import axios from "../../../../constant/axios";
 import { useUpdateCarrierInput } from "../apis/UnderwritingApis";
 
-// Component to show incomplete indicator
-function IncompleteIndicator({ formId, status, refreshKey }: { formId: number; status: string; refreshKey?: number }) {
-  const [isIncomplete, setIsIncomplete] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    // Only check for approved applications
-    if (status !== "Approved") {
-      setLoading(false);
-      return;
-    }
-
-    // Get fire department ID and check underwriting completeness
-    axios
-      .get(`/agentform/${formId}/fire-department-id`)
-      .then((response) => {
-        const fireDepartmentId = response.data.data.fire_department_id;
-        // Check if current year has losses/lae
-        return axios.get(`/underwriting/${fireDepartmentId}/history`);
-      })
-      .then((response) => {
-        const rows = response.data.data || [];
-        const currentYear = new Date().getFullYear();
-        const currentYearStr = `${currentYear}-${currentYear + 1}`;
-        const currentRow = rows.find((r: any) => r.underwriting_year === currentYearStr);
-        
-        // Incomplete if losses or lae are missing for current year
-        const incomplete = !currentRow || 
-          currentRow.losses === null || 
-          currentRow.losses === undefined ||
-          currentRow.lae === null || 
-          currentRow.lae === undefined;
-        
-        setIsIncomplete(incomplete);
-        setLoading(false);
-      })
-      .catch((error) => {
-        console.error("Error checking completeness:", error);
-        setLoading(false);
-      });
-  }, [formId, status, refreshKey]);
-
-  if (loading || !isIncomplete) {
-    return null;
-  }
-
-  return (
-    <Tooltip title="Incomplete: Missing Losses/LAE for current year">
-      <WarningIcon sx={{ color: "error.main", fontSize: 20 }} />
-    </Tooltip>
-  );
-}
-
 export default function AgentFormsTab() {
   const [state, setState] = useState({
     mounted: false,
@@ -127,9 +74,6 @@ export default function AgentFormsTab() {
     key: "created_at",
     direction: "desc", // 'asc' or 'desc'
   });
-
-  // Increment after saving Losses/LAE so incomplete indicators re-check
-  const [underwritingRefreshKey, setUnderwritingRefreshKey] = useState(0);
 
   // Fetch user session on mount
   useEffect(() => {
@@ -192,13 +136,17 @@ export default function AgentFormsTab() {
       const currentYear = new Date().getFullYear();
       const currentYearStr = `${currentYear}-${currentYear + 1}`;
       
-      // Get current underwriting data for this year
+      // Get current underwriting data for this year, matching on company_id and form_id
       let currentLosses = "";
       let currentLae = "";
       try {
         const uwResponse = await axios.get(`/underwriting/${fireDepartmentId}/history`);
+        // Find the row matching company_id and form_id (if available) for the current year
         const currentRow = uwResponse.data.data.find(
-          (row: any) => row.underwriting_year === currentYearStr
+          (row: any) => 
+            row.underwriting_year === currentYearStr &&
+            row.company_id === form.company_id &&
+            (form.id ? row.form_id === form.id : true) // Match form_id if available
         );
         if (currentRow) {
           currentLosses = currentRow.losses || "";
@@ -245,6 +193,11 @@ export default function AgentFormsTab() {
       return;
     }
 
+    if (!lossesLaeDialog.form?.company_id) {
+      toast.error("Missing company_id. Cannot update Losses/LAE.");
+      return;
+    }
+
     setLossesLaeDialog((prev) => ({ ...prev, loading: true }));
 
     try {
@@ -253,12 +206,13 @@ export default function AgentFormsTab() {
         {
           losses: lossesLaeDialog.losses ? parseFloat(lossesLaeDialog.losses) : null,
           lae: lossesLaeDialog.lae ? parseFloat(lossesLaeDialog.lae) : null,
+          company_id: lossesLaeDialog.form.company_id,
+          form_id: lossesLaeDialog.form.id, // Include form_id for precise matching
         }
       );
 
       toast.success("Losses and LAE saved. Total Loss/LAE and Loss Ratio updated.");
       agentForms.refetch();
-      setUnderwritingRefreshKey((k) => k + 1);
       handleCloseLossesLaeDialog();
     } catch (error: any) {
       console.error("Error saving Losses/LAE:", error);
@@ -350,6 +304,11 @@ export default function AgentFormsTab() {
               <TableCell
                 style={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
               >
+                Type
+              </TableCell>
+              <TableCell
+                style={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}
+              >
                 Status
               </TableCell>
               <TableCell
@@ -391,7 +350,7 @@ export default function AgentFormsTab() {
           <TableBody>
             {state.loading ? (
               <TableRow>
-                <TableCell colSpan={7} align="center">
+                <TableCell colSpan={8} align="center">
                   Loading...
                 </TableCell>
               </TableRow>
@@ -400,6 +359,13 @@ export default function AgentFormsTab() {
                 <TableRow key={form.id}>
                   <TableCell>{form.id}</TableCell>
                   <TableCell>{form.fire_department || "-"}</TableCell>
+                  <TableCell>
+                    {form.type === "renewal"
+                      ? "Renewal"
+                      : form.type === "initial"
+                        ? "Initial"
+                        : form.type || "Initial"}
+                  </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Chip
@@ -424,6 +390,19 @@ export default function AgentFormsTab() {
                         }
                         variant="outlined"
                       />
+                      {form.status === "Approved" && (
+                        <Tooltip title="Enter Losses/LAE for this approved form">
+                          <WarningIcon
+                            color="warning"
+                            fontSize="small"
+                            sx={{
+                              cursor: "pointer",
+                              "&:hover": { opacity: 0.7 },
+                            }}
+                            onClick={() => handleOpenLossesLaeDialog(form)}
+                          />
+                        </Tooltip>
+                      )}
                     </Stack>
                   </TableCell>
                   <TableCell>{form.updated_by || "-"}</TableCell>
@@ -437,7 +416,7 @@ export default function AgentFormsTab() {
                           form.status === "Pending"
                             ? "Click to approve"
                             : form.status === "Approved"
-                              ? "Click to reject"
+                              ? "Approved forms cannot be rejected (data already stored in database)"
                               : "Click to set pending"
                         }
                       >
@@ -446,16 +425,23 @@ export default function AgentFormsTab() {
                             <Switch
                               checked={form.status === "Approved"}
                               onChange={(event) => {
+                                // Prevent rejecting approved forms (data already stored in database)
+                                if (form.status === "Approved") {
+                                  toast.warning("Approved forms cannot be rejected. Data has already been stored in the database.");
+                                  return;
+                                }
+                                
                                 let newStatus;
                                 if (form.status === "Pending") {
                                   newStatus = "Approved";
-                                } else if (form.status === "Approved") {
-                                  newStatus = "Rejected";
+                                } else if (form.status === "Rejected") {
+                                  newStatus = "Pending";
                                 } else {
                                   newStatus = "Pending";
                                 }
                                 handleUpdateAgentFormStatus(form.id, newStatus);
                               }}
+                              disabled={form.status === "Approved"}
                               color="success"
                               size="small"
                             />
@@ -481,9 +467,14 @@ export default function AgentFormsTab() {
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <IncompleteIndicator formId={form.id} status={form.status} refreshKey={underwritingRefreshKey} />
                       <Tooltip title="View Form">
-                        <Link to={`/apps/agent-forms/form/${form.id}`}>
+                        <Link
+                          to={
+                            (form.type || "").toLowerCase() === "renewal"
+                              ? `/apps/agent-forms/renewal/${form.id}`
+                              : `/apps/agent-forms/form/${form.id}`
+                          }
+                        >
                           <Button
                             size="small"
                             variant="outlined"
@@ -545,7 +536,7 @@ export default function AgentFormsTab() {
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   align="center"
                   style={{ color: "#999", fontSize: "1rem" }}
                 >
@@ -643,79 +634,6 @@ export default function AgentFormsTab() {
         formData={state.chatBox.selectedForm}
         loogedInUser={state.user}
       ></AgentFormMessageDialog>
-
-      {/* Losses/LAE Input Dialog */}
-      <Dialog
-        open={lossesLaeDialog.open}
-        onClose={handleCloseLossesLaeDialog}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogTitle>
-          <Typography variant="h6">
-            Enter Losses and LAE
-          </Typography>
-          <Typography variant="body2" color="text.secondary">
-            {lossesLaeDialog.form?.fire_department || "Fire Department"} - {lossesLaeDialog.currentYear}
-          </Typography>
-        </DialogTitle>
-        <DialogContent>
-          <Box sx={{ mt: 2 }}>
-            <TextField
-              fullWidth
-              label="Losses"
-              type="number"
-              value={lossesLaeDialog.losses}
-              onChange={(e) =>
-                setLossesLaeDialog((prev) => ({
-                  ...prev,
-                  losses: e.target.value,
-                }))
-              }
-              margin="normal"
-              InputProps={{
-                startAdornment: <InputAdornment position="start">$</InputAdornment>,
-              }}
-              helperText="Enter total losses for this year"
-            />
-            <TextField
-              fullWidth
-              label="LAE (Loss Adjustment Expense)"
-              type="number"
-              value={lossesLaeDialog.lae}
-              onChange={(e) =>
-                setLossesLaeDialog((prev) => ({
-                  ...prev,
-                  lae: e.target.value,
-                }))
-              }
-              margin="normal"
-              InputProps={{
-                startAdornment: <InputAdornment position="start">$</InputAdornment>,
-              }}
-              helperText="Enter LAE for this year"
-            />
-            <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
-              <strong>Note:</strong> These values are for the current underwriting year ({lossesLaeDialog.currentYear}).
-              Total Loss/LAE and Loss Ratio will be calculated automatically.
-            </Typography>
-          </Box>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseLossesLaeDialog} disabled={lossesLaeDialog.loading}>
-            Cancel
-          </Button>
-          <Button
-            onClick={handleSaveLossesLae}
-            variant="contained"
-            color="primary"
-            disabled={lossesLaeDialog.loading}
-            startIcon={lossesLaeDialog.loading ? <CircularProgress size={16} /> : null}
-          >
-            {lossesLaeDialog.loading ? "Saving..." : "Save"}
-          </Button>
-        </DialogActions>
-      </Dialog>
     </div>
   );
 }

@@ -1,20 +1,26 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { useAgentForm } from "../apis/AgentFormsapis";
 import filedsMapping from "./_data/fileds_mapping";
-import axios from "../../../../constant/axios";
-import { Box, Tabs, Tab, Paper, Button } from "@mui/material";
-import UnderwritingGrid from "./UnderwritingGrid";
+import { BASE_URL } from "../../../../constant/baseurl";
+import { Button } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
 
+/** Message type the carrier sends to the broker iframe so it can populate the form. Broker form.html/renewal.html should listen: window.addEventListener('message', (e) => { if (e.data?.type === 'CARRIER_FORM_DATA') { ... apply e.data.data ... } }); */
+const CARRIER_FORM_DATA_TYPE = "CARRIER_FORM_DATA";
+
 function MultiPageForm(props) {
-  const { formsData, companyId, formId } = props;
+  const { formsData, companyId, formId, formType, formRecord } = props;
   const [currentPage, setCurrentPage] = useState(0);
   const [iframeKey, setIframeKey] = useState(0);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   const currentForm = formsData[currentPage];
-  const items = Object.entries(currentForm.data || {});
-  const mappedLabels = filedsMapping[companyId] || {};
+  const mappedLabels = filedsMapping?.[companyId] || {};
+
+  // initial → form.html, renewal → renewal.html (per FormData.type)
+  const formFileName =
+    (formType || "").toLowerCase() === "renewal" ? "renewal.html" : "form.html";
 
   // Change this to your production domain when ready
   // const brokerDomain = "https://broker.mybeatshealth.com/"
@@ -23,17 +29,41 @@ function MultiPageForm(props) {
       ? "http://localhost:5173/"
       : "https://broker.mybeatshealth.com/";
 
-  // Updated URL with proper parameters
-  const docurl = `${brokerDomain}agent_forms/${companyId}/form.html?company_id=${companyId}&editFormId=${formId}&isReadOnly=true&isHideButtons=true`;
+  const brokerOrigin =
+    typeof window !== "undefined" ? new URL(brokerDomain).origin : "";
 
-  // Force iframe reload when formId changes
+  // Include carrier API base so broker renewal.html can call GET /agentform/:formId (same as form.html)
+  const docurl = `${brokerDomain}agent_forms/${companyId}/${formFileName}?company_id=${companyId}&editFormId=${formId}&isReadOnly=true&isHideButtons=true&carrierApiBase=${encodeURIComponent(BASE_URL)}`;
+
+  // Force iframe reload when formId or formType changes
   useEffect(() => {
     setIframeKey((prev) => prev + 1);
-  }, [formId]);
+  }, [formId, formType]);
+
+  // Send form data to iframe so broker can populate (renewal.html often doesn't call API; postMessage + retries so listener can attach late)
+  const sendFormDataToIframe = () => {
+    if (!formRecord || !iframeRef.current?.contentWindow || !brokerOrigin)
+      return;
+    try {
+      iframeRef.current.contentWindow.postMessage(
+        { type: CARRIER_FORM_DATA_TYPE, data: formRecord },
+        brokerOrigin,
+      );
+    } catch (e) {
+      console.warn("postMessage to broker iframe failed", e);
+    }
+  };
+
+  const handleIframeLoad = () => {
+    sendFormDataToIframe();
+    // Retry after short delays so broker renewal.html has time to add message listener
+    window.setTimeout(sendFormDataToIframe, 100);
+    window.setTimeout(sendFormDataToIframe, 500);
+  };
 
   console.log(
     { formsData, companyId, docurl },
-    "formdata, companyid, and iframe url"
+    "formdata, companyid, and iframe url",
   );
 
   return (
@@ -41,11 +71,12 @@ function MultiPageForm(props) {
       {/* Iframe Panel */}
       <div className="flex-1">
         <iframe
+          ref={iframeRef}
           key={iframeKey}
           className="w-full h-full border-0"
           src={docurl}
           title={`Form ${formId}`}
-          onLoad={() => console.log("Iframe loaded successfully")}
+          onLoad={handleIframeLoad}
           onError={() => console.error("Iframe failed to load")}
         />
       </div>
@@ -56,29 +87,18 @@ function MultiPageForm(props) {
 export default function AgentFormsDetails() {
   const { formId } = useParams();
   const queryClient = useQueryClient();
-  const { data: agentForm, isLoading, error, refetch } = useAgentForm(Number(formId));
-  const [currentTab, setCurrentTab] = useState(0);
-  const [fireDepartmentId, setFireDepartmentId] = useState<number | null>(null);
+  const {
+    data: agentForm,
+    isLoading,
+    error,
+    refetch,
+  } = useAgentForm(Number(formId));
 
   console.log("AgentFormsDetails agentForm:", agentForm, isLoading, error);
 
   const formPages = isLoading ? [] : agentForm?.data?.data || [];
   const companyId = agentForm?.data?.company_id;
-
-  // Fetch fire department ID
-  useEffect(() => {
-    if (formId && !fireDepartmentId) {
-      axios
-        .get(`/agentform/${formId}/fire-department-id`)
-        .then((response) => {
-          setFireDepartmentId(response.data.data.fire_department_id);
-        })
-        .catch((error) => {
-          console.error("Error fetching fire department ID:", error);
-          // If fire department doesn't exist yet, that's okay - we'll handle it
-        });
-    }
-  }, [formId, fireDepartmentId]);
+  const formType = agentForm?.data?.type; // "initial" | "renewal" for form/renewal.html
 
   if (isLoading) {
     return (
@@ -91,11 +111,15 @@ export default function AgentFormsDetails() {
   }
 
   if (error) {
-    const errorMessage = (error as any)?.response?.data?.message || (error as any)?.message || "Unknown error";
-    const isConnectionError = errorMessage.includes("temporarily unavailable") || 
-                             errorMessage.includes("Connection pool") ||
-                             errorMessage.includes("too many connections");
-    
+    const errorMessage =
+      (error as any)?.response?.data?.message ||
+      (error as any)?.message ||
+      "Unknown error";
+    const isConnectionError =
+      errorMessage.includes("temporarily unavailable") ||
+      errorMessage.includes("Connection pool") ||
+      errorMessage.includes("too many connections");
+
     return (
       <div className="flex flex-col flex-1 p-24">
         <div className="text-red-600">
@@ -103,14 +127,17 @@ export default function AgentFormsDetails() {
           <p className="mb-4">{errorMessage}</p>
           {isConnectionError && (
             <p className="text-sm text-gray-600">
-              The database is temporarily busy. The page will automatically retry, or you can refresh.
+              The database is temporarily busy. The page will automatically
+              retry, or you can refresh.
             </p>
           )}
           <Button
             variant="contained"
             color="primary"
             onClick={() => {
-              queryClient.invalidateQueries({ queryKey: ["agentform", Number(formId)] });
+              queryClient.invalidateQueries({
+                queryKey: ["agentform", Number(formId)],
+              });
               refetch();
             }}
             sx={{ mt: 2 }}
@@ -142,48 +169,19 @@ export default function AgentFormsDetails() {
         </div>
       </div>
 
-      <Box sx={{ borderBottom: 1, borderColor: "divider" }}>
-        <Tabs
-          value={currentTab}
-          onChange={(_, newValue) => setCurrentTab(newValue)}
-        >
-          <Tab label="Form View" />
-          <Tab label="Underwriting Data" />
-        </Tabs>
-      </Box>
-
       <div className="flex-1 overflow-auto">
-        {currentTab === 0 && (
-          <>
-            {formPages.length > 0 ? (
-              <MultiPageForm
-                formsData={formPages}
-                companyId={companyId}
-                formId={formId}
-              />
-            ) : (
-              <div className="flex items-center justify-center h-64">
-                <p className="text-gray-500">No form data available.</p>
-              </div>
-            )}
-          </>
-        )}
-
-        {currentTab === 1 && (
-          <>
-            {fireDepartmentId ? (
-              <UnderwritingGrid
-                fire_department_id={fireDepartmentId}
-                company_id={companyId}
-              />
-            ) : (
-              <Box sx={{ p: 4, textAlign: "center" }}>
-                <p className="text-gray-500">
-                  Loading fire department information...
-                </p>
-              </Box>
-            )}
-          </>
+        {formPages.length > 0 ? (
+          <MultiPageForm
+            formsData={formPages}
+            companyId={companyId}
+            formId={formId}
+            formType={formType}
+            formRecord={agentForm?.data}
+          />
+        ) : (
+          <div className="flex items-center justify-center h-64">
+            <p className="text-gray-500">No form data available.</p>
+          </div>
         )}
       </div>
     </div>

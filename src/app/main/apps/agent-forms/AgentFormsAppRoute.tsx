@@ -19,6 +19,10 @@ const AgentFormsAppRoute: FuseRouteItemType = {
       element: <AgentFormsDetails />,
     },
     {
+      path: "renewal/:formId",
+      element: <AgentFormsDetails />,
+    },
+    {
       path: "",
       element: <AgentFormsTab />,
     },

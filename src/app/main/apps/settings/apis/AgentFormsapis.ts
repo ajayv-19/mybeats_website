@@ -116,5 +116,7 @@ export const useAgentFormMessages = (formId: number) => {
       return response.data;
     },
     enabled: !!formId,
+    refetchOnWindowFocus: true, // Refetch when window regains focus
+    refetchInterval: 5000, // Refetch every 5 seconds to get new messages
   });
 };

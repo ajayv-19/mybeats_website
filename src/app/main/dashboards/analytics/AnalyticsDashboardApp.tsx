@@ -11,7 +11,7 @@ import awsExports from "../../../../../src2/aws-exports";
 import { useSelector } from "react-redux";
 import { selectAccount } from "src/app/features/account/accountSlice";
 import { useNavigate } from "react-router";
-import { useModal } from "src/app/context/dashboardmodelcontext";
+// import { useModal } from "src/app/context/dashboardmodelcontext"; // Turned off topic / Ask FINN
 // const container = {
 // 	show: {
 // 		transition: {
@@ -41,9 +41,9 @@ function AnalyticsDashboardApp() {
 
   const [loader, setLoader] = useState(true);
   // const [qaModel, setQaModel] = useState(false);
-  const { qaModal, setQaModal } = useModal();
+  // const { qaModal, setQaModal } = useModal(); // Turned off topic / Ask FINN
   const [url, setUrl] = useState("");
-  const [qaUrl, setQaUrl] = useState("");
+  // const [qaUrl, setQaUrl] = useState(""); // Turned off topic / Ask FINN
   const [companyName, setCompanyName] = useState(""); // State to store the company name
 
   useEffect(() => {
@@ -99,10 +99,10 @@ function AnalyticsDashboardApp() {
         const data2 = await data1.body;
         const data3 = (await data2.json()) as {
           embedUrl: string;
-          generativeQnAEmbedUrl: string;
+          // generativeQnAEmbedUrl: string; // Turned off topic / Ask FINN
         };
         setUrl(data3.embedUrl);
-        setQaUrl(data3.generativeQnAEmbedUrl);
+        // setQaUrl(data3.generativeQnAEmbedUrl); // Turned off topic / Ask FINN
 
         console.log(data3.embedUrl);
 
@@ -122,17 +122,16 @@ function AnalyticsDashboardApp() {
     return <FuseLoading />;
   }
 
-
   return (
     <Root
       content={
         <div className="h-full w-full px-12 flex flex-col relative">
-          <div
+          {/* Turned off topic / Ask FINN Q&A modal overlay */}
+          {/* <div
             className={`absolute top-0 left-0 rounded-md w-full h-full z-10 ${
               qaModal ? "" : "hidden"
             }`}
           >
-            {/* //absolute top-5 left-10 rounded-md w-full h-full */}
             <div className="relative flex">
               <button
                 type="button"
@@ -144,7 +143,7 @@ function AnalyticsDashboardApp() {
               </button>
             </div>
             <iframe width="100%" height="100%" src={qaUrl} />
-          </div>
+          </div> */}
 
           <iframe
             className="w-full h-full grow border-none"
@@ -152,7 +151,7 @@ function AnalyticsDashboardApp() {
             height="100%"
             src={url}
           />
-           <div className="relative flex">
+          <div className="relative flex">
             <button
               type="button"
               className="px-16 py-8 text-center absolute bottom-0  rounded bg-[#ffffff] text-white"
@@ -167,7 +166,6 @@ function AnalyticsDashboardApp() {
       scroll={isMobile ? "normal" : "page"}
     />
   );
- 
 }
 
 export default AnalyticsDashboardApp;

@@ -22,7 +22,7 @@ function ProjectDashboardAppHeader({
   onFinnClick,
 }: {
   content: ReactNode;
-  onFinnClick: () => void;
+  onFinnClick?: () => void;
 }) {
   // const { company, user } = useSelector(selectAccount);
   const { data: projects } = useGetProjectDashboardProjectsQuery();
@@ -94,7 +94,8 @@ function ProjectDashboardAppHeader({
             </div>
           </div>
         </div>
-        <div className="flex flex-col items-center mt-24 sm:mt-0 sm:mx-8 space-x-8 space-y-2 bottom-4">
+        {/* Turned off topic / Ask FINN */}
+        {/* <div className="flex flex-col items-center mt-24 sm:mt-0 sm:mx-8 space-x-8 space-y-2 bottom-4">
           <img
             className="h-120 object-cover w-full object-[0px_10px] "
             src="assets/images/pages/dashboard/finn.png"
@@ -102,20 +103,15 @@ function ProjectDashboardAppHeader({
           />
           <Button
             variant="contained"
-            // onClick={handleButtonClick}
             size="small"
             color="secondary"
             className="m-6 z-10 rounded p-0 text-md min-h-0 h-auto w-auto min-w-0 px-12 !mt-0 "
-            // style={{ width: '200px' }}
             classes={{ startIcon: "mr-4" }}
             onClick={() => onFinnClick && onFinnClick()}
-          // startIcon={
-          //   <FuseSvgIcon size={20}>heroicons-solid:envelope</FuseSvgIcon>
-          // }
           >
             Ask FINN
           </Button>
-        </div>
+        </div> */}
       </div>
       {content}
     </div>
