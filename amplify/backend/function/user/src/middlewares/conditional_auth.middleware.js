@@ -65,9 +65,15 @@ const conditionalAuthMiddleware = async (req, res, next) => {
     req.method === 'GET' && 
     req.path === `${API_PREFIX}/fire-departments`; // Matches /backendapi/fire-departments
   
-  console.log({ currentPath: req.path, method: req.method, bypassRoutes, isBrokerFormReadRequest, isFireDepartmentsReadRequest });
+  // Allow broker forms to fetch attachments without auth (read-only GET requests)
+  const isAttachmentsReadRequest = 
+    req.method === 'GET' && 
+    (req.path.match(new RegExp(`^${API_PREFIX}/agentform/\\d+/attachments$`)) || // Matches /backendapi/agentform/:formId/attachments
+     req.path.match(new RegExp(`^${API_PREFIX}/attachments/\\d+$`))); // Matches /backendapi/attachments/:formId (alias for broker compatibility)
   
-  if (bypassRoutes.includes(req.path) || isBrokerFormReadRequest || isFireDepartmentsReadRequest) {
+  console.log({ currentPath: req.path, method: req.method, bypassRoutes, isBrokerFormReadRequest, isFireDepartmentsReadRequest, isAttachmentsReadRequest });
+  
+  if (bypassRoutes.includes(req.path) || isBrokerFormReadRequest || isFireDepartmentsReadRequest || isAttachmentsReadRequest) {
     // Skip authentication for these routes
     return next();
   }

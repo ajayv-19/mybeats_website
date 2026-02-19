@@ -131,36 +131,55 @@ export default function AgentFormsTab() {
       // Get fire department ID
       const fdResponse = await axios.get(`/agentform/${form.id}/fire-department-id`);
       const fireDepartmentId = fdResponse.data.data.fire_department_id;
-      
-      // Get current year
-      const currentYear = new Date().getFullYear();
-      const currentYearStr = `${currentYear}-${currentYear + 1}`;
-      
-      // Get current underwriting data for this year, matching on company_id and form_id
+
+      // Use the form's underwriting year (set when form was approved), not current calendar year.
+      // This ensures we update the same underwriting row that was created on approval.
+      let underwritingYear = form.year;
+      if (!underwritingYear) {
+        // Fallback: get year from underwriting history (row that has this form_id)
+        try {
+          const uwResponse = await axios.get(`/underwriting/${fireDepartmentId}/history`);
+          const rowForForm = uwResponse.data.data.find(
+            (row: any) =>
+              row.company_id === form.company_id &&
+              (form.id ? row.form_id === form.id : true)
+          );
+          if (rowForForm?.underwriting_year) {
+            underwritingYear = rowForForm.underwriting_year;
+          }
+        } catch (err) {
+          console.error("Error fetching underwriting history for year:", err);
+        }
+      }
+      if (!underwritingYear) {
+        const currentYear = new Date().getFullYear();
+        underwritingYear = `${currentYear}-${currentYear + 1}`;
+      }
+
+      // Get current losses/LAE for this form's underwriting row
       let currentLosses = "";
       let currentLae = "";
       try {
         const uwResponse = await axios.get(`/underwriting/${fireDepartmentId}/history`);
-        // Find the row matching company_id and form_id (if available) for the current year
         const currentRow = uwResponse.data.data.find(
-          (row: any) => 
-            row.underwriting_year === currentYearStr &&
+          (row: any) =>
+            row.underwriting_year === underwritingYear &&
             row.company_id === form.company_id &&
-            (form.id ? row.form_id === form.id : true) // Match form_id if available
+            (form.id ? row.form_id === form.id : true)
         );
         if (currentRow) {
-          currentLosses = currentRow.losses || "";
-          currentLae = currentRow.lae || "";
+          currentLosses = currentRow.losses ?? "";
+          currentLae = currentRow.lae ?? "";
         }
       } catch (err) {
         console.error("Error fetching current underwriting:", err);
       }
-      
+
       setLossesLaeDialog({
         open: true,
         form: form,
         fireDepartmentId: fireDepartmentId,
-        currentYear: currentYearStr,
+        currentYear: underwritingYear,
         losses: currentLosses,
         lae: currentLae,
         loading: false,

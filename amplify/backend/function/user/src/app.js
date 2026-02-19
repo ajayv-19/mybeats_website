@@ -21,19 +21,26 @@ const upload = require("./config/multer");
 const app = express();
 app.use(bodyParser.json());
 
-// Apply conditional middleware globally
-app.use(conditionalAuthMiddleware);
-app.use(awsServerlessExpressMiddleware.eventContext());
-
-// Enable CORS for all methods
+// Enable CORS for all methods (must be before auth middleware to handle OPTIONS requests)
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
   res.header(
     "Access-Control-Allow-Headers",
-    "Origin, X-Requested-With, Content-Type, Accept"
+    "Origin, X-Requested-With, Content-Type, Accept, Authorization"
   );
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  
+  // Handle preflight OPTIONS requests
+  if (req.method === "OPTIONS") {
+    return res.status(200).end();
+  }
+  
   next();
 });
+
+// Apply conditional middleware globally
+app.use(conditionalAuthMiddleware);
+app.use(awsServerlessExpressMiddleware.eventContext());
 
 // Define routes
 const router = express.Router();
@@ -89,7 +96,7 @@ app.use((err, req, res, next) => {
   console.error("[Global Error Handler] Stack:", err.stack);
   console.error("[Global Error Handler] Path:", req.path);
   console.error("[Global Error Handler] Method:", req.method);
-
+  
   res.status(err.status || 500).json({
     message: err.message || "Internal server error",
     error: process.env.NODE_ENV === "development" ? err.stack : undefined,

@@ -120,3 +120,38 @@ export const useAgentFormMessages = (formId: number) => {
     refetchInterval: 5000, // Refetch every 5 seconds to get new messages
   });
 };
+
+// Document Attachments API
+export interface DocumentAttachment {
+  id: number;
+  form_id: number;
+  link: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AttachmentsResponse {
+  message: string;
+  data: DocumentAttachment[];
+}
+
+/**
+ * Get document attachments for a form
+ */
+export const useFormAttachments = (formId: number) => {
+  return useQuery<AttachmentsResponse>({
+    queryKey: ["formattachments", formId],
+    queryFn: async () => {
+      console.log(`[useFormAttachments] Fetching attachments for formId: ${formId}`);
+      const response = await axios.get<AttachmentsResponse>(
+        `/agentform/${formId}/attachments`
+      );
+      console.log(`[useFormAttachments] Response for formId ${formId}:`, response.data);
+      return response.data;
+    },
+    enabled: !!formId,
+    staleTime: 5 * 60 * 1000, // Consider data fresh for 5 minutes to prevent unnecessary refetches
+    refetchOnWindowFocus: false, // Prevent refetch on window focus to avoid duplicate calls
+    retry: 1, // Only retry once on failure
+  });
+};

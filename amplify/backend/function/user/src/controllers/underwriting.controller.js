@@ -64,7 +64,9 @@ class UnderwritingController {
    * PUT /underwriting/:fire_department_id/:underwriting_year/carrier-input
    * Update carrier-owned inputs (losses, lae) for a specific year
    * Computes total_loss_lae and loss_ratio
-   * Matches on company_id and form_id to ensure correct row is updated
+   * Matches on company_id and form_id to ensure correct row is updated.
+   * When form_id is provided: only UPDATE existing row (never create). Find by form_id + company_id + fire_department_id.
+   * When form_id is not provided: find by fire_department_id + underwriting_year + company_id; create if not found.
    */
   async updateCarrierInput(req, res) {
     try {
@@ -78,49 +80,54 @@ class UnderwritingController {
         });
       }
 
-      // Build where clause to match the correct row
-      // Match on company_id and form_id (if provided) along with fire_department_id and year
-      const whereClause = {
-        fire_department_id: parseInt(fire_department_id),
-        underwriting_year: underwriting_year,
-        company_id: parseInt(company_id),
-      };
+      const fireDepartmentIdInt = parseInt(fire_department_id);
+      const companyIdInt = parseInt(company_id);
 
-      // If form_id is provided, include it in the match (more specific)
+      let underwriting;
+
       if (form_id) {
-        whereClause.form_id = parseInt(form_id);
-      }
-
-      // Find the underwriting row matching company_id and form_id
-      let underwriting = await Underwriting.findOne({
-        where: whereClause,
-      });
-
-      // If not found and form_id was provided, try without form_id (fallback)
-      if (!underwriting && form_id) {
-        console.warn(`[updateCarrierInput] Row not found with form_id ${form_id}, trying without form_id`);
+        // When form_id is provided: find the row created for this form (by form_id + company_id + fire_department_id).
+        // Do NOT use underwriting_year from URL for lookup — the row's year is set when the form was approved.
+        // Do NOT create a new row — we only update the existing underwriting row for this form.
         underwriting = await Underwriting.findOne({
           where: {
-            fire_department_id: parseInt(fire_department_id),
-            underwriting_year: underwriting_year,
-            company_id: parseInt(company_id),
+            fire_department_id: fireDepartmentIdInt,
+            company_id: companyIdInt,
+            form_id: parseInt(form_id),
           },
         });
-      }
 
-      // If still not found, create a new row
-      if (!underwriting) {
-        console.log(`[updateCarrierInput] Creating new underwriting row for company_id ${company_id}, form_id ${form_id || 'null'}`);
-        underwriting = await Underwriting.create({
-          fire_department_id: parseInt(fire_department_id),
-          underwriting_year: underwriting_year,
-          company_id: parseInt(company_id),
-          form_id: form_id ? parseInt(form_id) : null,
-          losses: losses || null,
-          lae: lae || null,
-        });
+        if (!underwriting) {
+          console.warn(`[updateCarrierInput] No underwriting row found for form_id=${form_id}, company_id=${company_id}, fire_department_id=${fire_department_id}`);
+          return res.status(400).json({
+            message: "No underwriting row found for this form. Ensure the form was approved first; the underwriting row is created on approval.",
+          });
+        }
+        console.log(`[updateCarrierInput] Found existing row for form: uw_id=${underwriting.uw_id}, year=${underwriting.underwriting_year}`);
       } else {
-        console.log(`[updateCarrierInput] Found existing row: uw_id=${underwriting.uw_id}, company_id=${underwriting.company_id}, form_id=${underwriting.form_id || 'null'}, year=${underwriting.underwriting_year}`);
+        // When form_id is not provided: match by fire_department_id, underwriting_year, company_id
+        const whereClause = {
+          fire_department_id: fireDepartmentIdInt,
+          underwriting_year: underwriting_year,
+          company_id: companyIdInt,
+        };
+
+        underwriting = await Underwriting.findOne({ where: whereClause });
+
+        // Only create when form_id was not provided (legacy or non-form flow)
+        if (!underwriting) {
+          console.log(`[updateCarrierInput] Creating new underwriting row (no form_id) for company_id ${company_id}, year ${underwriting_year}`);
+          underwriting = await Underwriting.create({
+            fire_department_id: fireDepartmentIdInt,
+            underwriting_year: underwriting_year,
+            company_id: companyIdInt,
+            form_id: null,
+            losses: losses || null,
+            lae: lae || null,
+          });
+        } else {
+          console.log(`[updateCarrierInput] Found existing row: uw_id=${underwriting.uw_id}, year=${underwriting.underwriting_year}`);
+        }
       }
 
       // Update only carrier-owned fields (losses, lae, optionally company_id)

@@ -1103,6 +1103,48 @@ const FormMessage = sequelize.define(
   }
 );
 
+// Document Attachment Model (matches Documents_attachment table)
+const DocumentAttachment = sequelize.define(
+  "DocumentAttachment",
+  {
+    id: {
+      type: DataTypes.INTEGER,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    form_id: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: "Form_Data",
+        key: "id",
+      },
+    },
+    link: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    created_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: DataTypes.NOW,
+    },
+    updated_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    sequelize,
+    modelName: "DocumentAttachment",
+    tableName: "Documents_attachment",
+    timestamps: true,
+    createdAt: "created_at",
+    updatedAt: "updated_at",
+  }
+);
+
 module.exports = {
   User,
   Company,
@@ -1126,5 +1168,6 @@ module.exports = {
   LookupFrequencyPoints,
   LookupPenalties,
   FormMessage,
+  DocumentAttachment,
 };
 // Changed

@@ -1,4 +1,4 @@
-const { Company, FormData, FireDepartment, FormMessage } = require("../models");
+const { Company, FormData, FireDepartment, FormMessage, DocumentAttachment } = require("../models");
 const { extractFormData } = require("../services/formExtraction.service");
 const { Op } = require("sequelize");
 const uploadDocuments = require("../config/multerDocuments");
@@ -18,6 +18,10 @@ class AgentController {
     app.post("/agentform/:formId/markAsRead", (...args) => this.markAsRead(...args));
     // Document upload route
     app.post("/agentform/:formId/uploadDocument", uploadDocuments.single("file"), (...args) => this.uploadDocument(...args));
+    // Document attachments route
+    app.get("/agentform/:formId/attachments", (...args) => this.getAttachments(...args));
+    // Alias route for broker form compatibility (broker form calls /attachments/:formId)
+    app.get("/attachments/:formId", (...args) => this.getAttachments(...args));
   }
 
 
@@ -38,7 +42,7 @@ class AgentController {
     while (retries < maxRetries) {
       try {
         console.log(`[getAgentFormById] Fetching form with ID: ${parsedFormId}, attempt ${retries + 1}`);
-
+        
         const result = await FormData.findOne({
           where: { id: parsedFormId }
         });
@@ -59,7 +63,7 @@ class AgentController {
       } catch (error) {
         console.error(`[getAgentFormById] Error on attempt ${retries + 1}:`, error);
         console.error(`[getAgentFormById] Error stack:`, error.stack);
-
+        
         // Check if it's a connection error
         if (error.message && (
           error.message.includes('too many connections') ||
@@ -98,16 +102,17 @@ class AgentController {
       const result = await FormData.findAll({
         where: {
           company_id: company_id,
-        }
+          application_status: "Submitted",
+        },
       });
       res.status(200).json({
         "message": "Agent forms retrieved successfully",
-        "data": result
+        "data": result,
       });
     } catch (error) {
       res.status(500).json({
         "message": "Error retrieving agent forms",
-        "error": error.message
+        "error": error.message,
       });
     }
   }
@@ -182,7 +187,7 @@ class AgentController {
   async approveOrRejectAgentForm(req, res) {
     const { id, application_status } = req.body;
     const updatedBy = req.user?.email || req.user?.username || "system"; // Get user from auth context
-
+    
     try {
       // Map the application_status to the new status values
       // Frontend sends "Approved" | "Rejected" | "Pending"; also accept "approve" | "reject"
@@ -230,7 +235,7 @@ class AgentController {
               Object.assign(flattenedData, section.data);
             }
           });
-
+          
           if (flattenedData.effective_date) {
             const date = new Date(flattenedData.effective_date);
             const year = date.getFullYear();
@@ -367,7 +372,7 @@ class AgentController {
   async getFireDepartments(req, res) {
     try {
       let { company_id, editFormId, form_id } = req.query;
-
+      
       // If company_id not provided, try to get it from editFormId (broker forms use this)
       if (!company_id && editFormId) {
         try {
@@ -380,7 +385,7 @@ class AgentController {
           console.warn(`[getFireDepartments] Could not extract company_id from editFormId ${editFormId}:`, formError.message);
         }
       }
-
+      
       // If company_id still not provided, try to get it from form_id (alternative parameter name)
       if (!company_id && form_id) {
         try {
@@ -393,7 +398,7 @@ class AgentController {
           console.warn(`[getFireDepartments] Could not extract company_id from form_id ${form_id}:`, formError.message);
         }
       }
-
+      
       // If still no company_id, return error
       if (!company_id) {
         return res.status(400).json({
@@ -508,7 +513,7 @@ class AgentController {
 
       // Ensure message is properly serialized for JSON response
       const messageResponse = newMessage.toJSON();
-
+      
       res.status(200).json({
         message: "Message sent successfully",
         data: messageResponse,
@@ -640,6 +645,55 @@ class AgentController {
       console.error("Error marking messages as read:", error);
       res.status(500).json({
         message: "Error marking messages as read",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
+   * GET /agentform/:formId/attachments
+   * Get all document attachments for a form from our database
+   */
+  async getAttachments(req, res) {
+    try {
+      const { formId } = req.params;
+      const parsedFormId = parseInt(formId, 10);
+
+      if (isNaN(parsedFormId)) {
+        return res.status(400).json({
+          message: "Invalid form ID",
+        });
+      }
+
+      console.log(`[getAttachments] Fetching attachments for formId: ${parsedFormId}`);
+
+      // Fetch attachments from our database (Documents_attachment table)
+      const attachments = await DocumentAttachment.findAll({
+        where: {
+          form_id: parsedFormId,
+        },
+        order: [["created_at", "ASC"]],
+      });
+
+      console.log(`[getAttachments] Found ${attachments.length} attachments for formId: ${parsedFormId}`);
+
+      // Ensure CORS headers are set
+      res.header("Access-Control-Allow-Origin", "*");
+      res.header("Access-Control-Allow-Methods", "GET, OPTIONS");
+      res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+
+      res.status(200).json({
+        message: "Attachments retrieved successfully",
+        data: attachments.map(att => att.toJSON()),
+      });
+    } catch (error) {
+      console.error("Error getting attachments:", error);
+      
+      // Ensure CORS headers are set even on error
+      res.header("Access-Control-Allow-Origin", "*");
+      
+      res.status(500).json({
+        message: "Error getting attachments",
         error: error.message,
       });
     }
