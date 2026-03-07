@@ -691,6 +691,8 @@ const Underwriting = sequelize.define(
       type: DataTypes.DECIMAL(10, 4),
       allowNull: true,
     },
+    // Note: assigned_category is stored in UnderwritingResults, not Underwriting
+    // The 'category' column in Underwriting is used for "initial/renewal" (mapped to 'type' field)
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,

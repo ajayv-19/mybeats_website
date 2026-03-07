@@ -4,67 +4,53 @@ import { toast } from "sonner";
 import { BASE_URL } from "./baseurl";
 
 const instance = axios.create({
-    baseURL: BASE_URL,
-    //withCredentials: true,
+  baseURL: BASE_URL,
+  //withCredentials: true,
 });
-const getAuth = async()=>((await fetchAuthSession()).tokens?.accessToken?.toString());
+const getAuth = async () =>
+  (await fetchAuthSession()).tokens?.accessToken?.toString();
 
-instance.interceptors.request.use(
-    async (config) => {
-        try {
-            const token = await getAuth();
-            if (token) {
-                config.headers.Authorization = token;
-            } else {
-                console.warn("No auth token available. Request may fail if auth is required.");
-            }
-        } catch (error) {
-            console.error("Failed to get auth token:", error);
-            // Continue - let the backend handle auth requirement
-            // This allows requests from broker forms that don't have tokens
-        }
-        // Add any custom headers or configurations here   ;
-        return config;
-    },
-    (error) => {
-        // Handle request setup errors
-        return Promise.reject(error);
-    }
-);
-
-
+instance.interceptors.request.use(async (config) => {
+  const token = await getAuth();
+  if (token) {
+    config.headers.Authorization = token;
+  }
+  // Add any custom headers or configurations here   ;
+  return config;
+});
 
 instance.interceptors.response.use(
-    (response) => {
-        return response;
-    },
-    (error) => {
-        if (error.response) {
-            const { status, data } = error.response;
+  (response) => {
+    return response;
+  },
+  (error) => {
+    if (error.response) {
+      const { status, data } = error.response;
 
-            // Handle unauthorized access
-            if (status === 401) {
-                console.error("Unauthorized access. Redirecting to login...");
-                // Redirect to login page or perform any other action
-            }
+      // Handle unauthorized access
+      if (status === 401) {
+        console.error("Unauthorized access. Redirecting to login...");
+        // Redirect to login page or perform any other action
+      }
 
-            // Extract and display the error message (API may use data.message or data.error.message)
-            const errorMessage = data?.message || data?.error?.message || "An unknown error occurred.";
-            console.error("Error:", errorMessage);
-            // 400 = validation/business rule (e.g. duplicate approval) → show as warning notification
-            if (status === 400) {
-                toast.warning(errorMessage);
-            } else {
-                toast.error(errorMessage);
-            }
-        } else {
-            // Handle network or unknown errors
-            toast.error("A network error occurred. Please try again.");
-        }
-
-        console.error("Error:", error);
-        return Promise.reject(error);
+      // Extract and display the error message (API may use data.message or data.error.message)
+      const errorMessage =
+        data?.message || data?.error?.message || "An unknown error occurred.";
+      console.error("Error:", errorMessage);
+      // 400 = validation/business rule (e.g. duplicate approval) → show as warning notification
+      if (status === 400) {
+        toast.warning(errorMessage);
+      } else {
+        toast.error(errorMessage);
+      }
+    } else {
+      // Handle network or unknown errors
+      toast.error("A network error occurred. Please try again.");
     }
+
+    console.error("Error:", error);
+    return Promise.reject(error);
+  },
 );
 
 export default instance;

@@ -35,7 +35,6 @@ import {
   sendAgentFormMessage,
   markReadAgentFormMessage,
 } from "../apis/AgentFormsapis";
-import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 // Styled components for better UI
@@ -207,11 +206,10 @@ const AgentFormMessageDialog = (props: AgentFormMessageDialogProps) => {
   const [unread, setUnread] = useState(0);
   const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const queryClient = useQueryClient();
   const { data: formMessages, isLoading } = useAgentFormMessages(formData?.id);
   const getUserId = () => loogedInUser?.tokens?.signInDetails?.loginId;
   const unreadCount = messages.filter(
-    (row) => row.read == false && row.sender === "Agent"
+    (row) => row.read == false && row.sender === "Agent",
   ).length;
 
   useEffect(() => {
@@ -235,31 +233,14 @@ const AgentFormMessageDialog = (props: AgentFormMessageDialogProps) => {
             let invalidMsg = row.sender_id === row.receiver_id;
             return isMyMsg && !invalidMsg;
           })
-          .map((row) => {
-            // Handle message field - it might be JSON string or already parsed object
-            let msgObj;
-            if (typeof row.message === 'string') {
-              try {
-                msgObj = JSON.parse(row.message);
-              } catch (e) {
-                console.error("Error parsing message:", e);
-                msgObj = { message: row.message, type: "text" };
-              }
-            } else if (typeof row.message === 'object' && row.message !== null) {
-              msgObj = row.message;
-            } else {
-              msgObj = { message: String(row.message || ""), type: "text" };
-            }
-
-            return {
-              sender: row.sender_id === getUserId() ? "You" : "Agent",
-              text: msgObj.message || "",
-              type: msgObj.type || "text",
-              time: row.created_at,
-              read: row.read,
-              id: row.id,
-            };
-          })
+          .map((row) => ({
+            sender: row.sender_id === getUserId() ? "You" : "Agent",
+            text: JSON.parse(row.message).message,
+            type: JSON.parse(row.message).type,
+            time: row.created_at,
+            read: row.read,
+            id: row.id,
+          })),
       );
     }
   }, [formMessages]);
@@ -275,45 +256,16 @@ const AgentFormMessageDialog = (props: AgentFormMessageDialogProps) => {
 
     setIsSending(true);
     try {
-      const response = await sendAgentFormMessage(
+      const { data: response } = await sendAgentFormMessage(
         formData?.id,
         input,
         getUserId(),
         formData?.updated_by,
-        "text"
+        "text",
       );
 
-      // Axios unwraps response, so response.data is the backend response
-      // Backend returns { message: "Message sent successfully", data: { ...message object } }
-      const responseData = response.data;
-      const newMessage = responseData?.data;
-      
-      if (!newMessage) {
-        console.error("Response structure:", responseData);
-        console.error("Full response:", response);
-        throw new Error("No message data in response");
-      }
-      
-      console.log("New message received:", newMessage);
-
-      // Handle message field - it's stored as JSONB, so it might be an object or string
-      let msgObj;
-      if (typeof newMessage.message === 'string') {
-        // If it's a string, parse it
-        try {
-          msgObj = JSON.parse(newMessage.message);
-        } catch (e) {
-          // If parsing fails, treat as plain text
-          msgObj = { message: newMessage.message, type: "text" };
-        }
-      } else if (typeof newMessage.message === 'object' && newMessage.message !== null) {
-        // If it's already an object (JSONB), use it directly
-        msgObj = newMessage.message;
-      } else {
-        console.error("Invalid message format:", newMessage.message);
-        throw new Error("Invalid message format");
-      }
-
+      let newMessage = response.data;
+      let msgObj = JSON.parse(newMessage.message);
       setMessages((prev) => [
         ...prev,
         {
@@ -321,24 +273,13 @@ const AgentFormMessageDialog = (props: AgentFormMessageDialogProps) => {
           text: msgObj.message,
           time: newMessage.created_at,
           read: false,
-          type: msgObj.type || "text",
+          type: msgObj.type,
           id: newMessage.id,
         },
       ]);
       setInput("");
-      
-      // Refetch messages to ensure UI is in sync
-      queryClient.invalidateQueries({
-        queryKey: ["agentformmessages", formData?.id],
-      });
     } catch (err: any) {
-      console.error("Error sending message:", err);
-      console.error("Error details:", {
-        message: err.message,
-        response: err.response?.data,
-        stack: err.stack,
-      });
-      toast.error(err.response?.data?.message || err.message || "Failed to send message");
+      toast.error(err.response?.data?.message || "Failed to send message");
     } finally {
       setIsSending(false);
     }
@@ -349,7 +290,7 @@ const AgentFormMessageDialog = (props: AgentFormMessageDialogProps) => {
     markReadAgentFormMessage(formId, [msg.id])
       .then((res) => {
         setMessages((prev) =>
-          prev.map((m) => (m.id === msg.id ? { ...m, read: true } : m))
+          prev.map((m) => (m.id === msg.id ? { ...m, read: true } : m)),
         );
         console.log({ res });
       })

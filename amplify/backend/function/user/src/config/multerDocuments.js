@@ -2,25 +2,22 @@ const multer = require("multer");
 const multerS3 = require("multer-s3");
 const s3 = require("./configaws");
 
-// Multer configuration for document uploads (PDFs, Word docs, etc.)
 const uploadDocuments = multer({
   storage: multerS3({
     s3: s3,
-    bucket: "brokerassets2", // Based on the S3 URL pattern seen in the database
-    acl: "public-read", // Make files publicly accessible
+    bucket: "insurancedashboardprofileimages", // Using same bucket, can be changed if needed
     metadata: (req, file, cb) => {
       cb(null, { fieldName: file.fieldname });
     },
     key: (req, file, cb) => {
-      // Generate unique filename: timestamp-originalname
-      const timestamp = Date.now();
-      cb(null, `uploads/${timestamp}-${file.originalname}`);
+      // Store documents in a documents folder
+      cb(null, `documents/${Date.now()}_${file.originalname}`);
     },
   }),
   limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB limit for documents
   fileFilter: (req, file, cb) => {
     // Allow common document types
-    const allowedMimes = [
+    const allowedMimeTypes = [
       "application/pdf",
       "application/msword",
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document", // .docx
@@ -32,10 +29,10 @@ const uploadDocuments = multer({
       "image/gif",
     ];
     
-    if (allowedMimes.includes(file.mimetype)) {
+    if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error(`File type ${file.mimetype} not allowed. Allowed types: PDF, Word, Excel, Images, Text`), false);
+      cb(new Error(`File type ${file.mimetype} is not allowed. Allowed types: PDF, Word, Excel, images, and text files.`), false);
     }
   },
 });

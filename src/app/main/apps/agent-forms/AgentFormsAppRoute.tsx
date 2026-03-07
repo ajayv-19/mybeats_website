@@ -4,7 +4,7 @@ import { FuseRouteItemType } from "@fuse/utils/FuseUtils";
 
 const AgentFormsTab = lazy(() => import("../settings/tabs/AgentForms"));
 const AgentFormsDetails = lazy(
-  () => import("../settings/tabs/AgentFormsDetails")
+  () => import("../settings/tabs/AgentFormsDetails"),
 );
 
 /**
@@ -16,10 +16,6 @@ const AgentFormsAppRoute: FuseRouteItemType = {
   children: [
     {
       path: "form/:formId",
-      element: <AgentFormsDetails />,
-    },
-    {
-      path: "renewal/:formId",
       element: <AgentFormsDetails />,
     },
     {

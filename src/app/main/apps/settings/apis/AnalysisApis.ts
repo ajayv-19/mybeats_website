@@ -111,7 +111,7 @@ export const useAnalysisDetail = (fire_department_id: number) => {
     queryKey: ["analysis", "detail", fire_department_id],
     queryFn: async () => {
       const response = await axios.get<AnalysisDetailResponse>(
-        `/analysis/${fire_department_id}`
+        `/analysis/${fire_department_id}`,
       );
       return response.data;
     },
@@ -135,7 +135,7 @@ export const useCalculateAnalysis = () => {
     }) => {
       const response = await axios.post<CalculateAnalysisResponse>(
         `/analysis/${fire_department_id}/calculate`,
-        data
+        data,
       );
       return response.data;
     },
@@ -150,5 +150,44 @@ export const useCalculateAnalysis = () => {
   });
 };
 
+export interface UpdateProfileRequest {
+  population?: number | null;
+  square_miles?: number | null;
+  fire_calls?: number | null;
+  ems_calls?: number | null;
+  safety_committee?: boolean | null;
+  hs_officers?: number | null;
+  motorized_racing_team?: boolean | null;
+  company_id?: number | null;
+}
 
+/**
+ * Update fire department profile (for manual entry from analysis page)
+ */
+export const useUpdateAnalysisProfile = () => {
+  const queryClient = useQueryClient();
 
+  return useMutation({
+    mutationFn: async ({
+      fire_department_id,
+      data,
+    }: {
+      fire_department_id: number;
+      data: UpdateProfileRequest;
+    }) => {
+      const response = await axios.put(
+        `/analysis/${fire_department_id}/profile`,
+        data
+      );
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["analysis", "detail", variables.fire_department_id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["analysis", "list"],
+      });
+    },
+  });
+};

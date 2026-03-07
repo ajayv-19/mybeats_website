@@ -32,9 +32,8 @@ export default function UnderwritingGrid({
   fire_department_id,
   company_id,
 }: UnderwritingGridProps) {
-  const { data, isLoading, error, refetch } = useUnderwritingHistory(
-    fire_department_id
-  );
+  const { data, isLoading, error, refetch } =
+    useUnderwritingHistory(fire_department_id);
   const updateCarrierInput = useUpdateCarrierInput();
   const bulkUpsert = useBulkUpsertUnderwriting();
 
@@ -71,7 +70,7 @@ export default function UnderwritingGrid({
   const handleFieldChange = (
     year: string,
     field: keyof UnderwritingRow,
-    value: number | string | undefined
+    value: number | string | undefined,
   ) => {
     setEditingRows((prev) => ({
       ...prev,
@@ -109,7 +108,7 @@ export default function UnderwritingGrid({
       refetch();
     } catch (error: any) {
       toast.error(
-        error?.response?.data?.message || "Failed to save underwriting data"
+        error?.response?.data?.message || "Failed to save underwriting data",
       );
     }
   };
@@ -129,7 +128,10 @@ export default function UnderwritingGrid({
     return `${value.toFixed(0)}%`;
   };
 
-  const formatDecimal = (value: number | null | undefined, decimals: number = 3) => {
+  const formatDecimal = (
+    value: number | null | undefined,
+    decimals: number = 3,
+  ) => {
     if (value === null || value === undefined) return "-";
     return value.toFixed(decimals);
   };
@@ -152,12 +154,17 @@ export default function UnderwritingGrid({
 
   const existingRows = data?.data || [];
   const existingRowsMap = new Map(
-    existingRows.map((row) => [row.underwriting_year, row])
+    existingRows.map((row) => [row.underwriting_year, row]),
   );
 
   return (
     <Box sx={{ p: 3 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
+      <Stack
+        direction="row"
+        justifyContent="space-between"
+        alignItems="center"
+        mb={2}
+      >
         <Typography variant="h6">Underwriting Data (Last 5 Years)</Typography>
         {hasChanges && (
           <Button
@@ -324,11 +331,7 @@ export default function UnderwritingGrid({
 
               // Alternate row colors (first row light green, others white/yellow)
               const rowBgColor =
-                index === 0
-                  ? "#e8f5e9"
-                  : index % 2 === 1
-                  ? "#fff"
-                  : "#fffef0";
+                index === 0 ? "#e8f5e9" : index % 2 === 1 ? "#fff" : "#fffef0";
 
               return (
                 <TableRow
@@ -339,9 +342,7 @@ export default function UnderwritingGrid({
                     "&:hover": { bgcolor: "#f0f0f0" },
                   }}
                 >
-                  <TableCell>
-                    {row.company?.Company_Name || "-"}
-                  </TableCell>
+                  <TableCell>{row.company?.Company_Name || "-"}</TableCell>
                   <TableCell>{year}</TableCell>
                   <TableCell align="right">
                     <TextField
@@ -352,7 +353,9 @@ export default function UnderwritingGrid({
                         handleFieldChange(
                           year,
                           "vfbl",
-                          e.target.value ? parseFloat(e.target.value) : undefined
+                          e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined,
                         )
                       }
                       sx={{ width: 120 }}
@@ -368,7 +371,9 @@ export default function UnderwritingGrid({
                         handleFieldChange(
                           year,
                           "wc",
-                          e.target.value ? parseFloat(e.target.value) : undefined
+                          e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined,
                         )
                       }
                       sx={{ width: 120 }}
@@ -387,7 +392,9 @@ export default function UnderwritingGrid({
                         handleFieldChange(
                           year,
                           "losses",
-                          e.target.value ? parseFloat(e.target.value) : undefined
+                          e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined,
                         )
                       }
                       sx={{ width: 120 }}
@@ -403,7 +410,9 @@ export default function UnderwritingGrid({
                         handleFieldChange(
                           year,
                           "lae",
-                          e.target.value ? parseFloat(e.target.value) : undefined
+                          e.target.value
+                            ? parseFloat(e.target.value)
+                            : undefined,
                         )
                       }
                       sx={{ width: 120 }}
@@ -430,7 +439,7 @@ export default function UnderwritingGrid({
                         handleFieldChange(
                           year,
                           "number_of_claims",
-                          e.target.value ? parseInt(e.target.value) : undefined
+                          e.target.value ? parseInt(e.target.value) : undefined,
                         )
                       }
                       sx={{ width: 80 }}
@@ -462,59 +471,67 @@ export default function UnderwritingGrid({
               <TableCell align="right">
                 {formatCurrency(
                   years.reduce((sum, year) => {
-                    const row = existingRowsMap.get(year) || editingRows[year] || {};
+                    const row =
+                      existingRowsMap.get(year) || editingRows[year] || {};
                     return sum + (row.vfbl || 0);
-                  }, 0)
+                  }, 0),
                 )}
               </TableCell>
               <TableCell align="right">
                 {formatCurrency(
                   years.reduce((sum, year) => {
-                    const row = existingRowsMap.get(year) || editingRows[year] || {};
+                    const row =
+                      existingRowsMap.get(year) || editingRows[year] || {};
                     return sum + (row.wc || 0);
-                  }, 0)
+                  }, 0),
                 )}
               </TableCell>
               <TableCell align="right">
                 {formatCurrency(
                   years.reduce((sum, year) => {
-                    const row = existingRowsMap.get(year) || editingRows[year] || {};
+                    const row =
+                      existingRowsMap.get(year) || editingRows[year] || {};
                     return sum + (row.vfbl || 0) + (row.wc || 0);
-                  }, 0)
+                  }, 0),
                 )}
               </TableCell>
               <TableCell align="right">
                 {formatCurrency(
                   years.reduce((sum, year) => {
-                    const row = existingRowsMap.get(year) || editingRows[year] || {};
+                    const row =
+                      existingRowsMap.get(year) || editingRows[year] || {};
                     return sum + (row.losses || 0);
-                  }, 0)
+                  }, 0),
                 )}
               </TableCell>
               <TableCell align="right">
                 {formatCurrency(
                   years.reduce((sum, year) => {
-                    const row = existingRowsMap.get(year) || editingRows[year] || {};
+                    const row =
+                      existingRowsMap.get(year) || editingRows[year] || {};
                     return sum + (row.lae || 0);
-                  }, 0)
+                  }, 0),
                 )}
               </TableCell>
               <TableCell align="right">
                 {formatCurrency(
                   years.reduce((sum, year) => {
-                    const row = existingRowsMap.get(year) || editingRows[year] || {};
+                    const row =
+                      existingRowsMap.get(year) || editingRows[year] || {};
                     return sum + (row.losses || 0) + (row.lae || 0);
-                  }, 0)
+                  }, 0),
                 )}
               </TableCell>
               <TableCell align="right">
                 {(() => {
                   const totalPremium = years.reduce((sum, year) => {
-                    const row = existingRowsMap.get(year) || editingRows[year] || {};
+                    const row =
+                      existingRowsMap.get(year) || editingRows[year] || {};
                     return sum + (row.vfbl || 0) + (row.wc || 0);
                   }, 0);
                   const totalLossLae = years.reduce((sum, year) => {
-                    const row = existingRowsMap.get(year) || editingRows[year] || {};
+                    const row =
+                      existingRowsMap.get(year) || editingRows[year] || {};
                     return sum + (row.losses || 0) + (row.lae || 0);
                   }, 0);
                   const lossRatio =
@@ -524,13 +541,15 @@ export default function UnderwritingGrid({
               </TableCell>
               <TableCell align="right">
                 {years.reduce((sum, year) => {
-                  const row = existingRowsMap.get(year) || editingRows[year] || {};
+                  const row =
+                    existingRowsMap.get(year) || editingRows[year] || {};
                   return sum + (row.points || 0);
                 }, 0) || "-"}
               </TableCell>
               <TableCell align="right">
                 {years.reduce((sum, year) => {
-                  const row = existingRowsMap.get(year) || editingRows[year] || {};
+                  const row =
+                    existingRowsMap.get(year) || editingRows[year] || {};
                   return sum + (row.number_of_claims || 0);
                 }, 0)}
               </TableCell>
@@ -542,13 +561,12 @@ export default function UnderwritingGrid({
 
       <Alert severity="info" sx={{ mt: 2 }}>
         <Typography variant="body2">
-          <strong>Note:</strong> Losses and LAE are carrier-entered fields. VFBL,
-          WC, and # of Claims may be synced from broker portal. Derived values
-          (Total Premium, Total Loss/LAE, Loss Ratio) are calculated
+          <strong>Note:</strong> Losses and LAE are carrier-entered fields.
+          VFBL, WC, and # of Claims may be synced from broker portal. Derived
+          values (Total Premium, Total Loss/LAE, Loss Ratio) are calculated
           automatically.
         </Typography>
       </Alert>
     </Box>
   );
 }
-
