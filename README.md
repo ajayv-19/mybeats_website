@@ -43,5 +43,13 @@ You can learn more in the [Create React App documentation](https://facebook.gith
 
 To learn React, check out the [React documentation](https://reactjs.org/).
 
-
 sudo chown -R $(whoami) amplify
+
+Goal What to do
+Use oncampus project export AWS_PROFILE=oncampusproject
+Use internship project export AWS_PROFILE=internshipproject
+See which profile is in use echo $AWS_PROFILE and aws sts get-caller-iden
+
+export AWS_PROFILE=oncampusproject
+export AWS_DEFAULT_REGION=us-east-1
+amplify push

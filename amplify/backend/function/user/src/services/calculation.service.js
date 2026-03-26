@@ -91,11 +91,18 @@ class CalculationService {
       adjustments = adjustments - excess;
     }
 
-    // Determine assigned company based on final total points
+    // Determine assigned company and category based on final total points
+    // 0-14 → FDM, 15-25 → FDI, 26-31 → FPI
     const assignedCompanyId = await this.getAssignedCompanyId(
       finalTotalPoints,
       fireDepartment.company_id
     );
+    let assignedCategory = "FDM";
+    if (finalTotalPoints >= 26 && finalTotalPoints <= 31) {
+      assignedCategory = "FPI";
+    } else if (finalTotalPoints >= 15 && finalTotalPoints <= 25) {
+      assignedCategory = "FDI";
+    }
 
     return {
       loss_ratio_points: lossRatioPoints,
@@ -108,6 +115,7 @@ class CalculationService {
       adjustments: adjustments, // Adjusted if points exceeded 31
       total_points: finalTotalPoints, // Never exceeds 31
       assigned_company_id: assignedCompanyId,
+      assigned_category: assignedCategory, // FDM | FDI | FPI — store in underwriting.category
     };
   }
 

@@ -17,15 +17,89 @@ class AnalysisController {
     app.get("/analysis/:fire_department_id", (...args) =>
       this.getAnalysisDetail(...args)
     );
+    app.put("/analysis/:fire_department_id/profile", (...args) =>
+      this.updateProfile(...args)
+    );
     app.post("/analysis/:fire_department_id/calculate", (...args) =>
       this.calculateAnalysis(...args)
     );
   }
 
   /**
+   * PUT /analysis/:fire_department_id/profile
+   * Update current fire department profile (for manual entry from analysis page)
+   * Body: { population?, square_miles?, fire_calls?, ems_calls?, safety_committee?, hs_officers?, motorized_racing_team?, company_id? }
+   */
+  async updateProfile(req, res) {
+    try {
+      const { fire_department_id } = req.params;
+      const body = req.body;
+
+      const profile = await FireDepartmentProfile.findOne({
+        where: {
+          fire_department_id: parseInt(fire_department_id),
+          [Op.or]: [
+            { effective_to: null },
+            { effective_to: { [Op.gte]: new Date() } },
+          ],
+        },
+        order: [["effective_from", "DESC"]],
+      });
+
+      const updateData = {};
+      if (body.population !== undefined) updateData.population = body.population;
+      if (body.square_miles !== undefined) updateData.square_miles = body.square_miles;
+      if (body.fire_calls !== undefined) updateData.fire_calls = body.fire_calls;
+      if (body.ems_calls !== undefined) updateData.ems_calls = body.ems_calls;
+      if (body.safety_committee !== undefined) updateData.safety_committee = !!body.safety_committee;
+      if (body.hs_officers !== undefined) updateData.hs_officers = body.hs_officers;
+      if (body.motorized_racing_team !== undefined) updateData.motorized_racing_team = !!body.motorized_racing_team;
+      if (body.company_id !== undefined) updateData.company_id = body.company_id;
+
+      if (profile) {
+        await profile.update(updateData);
+        return res.status(200).json({
+          message: "Profile updated successfully",
+          data: profile,
+        });
+      }
+
+      const fd = await FireDepartment.findByPk(parseInt(fire_department_id));
+      if (!fd) {
+        return res.status(404).json({ message: "Fire department not found" });
+      }
+
+      const newProfile = await FireDepartmentProfile.create({
+        fire_department_id: parseInt(fire_department_id),
+        company_id: body.company_id ?? fd.company_id ?? null,
+        population: body.population ?? null,
+        square_miles: body.square_miles ?? null,
+        fire_calls: body.fire_calls ?? null,
+        ems_calls: body.ems_calls ?? null,
+        safety_committee: body.safety_committee ?? null,
+        hs_officers: body.hs_officers ?? null,
+        motorized_racing_team: body.motorized_racing_team ?? null,
+        effective_from: new Date().toISOString().slice(0, 10),
+      });
+
+      return res.status(200).json({
+        message: "Profile created successfully",
+        data: newProfile,
+      });
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      return res.status(500).json({
+        message: "Error updating profile",
+        error: error.message,
+      });
+    }
+  }
+
+  /**
    * GET /analysis/list?company_id=...
-   * Get list of fire departments for analysis
-   * Includes departments with submitted applications OR approved policies
+   * Get list of fire departments for analysis.
+   * Only departments that have a fire_department_profile row with this company_id
+   * (profile is created when a form is approved for the first time; excludes rejected/pending-only).
    */
   async getAnalysisList(req, res) {
     try {
@@ -37,29 +111,24 @@ class AnalysisController {
         });
       }
 
-      // Get fire departments that have:
-      // 1. Submitted applications to this carrier (Form_Data with company_id)
-      // 2. OR have approved policies with this carrier
+      const companyIdInt = parseInt(company_id);
 
-      // Get fire department IDs from Form_Data
-      const formsWithFD = await FormData.findAll({
-        where: { company_id: parseInt(company_id) },
-        attributes: ["fire_department"],
-        group: ["fire_department"],
+      // Get fire_department_ids from fire_department_profile where company_id matches
+      const profiles = await FireDepartmentProfile.findAll({
+        where: { company_id: companyIdInt },
+        attributes: ["fire_department_id"],
       });
+      const fireDepartmentIds = [...new Set(profiles.map((p) => p.fire_department_id).filter((id) => id != null))];
 
-      const fdNamesFromForms = formsWithFD
-        .map((f) => f.fire_department)
-        .filter((name) => name);
+      if (fireDepartmentIds.length === 0) {
+        return res.status(200).json({
+          message: "Analysis list retrieved successfully",
+          data: [],
+        });
+      }
 
-      // Get fire departments by name or by company_id
       const fireDepartments = await FireDepartment.findAll({
-        where: {
-          [Op.or]: [
-            { company_id: parseInt(company_id) },
-            { fire_department_name: { [Op.in]: fdNamesFromForms } },
-          ],
-        },
+        where: { fire_department_id: { [Op.in]: fireDepartmentIds } },
         include: [
           {
             model: Company,
@@ -297,6 +366,74 @@ class AnalysisController {
         transaction,
       });
 
+      // --- Validation: require 5-year data and complete profile before running calculation ---
+      if (!underwritingRows || underwritingRows.length < 5) {
+        await transaction.rollback();
+        return res.status(400).json({
+          code: "MISSING_5_YEAR_DATA",
+          message:
+            "Cannot run analysis: underwriting data for the last 5 years is required. Please add or complete underwriting data (e.g. Losses, LAE, # Claims) for this fire department.",
+        });
+      }
+
+      const targetRow = underwritingRows.find(
+        (row) => row.underwriting_year === underwriting_year
+      );
+      if (!targetRow) {
+        await transaction.rollback();
+        return res.status(400).json({
+          code: "MISSING_5_YEAR_DATA",
+          message:
+            "Cannot run analysis: the selected year is not in the last 5 years of underwriting data. Please add or complete underwriting data for this fire department.",
+        });
+      }
+
+      const hasPremium =
+        (Number(targetRow.vfbl) || 0) + (Number(targetRow.wc) || 0) > 0 ||
+        (Number(targetRow.total_premium) || 0) > 0;
+      if (!hasPremium) {
+        await transaction.rollback();
+        return res.status(400).json({
+          code: "MISSING_5_YEAR_DATA",
+          message:
+            "Cannot run analysis: the selected year has no premium data (VFBL/WC). Please add or complete underwriting data.",
+        });
+      }
+
+      if (!profile) {
+        await transaction.rollback();
+        return res.status(400).json({
+          code: "MISSING_PROFILE",
+          message:
+            "Fire department profile is missing. Please complete the profile (e.g. from approved application forms).",
+        });
+      }
+
+      const requiredProfileFields = [
+        "population",
+        "square_miles",
+        "fire_calls",
+        "ems_calls",
+        "safety_committee",
+        "hs_officers",
+        "motorized_racing_team",
+      ];
+      const missingFields = requiredProfileFields.filter((field) => {
+        const value = profile[field];
+        if (value === undefined || value === null) return true;
+        if (typeof value === "boolean") return false;
+        if (typeof value === "number") return isNaN(value);
+        if (typeof value === "string") return value.trim() === "";
+        return false;
+      });
+      if (missingFields.length > 0) {
+        await transaction.rollback();
+        return res.status(400).json({
+          code: "MISSING_PROFILE",
+          message: `Fire department profile is incomplete. Missing: ${missingFields.join(", ")}. Please complete the profile (e.g. from approved application forms).`,
+        });
+      }
+
       // Run calculation
       const calculationResult = await calculationService.calculate(
         fireDepartment,
@@ -305,6 +442,9 @@ class AnalysisController {
         underwriting_year,
         transaction
       );
+
+      // Fields to store in underwriting_results (no assigned_category column there)
+      const { assigned_category: _cat, ...resultFields } = calculationResult;
 
       // Upsert underwriting_results
       const [result, created] = await UnderwritingResults.findOrCreate({
@@ -315,13 +455,13 @@ class AnalysisController {
         defaults: {
           fire_department_id: parseInt(fire_department_id),
           underwriting_year: underwriting_year,
-          ...calculationResult,
+          ...resultFields,
         },
         transaction,
       });
 
       if (!created) {
-        await result.update(calculationResult, { transaction });
+        await result.update(resultFields, { transaction });
       }
 
       // Update underwriting row with points and company_id
@@ -338,6 +478,8 @@ class AnalysisController {
           {
             points: calculationResult.total_points,
             company_id: calculationResult.assigned_company_id,
+            // Store assigned category (FDM/FDI/FPI) in underwriting.category (model field: type)
+            type: calculationResult.assigned_category,
           },
           { transaction }
         );
