@@ -15,6 +15,9 @@ export interface UnderwritingRow {
   total_loss_lae?: number;
   loss_ratio?: number;
   points?: number;
+  /** Assigned pool FDM / FDI / FPI (Sequelize attribute `type`, DB column category). */
+  type?: string | null;
+  category?: string | null;
   number_of_claims?: number;
   pr_factor?: number;
   created_at?: string;
@@ -45,6 +48,8 @@ export interface BulkUpsertRequest {
     lae?: number;
     number_of_claims?: number;
     company_id?: number;
+    /** FDM | FDI | FPI | null to clear */
+    category?: string | null;
   }>;
 }
 

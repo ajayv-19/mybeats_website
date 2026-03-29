@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import {
   TableContainer,
   Table,
@@ -8,8 +8,6 @@ import {
   TableBody,
   Paper,
   Button,
-  Chip,
-  Stack,
   Tooltip,
   CircularProgress,
   Box,
@@ -17,7 +15,6 @@ import {
 import { Link } from "react-router-dom";
 import VisibilityIcon from "@mui/icons-material/Visibility";
 import { useAnalysisList } from "../settings/apis/AnalysisApis";
-import { toast } from "sonner";
 
 export default function AnalysisList() {
   const [company_id, setCompany_id] = useState<number>(496); // Default, should come from auth/context
@@ -67,9 +64,6 @@ export default function AnalysisList() {
                 State
               </TableCell>
               <TableCell style={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}>
-                Latest Year
-              </TableCell>
-              <TableCell style={{ fontWeight: "bold", backgroundColor: "#f5f5f5" }}>
                 Actions
               </TableCell>
             </TableRow>
@@ -81,10 +75,9 @@ export default function AnalysisList() {
                   <TableCell>{fd.fire_department_name}</TableCell>
                   <TableCell>{fd.county || "-"}</TableCell>
                   <TableCell>{fd.state || "-"}</TableCell>
-                  <TableCell>{fd.latest_underwriting_year || "-"}</TableCell>
                   <TableCell>
                     <Tooltip title="View Analysis">
-                      <Link to={`/apps/analysis/${fd.fire_department_id}`}>
+                      <Link to={`/apps/analysis/${fd.fire_department_id}?company_id=${company_id}`}>
                         <Button
                           size="small"
                           variant="outlined"
@@ -104,7 +97,7 @@ export default function AnalysisList() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} align="center" style={{ color: "#999", fontSize: "1rem" }}>
+                <TableCell colSpan={4} align="center" style={{ color: "#999", fontSize: "1rem" }}>
                   No fire departments found.
                 </TableCell>
               </TableRow>

@@ -1,5 +1,8 @@
 const { FormData, FireDepartment, FireDepartmentProfile, Underwriting, sequelize } = require("../models");
-const { Op } = require("sequelize");
+const {
+  computeProfileDensity,
+  computeProfileTotalCalls,
+} = require("./profileDerivedFields");
 
 /**
  * Extract policy year from effective_date
@@ -93,119 +96,81 @@ async function extractUnderwritingData(form, flattenedData, fireDepartmentId, co
 }
 
 /**
- * Extract and store fire department profile data from form
- * Uses effective dating - only updates if values changed
+ * Extract and store fire department profile data from form.
+ * One row per (fire_department_id, company_id): renewal approvals UPDATE that row (no new SCD row).
  */
 async function extractProfileData(form, flattenedData, fireDepartmentId, companyId, effectiveDate, updatedBy, transaction) {
-  // Extract profile fields from formNumber "2"
   const population = parseInteger(flattenedData.population);
   const squareMiles = parseDecimal(flattenedData.square_mileage);
   const fireCalls = parseInteger(flattenedData.fire_calls);
   const emsCalls = parseInteger(flattenedData.ems_calls);
-  const motorizedRacingTeam = parseBoolean(flattenedData.racing_motorized);
+  const motorizedRacingCount = parseInteger(flattenedData.racing_motorized_count);
+  const motorizedRacingTeam =
+    parseBoolean(flattenedData.racing_motorized) ||
+    (motorizedRacingCount != null && motorizedRacingCount > 0);
   const hsOfficers = parseInteger(flattenedData.safety_officer_count);
   const safetyCommittee = parseBoolean(flattenedData.safety_committee);
-
-  // Extract fields from formNumber "1"
   const brokerName = flattenedData.broker_name || null;
 
-  // Calculate dates
-  const effectiveFrom = new Date(); // Current date
   const renewalDate = effectiveDate ? new Date(effectiveDate) : null;
   if (renewalDate) {
     renewalDate.setFullYear(renewalDate.getFullYear() + 1);
   }
 
-  // Check if current profile exists for this company
-  const currentProfile = await FireDepartmentProfile.findOne({
+  const existing = await FireDepartmentProfile.findOne({
     where: {
       fire_department_id: fireDepartmentId,
       company_id: companyId,
-      effective_to: null,
     },
+    order: [["id", "DESC"]],
     transaction,
   });
 
-  // Determine customer_since
   let customerSince = effectiveDate ? new Date(effectiveDate) : null;
-  if (currentProfile && currentProfile.customer_since) {
-    // Keep existing customer_since if profile already exists
-    customerSince = currentProfile.customer_since;
+  if (existing && existing.customer_since) {
+    customerSince = existing.customer_since;
   }
 
-  // Check if values changed
-  let valuesChanged = false;
-  if (!currentProfile) {
-    valuesChanged = true; // No profile exists, create one
-  } else {
-    // Compare values (convert dates to strings for comparison)
-    const currentValuationDate = currentProfile.valuation_date ?
-      new Date(currentProfile.valuation_date).toISOString().split('T')[0] : null;
-    const currentRenewalDate = currentProfile.renewal_date ?
-      new Date(currentProfile.renewal_date).toISOString().split('T')[0] : null;
-    const newValuationDate = effectiveDate ?
-      new Date(effectiveDate).toISOString().split('T')[0] : null;
-    const newRenewalDateStr = renewalDate ?
-      renewalDate.toISOString().split('T')[0] : null;
+  const valuationDate = effectiveDate ? new Date(effectiveDate) : null;
+  const now = new Date();
 
-    // Compare numeric values (handle string decimals from DB)
-    const currentSquareMiles = currentProfile.square_miles !== null ?
-      parseFloat(currentProfile.square_miles) : null;
+  const density = computeProfileDensity(population, squareMiles);
+  const totalCalls = computeProfileTotalCalls(fireCalls, emsCalls);
 
-    valuesChanged =
-      currentProfile.population !== population ||
-      currentSquareMiles !== squareMiles ||
-      currentProfile.fire_calls !== fireCalls ||
-      currentProfile.ems_calls !== emsCalls ||
-      currentProfile.motorized_racing_team !== motorizedRacingTeam ||
-      currentProfile.hs_officers !== hsOfficers ||
-      currentProfile.safety_committee !== safetyCommittee ||
-      currentProfile.agent !== brokerName ||
-      currentValuationDate !== newValuationDate ||
-      currentRenewalDate !== newRenewalDateStr;
+  const payload = {
+    population,
+    square_miles: squareMiles,
+    fire_calls: fireCalls,
+    ems_calls: emsCalls,
+    density,
+    total_calls: totalCalls,
+    motorized_racing_team: motorizedRacingTeam,
+    motorized_racing_team_count: motorizedRacingCount,
+    hs_officers: hsOfficers,
+    safety_committee: safetyCommittee,
+    customer_since: customerSince,
+    renewal_date: renewalDate,
+    valuation_date: valuationDate,
+    agent: brokerName,
+    effective_to: null,
+    updated_by: updatedBy,
+    updated_at: now,
+  };
+
+  if (existing) {
+    await existing.update(payload, { transaction });
+    return existing;
   }
 
-  if (valuesChanged) {
-    // Close old record (if exists)
-    if (currentProfile) {
-      await FireDepartmentProfile.update(
-        { effective_to: effectiveFrom },
-        {
-          where: {
-            fire_department_id: fireDepartmentId,
-            company_id: companyId,
-            effective_to: null,
-          },
-          transaction,
-        }
-      );
-    }
-
-    // Insert new record
-    const newProfile = await FireDepartmentProfile.create({
+  return await FireDepartmentProfile.create(
+    {
       fire_department_id: fireDepartmentId,
       company_id: companyId,
-      population: population,
-      square_miles: squareMiles,
-      fire_calls: fireCalls,
-      ems_calls: emsCalls,
-      motorized_racing_team: motorizedRacingTeam,
-      hs_officers: hsOfficers,
-      safety_committee: safetyCommittee,
-      customer_since: customerSince,
-      renewal_date: renewalDate,
-      valuation_date: effectiveDate ? new Date(effectiveDate) : null,
-      agent: brokerName,
-      effective_from: effectiveFrom,
-      effective_to: null,
-      updated_by: updatedBy,
-    }, { transaction });
-
-    return newProfile;
-  } else {
-    // Values unchanged, return existing profile
-    return currentProfile;
-  }
+      ...payload,
+      effective_from: now.toISOString().slice(0, 10),
+    },
+    { transaction }
+  );
 }
 
 /**

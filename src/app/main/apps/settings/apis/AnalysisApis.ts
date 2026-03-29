@@ -2,6 +2,7 @@ import axios from "../../../../constant/axios";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 // Type definitions
+/** List endpoint returns FD identity + company context only; detail loads on View. */
 export interface FireDepartmentListItem {
   fire_department_id: number;
   fire_department_name: string;
@@ -12,9 +13,6 @@ export interface FireDepartmentListItem {
     id: number;
     Company_Name: string;
   };
-  latest_profile?: any;
-  latest_underwriting_year?: string;
-  latest_policy?: any;
 }
 
 export interface AnalysisListResponse {
@@ -26,6 +24,10 @@ export interface UnderwritingResult {
   uw_result_id?: number;
   fire_department_id: number;
   underwriting_year: string;
+  /** Writing carrier for this result row (matches underwriting row company). */
+  company_id?: number | null;
+  /** FDM / FDI / FPI from calculation. */
+  category?: string | null;
   loss_ratio_points?: number;
   density_points?: number;
   call_volume_points?: number;
@@ -33,11 +35,17 @@ export interface UnderwritingResult {
   safety_points?: number;
   hso_points?: number;
   racing_penalty?: number;
+  /** Profile penalty snapshot at calculation (integer points; negative reduces score). */
+  management_practice_penalty?: number | null;
   adjustments?: number;
   total_points?: number;
   assigned_company_id?: number;
   created_at?: string;
   assignedCompany?: {
+    id: number;
+    Company_Name: string;
+  };
+  company?: {
     id: number;
     Company_Name: string;
   };
@@ -47,6 +55,8 @@ export interface Policy {
   policy_id?: number;
   fire_department_id: number;
   underwriting_year: string;
+  /** Writing / subscribed company (same as underwriting.company_id). */
+  company_id?: number | null;
   assigned_company_id?: number;
   policy_value?: number;
   policy_number?: string;
@@ -58,10 +68,18 @@ export interface Policy {
     id: number;
     Company_Name: string;
   };
+  company?: {
+    id: number;
+    Company_Name: string;
+  };
 }
 
 export interface AnalysisDetail {
   fire_department: any;
+  /** Subscribed company this view is scoped to (matches fire_department_profile.company_id / underwriting.company_id). */
+  analysis_company_id?: number;
+  /** Most recent underwriting_year returned for that company (not calendar "current" until a row exists). */
+  latest_underwriting_year?: string | null;
   profile: any;
   underwriting: any[];
   results: UnderwritingResult[];
@@ -76,6 +94,7 @@ export interface AnalysisDetailResponse {
 
 export interface CalculateAnalysisRequest {
   underwriting_year: string;
+  company_id: number;
 }
 
 export interface CalculateAnalysisResponse {
@@ -104,18 +123,22 @@ export const useAnalysisList = (company_id: number) => {
 };
 
 /**
- * Get analysis detail for a fire department
+ * Get analysis detail for a fire department and subscribed company
  */
-export const useAnalysisDetail = (fire_department_id: number) => {
+export const useAnalysisDetail = (
+  fire_department_id: number,
+  company_id: number
+) => {
   return useQuery<AnalysisDetailResponse>({
-    queryKey: ["analysis", "detail", fire_department_id],
+    queryKey: ["analysis", "detail", fire_department_id, company_id],
     queryFn: async () => {
       const response = await axios.get<AnalysisDetailResponse>(
         `/analysis/${fire_department_id}`,
+        { params: { company_id } }
       );
       return response.data;
     },
-    enabled: !!fire_department_id,
+    enabled: !!fire_department_id && !!company_id,
   });
 };
 
@@ -141,7 +164,12 @@ export const useCalculateAnalysis = () => {
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["analysis", "detail", variables.fire_department_id],
+        queryKey: [
+          "analysis",
+          "detail",
+          variables.fire_department_id,
+          variables.data.company_id,
+        ],
       });
       queryClient.invalidateQueries({
         queryKey: ["analysis", "list"],
@@ -158,7 +186,12 @@ export interface UpdateProfileRequest {
   safety_committee?: boolean | null;
   hs_officers?: number | null;
   motorized_racing_team?: boolean | null;
-  company_id?: number | null;
+  /** Motorized races per year (form field racing_motorized_count). */
+  motorized_racing_team_count?: number | null;
+  /** Points adjustment (integer); use negative for cooperation / management penalties. */
+  management_practice_penalty?: number | null;
+  customer_since?: string | null;
+  agent?: string | null;
 }
 
 /**
@@ -170,20 +203,28 @@ export const useUpdateAnalysisProfile = () => {
   return useMutation({
     mutationFn: async ({
       fire_department_id,
+      company_id,
       data,
     }: {
       fire_department_id: number;
+      company_id: number;
       data: UpdateProfileRequest;
     }) => {
       const response = await axios.put(
         `/analysis/${fire_department_id}/profile`,
-        data
+        data,
+        { params: { company_id } }
       );
       return response.data;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
-        queryKey: ["analysis", "detail", variables.fire_department_id],
+        queryKey: [
+          "analysis",
+          "detail",
+          variables.fire_department_id,
+          variables.company_id,
+        ],
       });
       queryClient.invalidateQueries({
         queryKey: ["analysis", "list"],

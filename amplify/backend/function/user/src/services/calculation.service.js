@@ -8,13 +8,38 @@ const {
 } = require("../models");
 const { Op } = require("sequelize");
 
+function rowPremium(row) {
+  const tp = Number(row.total_premium);
+  if (Number.isFinite(tp) && tp > 0) return tp;
+  return (Number(row.vfbl) || 0) + (Number(row.wc) || 0);
+}
+
+function rowLossLae(row) {
+  const t = row.total_loss_lae;
+  if (t != null && t !== "" && Number.isFinite(Number(t))) return Number(t);
+  return (Number(row.losses) || 0) + (Number(row.lae) || 0);
+}
+
 class CalculationService {
+  /**
+   * Five underwriting periods immediately before `underwritingYear` (worksheet “5 Yr Totals” row).
+   * Rows must be sorted ascending by `underwriting_year` for a contiguous window.
+   */
+  getPriorFiveYearRows(underwritingRows, underwritingYear) {
+    const asc = [...underwritingRows].sort((a, b) =>
+      String(a.underwriting_year).localeCompare(String(b.underwriting_year))
+    );
+    const idx = asc.findIndex((r) => r.underwriting_year === underwritingYear);
+    if (idx < 5) return null;
+    return asc.slice(idx - 5, idx);
+  }
+
   /**
    * Calculate analysis for a fire department
    * @param {FireDepartment} fireDepartment
    * @param {FireDepartmentProfile} profile
-   * @param {Array<Underwriting>} underwritingRows - Last 5 years
-   * @param {string} underwritingYear - Target year to calculate
+   * @param {Array<Underwriting>} underwritingRows — include enough history so five years exist before the target year
+   * @param {string} underwritingYear - Target year to calculate (renewal row; not included in loss-ratio / frequency aggregates)
    * @param {Transaction} transaction
    * @returns {Promise<Object>} Calculation result with points breakdown
    */
@@ -25,7 +50,7 @@ class CalculationService {
     underwritingYear,
     transaction
   ) {
-    // Get the target year's underwriting row
+    // Get the target year's underwriting row (renewal / current period on the worksheet)
     const targetRow = underwritingRows.find(
       (row) => row.underwriting_year === underwritingYear
     );
@@ -36,39 +61,100 @@ class CalculationService {
       );
     }
 
-    // Calculate derived metrics from target row
-    const totalPremium = (targetRow.vfbl || 0) + (targetRow.wc || 0);
-    const totalLossLae = (targetRow.losses || 0) + (targetRow.lae || 0);
+    const priorFive = this.getPriorFiveYearRows(
+      underwritingRows,
+      underwritingYear
+    );
+    if (!priorFive || priorFive.length < 5) {
+      throw new Error(
+        "Five underwriting years immediately before the selected year are required (worksheet 5-year totals)."
+      );
+    }
+
+    let aggPremium = 0;
+    let aggLossLae = 0;
+    let aggClaims = 0;
+    for (const row of priorFive) {
+      aggPremium += rowPremium(row);
+      aggLossLae += rowLossLae(row);
+      aggClaims += Number(row.number_of_claims) || 0;
+    }
+
     const lossRatio =
-      totalPremium > 0 ? (totalLossLae / totalPremium) * 100 : 0;
+      aggPremium > 0 ? (aggLossLae / aggPremium) * 100 : 0;
+    const claimsPer100k =
+      aggPremium > 0 ? (aggClaims / aggPremium) * 100000 : 0;
 
     // Calculate from profile
     const population = profile?.population || 0;
     const squareMiles = profile?.square_miles
       ? parseFloat(profile.square_miles)
       : 0;
-    const density = squareMiles > 0 ? population / squareMiles : 0;
+    const densityStored =
+      profile?.density != null && profile?.density !== ""
+        ? parseFloat(profile.density)
+        : NaN;
+    const density =
+      Number.isFinite(densityStored) && densityStored >= 0
+        ? densityStored
+        : squareMiles > 0
+        ? Math.round(population / squareMiles)
+        : 0;
     const fireCalls = profile?.fire_calls || 0;
     const emsCalls = profile?.ems_calls || 0;
-    const totalCalls = fireCalls + emsCalls;
+    const totalCallsStored =
+      profile?.total_calls != null && profile?.total_calls !== ""
+        ? parseInt(profile.total_calls, 10)
+        : NaN;
+    const totalCalls = Number.isFinite(totalCallsStored)
+      ? totalCallsStored
+      : fireCalls + emsCalls;
 
-    // Calculate claims per 100k
-    const claimsPer100k =
-      totalPremium > 0
-        ? ((targetRow.number_of_claims || 0) / totalPremium) * 100000
+    // Lookup points — must use the same Sequelize transaction: pool.max is 1, so queries
+    // without `transaction` deadlock waiting for a second connection while the txn holds the only one.
+    const lossRatioPoints = await this.lookupLossRatioPoints(lossRatio, transaction);
+    const densityPoints = await this.lookupDensityPoints(density, transaction);
+    const callVolumePoints = await this.lookupCallVolumePoints(totalCalls, transaction);
+    const frequencyPoints = await this.lookupFrequencyPoints(claimsPer100k, transaction);
+
+    // Profile rows (worksheet): motorized present → −2, else 0; H&S present → +1, else −2; safety → +1 / −2
+    const rcNum =
+      profile?.motorized_racing_team_count != null &&
+      profile?.motorized_racing_team_count !== ""
+        ? Number(profile.motorized_racing_team_count)
         : 0;
+    const racingPresent =
+      profile?.motorized_racing_team === true ||
+      (Number.isFinite(rcNum) && rcNum > 0);
+    const racingPenalty = racingPresent ? -2 : 0;
 
-    // Lookup points
-    const lossRatioPoints = await this.lookupLossRatioPoints(lossRatio);
-    const densityPoints = await this.lookupDensityPoints(density);
-    const callVolumePoints = await this.lookupCallVolumePoints(totalCalls);
-    const frequencyPoints = await this.lookupFrequencyPoints(claimsPer100k);
+    if (profile?.safety_committee !== true && profile?.safety_committee !== false) {
+      throw new Error(
+        "Profile field safety_committee must be set to yes or no before calculating."
+      );
+    }
+    const safetyPoints = profile.safety_committee === true ? 1 : -2;
 
-    // Safety and penalty points
-    const safetyPoints = profile?.safety_committee ? 1 : 0;
-    const hsoPoints = Math.min(profile?.hs_officers || 0, 3); // Max 3 points
-    const racingPenalty = profile?.motorized_racing_team ? -1 : 0;
-    let adjustments = 0; // Can be configured later
+    const hsoRaw = profile?.hs_officers;
+    if (hsoRaw === null || hsoRaw === undefined || hsoRaw === "") {
+      throw new Error(
+        "Profile field hs_officers must be set (use 0 if none) before calculating."
+      );
+    }
+    const hso = Number(hsoRaw);
+    if (!Number.isFinite(hso) || hso < 0) {
+      throw new Error("Profile hs_officers must be a non-negative number.");
+    }
+    const hsoPoints = hso > 0 ? 1 : -2;
+
+    const mpRaw = profile?.management_practice_penalty;
+    const mpParsed =
+      mpRaw != null && mpRaw !== "" ? Number(mpRaw) : 0;
+    const managementPracticePenalty = Number.isFinite(mpParsed)
+      ? Math.trunc(mpParsed)
+      : 0;
+
+    let adjustments = managementPracticePenalty;
 
     // Calculate total points
     const totalPoints =
@@ -95,7 +181,8 @@ class CalculationService {
     // 0-14 → FDM, 15-25 → FDI, 26-31 → FPI
     const assignedCompanyId = await this.getAssignedCompanyId(
       finalTotalPoints,
-      fireDepartment.company_id
+      fireDepartment.company_id,
+      transaction
     );
     let assignedCategory = "FDM";
     if (finalTotalPoints >= 26 && finalTotalPoints <= 31) {
@@ -112,7 +199,8 @@ class CalculationService {
       safety_points: safetyPoints,
       hso_points: hsoPoints,
       racing_penalty: racingPenalty,
-      adjustments: adjustments, // Adjusted if points exceeded 31
+      management_practice_penalty: managementPracticePenalty,
+      adjustments: adjustments, // management penalty ± cap normalization if total exceeded 31
       total_points: finalTotalPoints, // Never exceeds 31
       assigned_company_id: assignedCompanyId,
       assigned_category: assignedCategory, // FDM | FDI | FPI — store in underwriting.category
@@ -123,13 +211,14 @@ class CalculationService {
    * Lookup loss ratio points
    * 0.00-10.00 => 22, 11.00-20.00 => 20, etc.
    */
-  async lookupLossRatioPoints(lossRatio) {
+  async lookupLossRatioPoints(lossRatio, transaction) {
     const lookup = await LookupLossRatioPoints.findOne({
       where: {
         min_value: { [Op.lte]: lossRatio },
         max_value: { [Op.gte]: lossRatio },
       },
       order: [["min_value", "ASC"]],
+      transaction,
     });
 
     return lookup ? lookup.points : 0;
@@ -139,13 +228,14 @@ class CalculationService {
    * Lookup density points
    * 0-500 => 4, 501-1500 => 3, etc.
    */
-  async lookupDensityPoints(density) {
+  async lookupDensityPoints(density, transaction) {
     const lookup = await LookupDensityPoints.findOne({
       where: {
         min_value: { [Op.lte]: density },
         max_value: { [Op.gte]: density },
       },
       order: [["min_value", "ASC"]],
+      transaction,
     });
 
     return lookup ? lookup.points : 0;
@@ -155,13 +245,14 @@ class CalculationService {
    * Lookup call volume points
    * 0-250 => 5, 251-500 => 4, etc.
    */
-  async lookupCallVolumePoints(totalCalls) {
+  async lookupCallVolumePoints(totalCalls, transaction) {
     const lookup = await LookupCallVolumePoints.findOne({
       where: {
         min_value: { [Op.lte]: totalCalls },
         max_value: { [Op.gte]: totalCalls },
       },
       order: [["min_value", "ASC"]],
+      transaction,
     });
 
     return lookup ? lookup.points : 0;
@@ -171,13 +262,14 @@ class CalculationService {
    * Lookup frequency points (claims per 100k)
    * 0.00-0.75 => 5, 0.76-1.50 => 4, etc. (can be negative)
    */
-  async lookupFrequencyPoints(claimsPer100k) {
+  async lookupFrequencyPoints(claimsPer100k, transaction) {
     const lookup = await LookupFrequencyPoints.findOne({
       where: {
         min_value: { [Op.lte]: claimsPer100k },
         max_value: { [Op.gte]: claimsPer100k },
       },
       order: [["min_value", "ASC"]],
+      transaction,
     });
 
     return lookup ? lookup.points : 0;
@@ -189,7 +281,7 @@ class CalculationService {
    * Points should never exceed 31 (handled in calculate method)
    * Returns company_id from Subscribed_Companies where Company_Name matches
    */
-  async getAssignedCompanyId(totalPoints, defaultCompanyId) {
+  async getAssignedCompanyId(totalPoints, defaultCompanyId, transaction) {
     let companyName;
     if (totalPoints >= 0 && totalPoints <= 14) {
       companyName = "FDM";
@@ -207,6 +299,7 @@ class CalculationService {
       where: {
         Company_Name: companyName,
       },
+      transaction,
     });
 
     return company ? company.id : defaultCompanyId;

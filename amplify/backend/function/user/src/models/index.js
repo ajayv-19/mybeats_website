@@ -506,7 +506,7 @@ const FireDepartment = sequelize.define(
   }
 );
 
-// Fire Department Profile Model
+// Fire Department Profile — one row per (company_id, fire_department_id); renewals update this row (effective_from / effective_to kept for audit only, not used to version rows).
 const FireDepartmentProfile = sequelize.define(
   "FireDepartmentProfile",
   {
@@ -547,8 +547,20 @@ const FireDepartmentProfile = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    density: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    total_calls: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     motorized_racing_team: {
       type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    motorized_racing_team_count: {
+      type: DataTypes.INTEGER,
       allowNull: true,
     },
     hs_officers: {
@@ -557,6 +569,10 @@ const FireDepartmentProfile = sequelize.define(
     },
     safety_committee: {
       type: DataTypes.BOOLEAN,
+      allowNull: true,
+    },
+    management_practice_penalty: {
+      type: DataTypes.INTEGER,
       allowNull: true,
     },
     customer_since: {
@@ -602,14 +618,14 @@ const FireDepartmentProfile = sequelize.define(
     indexes: [
       {
         unique: true,
-        fields: ["fire_department_id", "company_id", "effective_from"],
-        name: "uq_fd_profile_effective",
+        fields: ["fire_department_id", "company_id"],
+        name: "uq_fd_profile_company_fd",
       },
     ],
   }
 );
 
-// Underwriting Model
+// Underwriting — one row per (company_id, fire_department_id, underwriting_year).
 const Underwriting = sequelize.define(
   "Underwriting",
   {
@@ -691,8 +707,7 @@ const Underwriting = sequelize.define(
       type: DataTypes.DECIMAL(10, 4),
       allowNull: true,
     },
-    // Note: assigned_category is stored in UnderwritingResults, not Underwriting
-    // The 'category' column in Underwriting is used for "initial/renewal" (mapped to 'type' field)
+    // FDM/FDI/FPI from analysis is stored in category (model field: type). underwriting_results.category mirrors it.
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -721,7 +736,7 @@ const Underwriting = sequelize.define(
   }
 );
 
-// Underwriting Results Model
+// Underwriting Results — one row per (company_id, fire_department_id, underwriting_year); points breakdown + category.
 const UnderwritingResults = sequelize.define(
   "UnderwritingResults",
   {
@@ -770,6 +785,10 @@ const UnderwritingResults = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    management_practice_penalty: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     adjustments: {
       type: DataTypes.INTEGER,
       allowNull: true,
@@ -786,6 +805,18 @@ const UnderwritingResults = sequelize.define(
         key: "id",
       },
     },
+    company_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "Subscribed_Companies",
+        key: "id",
+      },
+    },
+    category: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     created_at: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -800,14 +831,15 @@ const UnderwritingResults = sequelize.define(
     indexes: [
       {
         unique: true,
-        fields: ["fire_department_id", "underwriting_year"],
-        name: "uq_uw_results_fd_year",
+        fields: ["fire_department_id", "underwriting_year", "company_id"],
+        name: "uq_uw_results_fd_year_company",
       },
     ],
   }
 );
 
-// Policies Model
+// Policies Model — one row per (fire_department_id, underwriting_year, company_id) writing carrier;
+// assigned_company_id = pool from analysis (FDM/FDI/FPI company).
 const Policy = sequelize.define(
   "Policy",
   {
@@ -827,6 +859,14 @@ const Policy = sequelize.define(
     underwriting_year: {
       type: DataTypes.STRING(9),
       allowNull: false,
+    },
+    company_id: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      references: {
+        model: "Subscribed_Companies",
+        key: "id",
+      },
     },
     assigned_company_id: {
       type: DataTypes.INTEGER,
@@ -873,8 +913,8 @@ const Policy = sequelize.define(
     indexes: [
       {
         unique: true,
-        fields: ["fire_department_id", "underwriting_year"],
-        name: "uq_policy_fd_year",
+        fields: ["fire_department_id", "underwriting_year", "company_id"],
+        name: "uq_policy_fd_year_company",
       },
     ],
   }
@@ -1045,9 +1085,17 @@ UnderwritingResults.belongsTo(Company, {
   foreignKey: "assigned_company_id",
   as: "assignedCompany",
 });
+UnderwritingResults.belongsTo(Company, {
+  foreignKey: "company_id",
+  as: "company",
+});
 Policy.belongsTo(Company, {
   foreignKey: "assigned_company_id",
   as: "assignedCompany",
+});
+Policy.belongsTo(Company, {
+  foreignKey: "company_id",
+  as: "company",
 });
 
 // Form Message Model (matches Agent_Messages table)

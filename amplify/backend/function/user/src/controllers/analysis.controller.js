@@ -10,6 +10,20 @@ const {
 } = require("../models");
 const { Op } = require("sequelize");
 const calculationService = require("../services/calculation.service");
+const {
+  computeProfileDensity,
+  computeProfileTotalCalls,
+} = require("../services/profileDerivedFields");
+
+/**
+ * Analysis data model (subscribed company = fire_department_profile.company_id / underwriting.company_id):
+ * - fire_department_profile: one row per (company_id, fire_department_id); updated on each approved form / manual edit.
+ * - underwriting: one row per (company_id, fire_department_id, underwriting_year).
+ * - underwriting_results: one row per (company_id, fire_department_id, underwriting_year).
+ * - policies: one row per (company_id, fire_department_id, underwriting_year).
+ * Calculate uses the selected renewal year plus five prior years for loss-ratio and claims-per-100k totals (worksheet 5-yr row).
+ * Detail/list “current” display uses the latest underwriting_year on file for that company (results + policy for that year only).
+ */
 
 class AnalysisController {
   setupRoutes(app) {
@@ -26,24 +40,28 @@ class AnalysisController {
   }
 
   /**
-   * PUT /analysis/:fire_department_id/profile
-   * Update current fire department profile (for manual entry from analysis page)
-   * Body: { population?, square_miles?, fire_calls?, ems_calls?, safety_committee?, hs_officers?, motorized_racing_team?, company_id? }
+   * PUT /analysis/:fire_department_id/profile?company_id=...
+   * Update current fire department profile for that subscribed company (matches fire_department_profile.company_id)
+   * Body: { population?, square_miles?, fire_calls?, ems_calls?, safety_committee?, hs_officers?, motorized_racing_team?, motorized_racing_team_count?, management_practice_penalty?, customer_since?, agent? } — density and total_calls are recomputed server-side.
    */
   async updateProfile(req, res) {
     try {
       const { fire_department_id } = req.params;
+      const { company_id: companyIdQuery } = req.query;
       const body = req.body;
+
+      if (!companyIdQuery) {
+        return res.status(400).json({
+          message: "company_id query parameter is required",
+        });
+      }
+      const companyIdInt = parseInt(companyIdQuery);
 
       const profile = await FireDepartmentProfile.findOne({
         where: {
           fire_department_id: parseInt(fire_department_id),
-          [Op.or]: [
-            { effective_to: null },
-            { effective_to: { [Op.gte]: new Date() } },
-          ],
+          company_id: companyIdInt,
         },
-        order: [["effective_from", "DESC"]],
       });
 
       const updateData = {};
@@ -51,12 +69,44 @@ class AnalysisController {
       if (body.square_miles !== undefined) updateData.square_miles = body.square_miles;
       if (body.fire_calls !== undefined) updateData.fire_calls = body.fire_calls;
       if (body.ems_calls !== undefined) updateData.ems_calls = body.ems_calls;
-      if (body.safety_committee !== undefined) updateData.safety_committee = !!body.safety_committee;
+      if (body.safety_committee !== undefined) {
+        updateData.safety_committee =
+          body.safety_committee === null ? null : !!body.safety_committee;
+      }
       if (body.hs_officers !== undefined) updateData.hs_officers = body.hs_officers;
-      if (body.motorized_racing_team !== undefined) updateData.motorized_racing_team = !!body.motorized_racing_team;
-      if (body.company_id !== undefined) updateData.company_id = body.company_id;
+      if (body.motorized_racing_team_count !== undefined) {
+        updateData.motorized_racing_team_count = body.motorized_racing_team_count;
+        const cnt = body.motorized_racing_team_count;
+        if (cnt != null && Number(cnt) > 0) updateData.motorized_racing_team = true;
+        else if (cnt === 0) updateData.motorized_racing_team = false;
+      }
+      if (
+        body.motorized_racing_team !== undefined &&
+        body.motorized_racing_team_count === undefined
+      ) {
+        updateData.motorized_racing_team = !!body.motorized_racing_team;
+      }
+      if (body.management_practice_penalty !== undefined) {
+        updateData.management_practice_penalty = body.management_practice_penalty;
+      }
+      if (body.customer_since !== undefined) updateData.customer_since = body.customer_since;
+      if (body.agent !== undefined) updateData.agent = body.agent;
+
+      const mergeForDerived = (base) => ({
+        population:
+          updateData.population !== undefined ? updateData.population : base.population,
+        square_miles:
+          updateData.square_miles !== undefined ? updateData.square_miles : base.square_miles,
+        fire_calls:
+          updateData.fire_calls !== undefined ? updateData.fire_calls : base.fire_calls,
+        ems_calls:
+          updateData.ems_calls !== undefined ? updateData.ems_calls : base.ems_calls,
+      });
 
       if (profile) {
+        const m = mergeForDerived(profile.get({ plain: true }));
+        updateData.density = computeProfileDensity(m.population, m.square_miles);
+        updateData.total_calls = computeProfileTotalCalls(m.fire_calls, m.ems_calls);
         await profile.update(updateData);
         return res.status(200).json({
           message: "Profile updated successfully",
@@ -69,17 +119,38 @@ class AnalysisController {
         return res.status(404).json({ message: "Fire department not found" });
       }
 
+      let motorizedRacingTeam = body.motorized_racing_team ?? null;
+      let motorizedRacingTeamCount = body.motorized_racing_team_count ?? null;
+      if (body.motorized_racing_team_count !== undefined) {
+        motorizedRacingTeamCount = body.motorized_racing_team_count;
+        const cnt = body.motorized_racing_team_count;
+        if (cnt != null && Number(cnt) > 0) motorizedRacingTeam = true;
+        else if (cnt === 0) motorizedRacingTeam = false;
+      }
+
+      const pop = body.population ?? null;
+      const sq = body.square_miles ?? null;
+      const fc = body.fire_calls ?? null;
+      const ec = body.ems_calls ?? null;
+
       const newProfile = await FireDepartmentProfile.create({
         fire_department_id: parseInt(fire_department_id),
-        company_id: body.company_id ?? fd.company_id ?? null,
-        population: body.population ?? null,
-        square_miles: body.square_miles ?? null,
-        fire_calls: body.fire_calls ?? null,
-        ems_calls: body.ems_calls ?? null,
+        company_id: companyIdInt,
+        population: pop,
+        square_miles: sq,
+        fire_calls: fc,
+        ems_calls: ec,
+        density: computeProfileDensity(pop, sq),
+        total_calls: computeProfileTotalCalls(fc, ec),
         safety_committee: body.safety_committee ?? null,
         hs_officers: body.hs_officers ?? null,
-        motorized_racing_team: body.motorized_racing_team ?? null,
+        motorized_racing_team: motorizedRacingTeam,
+        motorized_racing_team_count: motorizedRacingTeamCount,
+        management_practice_penalty: body.management_practice_penalty ?? null,
+        customer_since: body.customer_since ?? null,
+        agent: body.agent ?? null,
         effective_from: new Date().toISOString().slice(0, 10),
+        effective_to: null,
       });
 
       return res.status(200).json({
@@ -97,9 +168,8 @@ class AnalysisController {
 
   /**
    * GET /analysis/list?company_id=...
-   * Get list of fire departments for analysis.
-   * Only departments that have a fire_department_profile row with this company_id
-   * (profile is created when a form is approved for the first time; excludes rejected/pending-only).
+   * Lightweight: only fire departments linked to this company via fire_department_profile.
+   * Profile, underwriting, results, policies load on GET /analysis/:fire_department_id?company_id= (View).
    */
   async getAnalysisList(req, res) {
     try {
@@ -113,7 +183,6 @@ class AnalysisController {
 
       const companyIdInt = parseInt(company_id);
 
-      // Get fire_department_ids from fire_department_profile where company_id matches
       const profiles = await FireDepartmentProfile.findAll({
         where: { company_id: companyIdInt },
         attributes: ["fire_department_id"],
@@ -129,62 +198,31 @@ class AnalysisController {
 
       const fireDepartments = await FireDepartment.findAll({
         where: { fire_department_id: { [Op.in]: fireDepartmentIds } },
-        include: [
-          {
-            model: Company,
-            as: "company",
-            attributes: ["id", "Company_Name"],
-            required: false,
-          },
+        attributes: [
+          "fire_department_id",
+          "fire_department_name",
+          "county",
+          "state",
         ],
         order: [["fire_department_name", "ASC"]],
       });
 
-      // Get latest profile and latest underwriting year for each
-      const enrichedList = await Promise.all(
-        fireDepartments.map(async (fd) => {
-          const latestProfile = await FireDepartmentProfile.findOne({
-            where: {
-              fire_department_id: fd.fire_department_id,
-              [Op.or]: [
-                { effective_to: null },
-                { effective_to: { [Op.gte]: new Date() } },
-              ],
-            },
-            order: [["effective_from", "DESC"]],
-          });
+      const listCompany = await Company.findByPk(companyIdInt, {
+        attributes: ["id", "Company_Name"],
+      });
 
-          const latestUnderwriting = await Underwriting.findOne({
-            where: {
-              fire_department_id: fd.fire_department_id,
-            },
-            order: [["underwriting_year", "DESC"]],
-          });
-
-          const latestPolicy = await Policy.findOne({
-            where: {
-              fire_department_id: fd.fire_department_id,
-            },
-            order: [["underwriting_year", "DESC"]],
-          });
-
-          return {
-            fire_department_id: fd.fire_department_id,
-            fire_department_name: fd.fire_department_name,
-            county: fd.county,
-            state: fd.state,
-            company_id: fd.company_id,
-            company: fd.company,
-            latest_profile: latestProfile,
-            latest_underwriting_year: latestUnderwriting?.underwriting_year,
-            latest_policy: latestPolicy,
-          };
-        })
-      );
+      const data = fireDepartments.map((fd) => ({
+        fire_department_id: fd.fire_department_id,
+        fire_department_name: fd.fire_department_name,
+        county: fd.county,
+        state: fd.state,
+        company_id: companyIdInt,
+        company: listCompany,
+      }));
 
       res.status(200).json({
         message: "Analysis list retrieved successfully",
-        data: enrichedList,
+        data,
       });
     } catch (error) {
       console.error("Error retrieving analysis list:", error);
@@ -196,13 +234,21 @@ class AnalysisController {
   }
 
   /**
-   * GET /analysis/:fire_department_id
-   * Get detailed analysis for a fire department
-   * Returns: underwriting rows, profile, results, policies, form status
+   * GET /analysis/:fire_department_id?company_id=...
+   * Scoped to one subscribed company: underwriting and profile match fire_department_profile.company_id.
+   * "Latest year" = most recent underwriting_year for that company (not calendar); may differ if new year not entered yet.
    */
   async getAnalysisDetail(req, res) {
     try {
       const { fire_department_id } = req.params;
+      const { company_id: companyIdQuery } = req.query;
+
+      if (!companyIdQuery) {
+        return res.status(400).json({
+          message: "company_id query parameter is required",
+        });
+      }
+      const companyIdInt = parseInt(companyIdQuery);
 
       // Get fire department
       const fireDepartment = await FireDepartment.findByPk(
@@ -225,22 +271,18 @@ class AnalysisController {
         });
       }
 
-      // Get current profile
       const currentProfile = await FireDepartmentProfile.findOne({
         where: {
           fire_department_id: parseInt(fire_department_id),
-          [Op.or]: [
-            { effective_to: null },
-            { effective_to: { [Op.gte]: new Date() } },
-          ],
+          company_id: companyIdInt,
         },
-        order: [["effective_from", "DESC"]],
       });
 
-      // Get last 5 years of underwriting
+      // Enough years to show renewal row + history used for 5-yr totals (and older rows for context)
       const underwritingRows = await Underwriting.findAll({
         where: {
           fire_department_id: parseInt(fire_department_id),
+          company_id: companyIdInt,
         },
         include: [
           {
@@ -251,40 +293,68 @@ class AnalysisController {
           },
         ],
         order: [["underwriting_year", "DESC"]],
-        limit: 5,
+        limit: 24,
       });
 
-      // Get all underwriting results
-      const results = await UnderwritingResults.findAll({
-        where: {
-          fire_department_id: parseInt(fire_department_id),
-        },
-        include: [
-          {
-            model: Company,
-            as: "assignedCompany",
-            attributes: ["id", "Company_Name"],
-            required: false,
-          },
-        ],
-        order: [["underwriting_year", "DESC"]],
-      });
+      // Latest year on file for this company (not "calendar current" — add a row for the new year when ready)
+      const latestUnderwritingYearForCompany =
+        underwritingRows[0]?.underwriting_year ?? null;
 
-      // Get all policies
-      const policies = await Policy.findAll({
-        where: {
+      let results = [];
+      if (latestUnderwritingYearForCompany) {
+        const resultsWhere = {
           fire_department_id: parseInt(fire_department_id),
-        },
-        include: [
-          {
-            model: Company,
-            as: "assignedCompany",
-            attributes: ["id", "Company_Name"],
-            required: false,
+          underwriting_year: latestUnderwritingYearForCompany,
+          company_id: companyIdInt,
+        };
+        results = await UnderwritingResults.findAll({
+          where: resultsWhere,
+          include: [
+            {
+              model: Company,
+              as: "assignedCompany",
+              attributes: ["id", "Company_Name"],
+              required: false,
+            },
+            {
+              model: Company,
+              as: "company",
+              attributes: ["id", "Company_Name"],
+              required: false,
+            },
+          ],
+          order: [["underwriting_year", "DESC"]],
+        });
+      }
+
+      // Same “current display year” as results: policy for (fd, company, latest_underwriting_year only)
+      let policies = [];
+      if (latestUnderwritingYearForCompany) {
+        const policyForCurrentYear = await Policy.findOne({
+          where: {
+            fire_department_id: parseInt(fire_department_id),
+            company_id: companyIdInt,
+            underwriting_year: latestUnderwritingYearForCompany,
           },
-        ],
-        order: [["underwriting_year", "DESC"]],
-      });
+          include: [
+            {
+              model: Company,
+              as: "assignedCompany",
+              attributes: ["id", "Company_Name"],
+              required: false,
+            },
+            {
+              model: Company,
+              as: "company",
+              attributes: ["id", "Company_Name"],
+              required: false,
+            },
+          ],
+        });
+        if (policyForCurrentYear) {
+          policies = [policyForCurrentYear];
+        }
+      }
 
       // Get related forms
       const forms = await FormData.findAll({
@@ -297,6 +367,9 @@ class AnalysisController {
         message: "Analysis detail retrieved successfully",
         data: {
           fire_department: fireDepartment,
+          analysis_company_id: companyIdInt,
+          /** Most recent underwriting_year for this company; not necessarily "today's" policy year until a row exists */
+          latest_underwriting_year: latestUnderwritingYearForCompany,
           profile: currentProfile,
           underwriting: underwritingRows,
           results: results,
@@ -315,8 +388,8 @@ class AnalysisController {
 
   /**
    * POST /analysis/:fire_department_id/calculate
-   * Calculate analysis for a specific underwriting year
-   * Body: { underwriting_year }
+   * Calculate analysis for a specific underwriting year and subscribed company
+   * Body: { underwriting_year, company_id }
    * Runs calculation, writes underwriting_results, updates underwriting + policies
    */
   async calculateAnalysis(req, res) {
@@ -325,12 +398,21 @@ class AnalysisController {
     let transaction = null;
     try {
       const { fire_department_id } = req.params;
-      const { underwriting_year } = req.body;
+      const { underwriting_year, company_id: companyIdBody } = req.body;
 
       if (!underwriting_year) {
         return res.status(400).json({
           message: "underwriting_year is required in request body",
         });
+      }
+      if (companyIdBody === undefined || companyIdBody === null || companyIdBody === "") {
+        return res.status(400).json({
+          message: "company_id is required in request body",
+        });
+      }
+      const companyIdInt = parseInt(companyIdBody);
+      if (Number.isNaN(companyIdInt)) {
+        return res.status(400).json({ message: "company_id must be a valid integer" });
       }
 
       // Get fire department (read-only, no transaction yet)
@@ -344,35 +426,22 @@ class AnalysisController {
         });
       }
 
-      // Get current profile
       const profile = await FireDepartmentProfile.findOne({
         where: {
           fire_department_id: parseInt(fire_department_id),
-          [Op.or]: [
-            { effective_to: null },
-            { effective_to: { [Op.gte]: new Date() } },
-          ],
+          company_id: companyIdInt,
         },
-        order: [["effective_from", "DESC"]],
       });
 
-      // Get last 5 years of underwriting (including the target year)
+      // Enough history for: selected renewal year + five prior years (worksheet 5-yr totals)
       const underwritingRows = await Underwriting.findAll({
         where: {
           fire_department_id: parseInt(fire_department_id),
+          company_id: companyIdInt,
         },
         order: [["underwriting_year", "DESC"]],
-        limit: 5,
+        limit: 24,
       });
-
-      // --- Validation: require 5-year data and complete profile before running calculation ---
-      if (!underwritingRows || underwritingRows.length < 5) {
-        return res.status(400).json({
-          code: "MISSING_5_YEAR_DATA",
-          message:
-            "Cannot run analysis: underwriting data for the last 5 years is required. Please add or complete underwriting data (e.g. Losses, LAE, # Claims) for this fire department.",
-        });
-      }
 
       const targetRow = underwritingRows.find(
         (row) => row.underwriting_year === underwriting_year
@@ -381,7 +450,28 @@ class AnalysisController {
         return res.status(400).json({
           code: "MISSING_5_YEAR_DATA",
           message:
-            "Cannot run analysis: the selected year is not in the last 5 years of underwriting data. Please add or complete underwriting data for this fire department.",
+            "Cannot run analysis: the selected underwriting year was not found for this company. Save underwriting data first.",
+        });
+      }
+
+      const priorFive = calculationService.getPriorFiveYearRows(
+        underwritingRows,
+        underwriting_year
+      );
+      if (!priorFive || priorFive.length < 5) {
+        return res.status(400).json({
+          code: "MISSING_5_YEAR_DATA",
+          message:
+            "Cannot run analysis: five complete underwriting years immediately before the selected year are required (same as the worksheet 5-year totals row). Add older years or choose a different year.",
+        });
+      }
+
+      const rowCompanyId =
+        targetRow.company_id != null ? parseInt(targetRow.company_id, 10) : null;
+      if (rowCompanyId !== companyIdInt) {
+        return res.status(400).json({
+          message:
+            "Underwriting row company_id does not match request company_id. Ensure each row is saved with the correct company.",
         });
       }
 
@@ -414,6 +504,16 @@ class AnalysisController {
         "motorized_racing_team",
       ];
       const missingFields = requiredProfileFields.filter((field) => {
+        if (field === "safety_committee") {
+          return profile.safety_committee !== true && profile.safety_committee !== false;
+        }
+        if (field === "hs_officers") {
+          const v = profile.hs_officers;
+          if (v === undefined || v === null || v === "") return true;
+          if (typeof v === "number") return Number.isNaN(v);
+          if (typeof v === "string") return v.trim() === "" || Number.isNaN(Number(v));
+          return Number.isNaN(Number(v));
+        }
         const value = profile[field];
         if (value === undefined || value === null) return true;
         if (typeof value === "boolean") return false;
@@ -430,6 +530,14 @@ class AnalysisController {
 
       transaction = await sequelize.transaction();
 
+      const resultsCompanyId = companyIdInt;
+
+      const resultsWhere = {
+        fire_department_id: parseInt(fire_department_id),
+        underwriting_year: underwriting_year,
+        company_id: resultsCompanyId,
+      };
+
       // Run calculation
       const calculationResult = await calculationService.calculate(
         fireDepartment,
@@ -439,15 +547,16 @@ class AnalysisController {
         transaction
       );
 
-      // Fields to store in underwriting_results (no assigned_category column there)
-      const { assigned_category: _cat, ...resultFields } = calculationResult;
+      const { assigned_category, ...calcRest } = calculationResult;
+      const resultFields = {
+        ...calcRest,
+        company_id: resultsCompanyId,
+        category: assigned_category,
+      };
 
-      // Upsert underwriting_results
+      // Upsert underwriting_results — one row per fire_department_id + year + company_id
       const [result, created] = await UnderwritingResults.findOrCreate({
-        where: {
-          fire_department_id: parseInt(fire_department_id),
-          underwriting_year: underwriting_year,
-        },
+        where: resultsWhere,
         defaults: {
           fire_department_id: parseInt(fire_department_id),
           underwriting_year: underwriting_year,
@@ -460,11 +569,13 @@ class AnalysisController {
         await result.update(resultFields, { transaction });
       }
 
-      // Update underwriting row with points and company_id
+      // Update underwriting row with assigned category only. Do not store total analysis points on yearly
+      // rows (worksheet leaves per-year POINTS blank; loss-ratio points live on the 5-yr totals via results).
       const targetUnderwriting = await Underwriting.findOne({
         where: {
           fire_department_id: parseInt(fire_department_id),
           underwriting_year: underwriting_year,
+          company_id: resultsCompanyId,
         },
         transaction,
       });
@@ -472,8 +583,7 @@ class AnalysisController {
       if (targetUnderwriting) {
         await targetUnderwriting.update(
           {
-            points: calculationResult.total_points,
-            company_id: calculationResult.assigned_company_id,
+            points: null,
             // Store assigned category (FDM/FDI/FPI) in underwriting.category (model field: type)
             type: calculationResult.assigned_category,
           },
@@ -481,15 +591,17 @@ class AnalysisController {
         );
       }
 
-      // Upsert policy
+      const policyWhere = {
+        fire_department_id: parseInt(fire_department_id),
+        underwriting_year: underwriting_year,
+        company_id: companyIdInt,
+      };
       const [policy, policyCreated] = await Policy.findOrCreate({
-        where: {
-          fire_department_id: parseInt(fire_department_id),
-          underwriting_year: underwriting_year,
-        },
+        where: policyWhere,
         defaults: {
           fire_department_id: parseInt(fire_department_id),
           underwriting_year: underwriting_year,
+          company_id: companyIdInt,
           assigned_company_id: calculationResult.assigned_company_id,
         },
         transaction,
@@ -499,6 +611,7 @@ class AnalysisController {
         await policy.update(
           {
             assigned_company_id: calculationResult.assigned_company_id,
+            company_id: companyIdInt,
           },
           { transaction }
         );

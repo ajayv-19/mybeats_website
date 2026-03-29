@@ -6,6 +6,17 @@ const {
 } = require("../models");
 const { Op } = require("sequelize");
 
+const ALLOWED_UW_CATEGORIES = ["FDM", "FDI", "FPI"];
+
+function normalizeUnderwritingCategory(raw) {
+  if (raw === undefined) return undefined;
+  if (raw === null || raw === "") return null;
+  const v = String(raw).trim().toUpperCase();
+  if (v === "") return null;
+  if (!ALLOWED_UW_CATEGORIES.includes(v)) return "__invalid__";
+  return v;
+}
+
 class UnderwritingController {
   setupRoutes(app) {
     app.get(
@@ -182,7 +193,8 @@ class UnderwritingController {
   /**
    * PUT /underwriting/:fire_department_id/bulk-upsert
    * Bulk upsert multiple underwriting rows (for 5-year grid)
-   * Body: { rows: [{ underwriting_year, vfbl, wc, losses, lae, number_of_claims, company_id, ... }] }
+   * Body: { rows: [{ underwriting_year, vfbl, wc, losses, lae, number_of_claims, company_id, category?, ... }] }
+   * category: FDM | FDI | FPI | null (stored in DB column category; model attribute type)
    */
   async bulkUpsertUnderwriting(req, res) {
     const transaction = await sequelize.transaction();
@@ -191,6 +203,7 @@ class UnderwritingController {
       const { rows } = req.body;
 
       if (!Array.isArray(rows)) {
+        await transaction.rollback();
         return res.status(400).json({
           message: "Invalid request body. Expected 'rows' array.",
         });
@@ -207,10 +220,25 @@ class UnderwritingController {
           lae,
           number_of_claims,
           company_id,
+          category,
+          type: typeBody,
         } = row;
 
         if (!underwriting_year) {
           continue; // Skip rows without year
+        }
+
+        const categoryRaw =
+          category !== undefined ? category : typeBody;
+        const normalizedCat =
+          categoryRaw !== undefined
+            ? normalizeUnderwritingCategory(categoryRaw)
+            : undefined;
+        if (normalizedCat === "__invalid__") {
+          await transaction.rollback();
+          return res.status(400).json({
+            message: `Invalid category for year ${underwriting_year}. Use FDM, FDI, FPI, or leave blank.`,
+          });
         }
 
         // Compute derived values
@@ -236,6 +264,7 @@ class UnderwritingController {
             loss_ratio: lossRatio,
             number_of_claims: number_of_claims || null,
             company_id: company_id || null,
+            type: normalizedCat === undefined ? null : normalizedCat,
           },
           transaction,
         });
@@ -249,6 +278,9 @@ class UnderwritingController {
         if (number_of_claims !== undefined)
           updateData.number_of_claims = number_of_claims;
         if (company_id !== undefined) updateData.company_id = company_id;
+        if (normalizedCat !== undefined) {
+          updateData.type = normalizedCat;
+        }
 
         // Recompute derived values
         const finalVfbl = updateData.vfbl !== undefined ? updateData.vfbl : (underwriting.vfbl || 0);

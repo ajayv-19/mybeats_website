@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Box,
   Paper,
@@ -23,7 +23,14 @@ import {
   DialogContent,
   DialogActions,
   TextField,
+  FormControl,
   FormControlLabel,
+  FormLabel,
+  InputLabel,
+  MenuItem,
+  Radio,
+  RadioGroup,
+  Select,
   Checkbox,
   IconButton,
   Tooltip,
@@ -37,11 +44,128 @@ import {
 import { useBulkUpsertUnderwriting } from "../settings/apis/UnderwritingApis";
 import { toast } from "sonner";
 
+function formatProfileDensity(profile: any): string {
+  if (!profile) return "-";
+  const stored = profile.density;
+  if (stored != null && stored !== "" && Number.isFinite(Number(stored))) {
+    return Math.round(Number(stored)).toLocaleString();
+  }
+  const pop = Number(profile.population);
+  const sq = Number(profile.square_miles);
+  if (Number.isFinite(pop) && Number.isFinite(sq) && sq > 0) {
+    return Math.round(pop / sq).toLocaleString();
+  }
+  return "-";
+}
+
+function formatProfileTotalCalls(profile: any): string {
+  if (!profile) return "-";
+  const stored = profile.total_calls;
+  if (stored != null && stored !== "" && stored !== undefined) {
+    return String(stored);
+  }
+  const f = profile.fire_calls;
+  const e = profile.ems_calls;
+  const hasF = f !== null && f !== undefined && f !== "";
+  const hasE = e !== null && e !== undefined && e !== "";
+  if (hasF || hasE) {
+    return String((Number(f) || 0) + (Number(e) || 0));
+  }
+  return "-";
+}
+
+function getProfileDensityNumeric(profile: any): number | null {
+  if (!profile) return null;
+  if (profile.density != null && profile.density !== "") {
+    const n = Number(profile.density);
+    if (Number.isFinite(n)) return n;
+  }
+  const pop = Number(profile.population);
+  const sq = Number(profile.square_miles);
+  if (Number.isFinite(pop) && Number.isFinite(sq) && sq > 0) return Math.round(pop / sq);
+  return null;
+}
+
+function getProfileTotalCallsNumeric(profile: any): number | null {
+  if (!profile) return null;
+  if (profile.total_calls != null && profile.total_calls !== "") {
+    const n = Number(profile.total_calls);
+    if (Number.isFinite(n)) return n;
+  }
+  const hasF =
+    profile.fire_calls !== null &&
+    profile.fire_calls !== undefined &&
+    profile.fire_calls !== "";
+  const hasE =
+    profile.ems_calls !== null && profile.ems_calls !== undefined && profile.ems_calls !== "";
+  if (hasF || hasE) return (Number(profile.fire_calls) || 0) + (Number(profile.ems_calls) || 0);
+  return null;
+}
+
+/** Five periods immediately before `targetYear` (worksheet 5-yr totals), same ordering as backend. */
+function getPriorFiveUnderwritingRows(underwriting: any[], targetYear: string): any[] | null {
+  if (!underwriting?.length || !targetYear) return null;
+  const asc = [...underwriting].sort((a, b) =>
+    String(a.underwriting_year).localeCompare(String(b.underwriting_year))
+  );
+  const idx = asc.findIndex((r) => String(r.underwriting_year) === String(targetYear));
+  if (idx < 5) return null;
+  return asc.slice(idx - 5, idx);
+}
+
+/** Map API profile to tri-state safety for the form (do not coerce null to false). */
+function profileSafetyCommitteeFromApi(profile: any): boolean | null {
+  if (profile?.safety_committee === true) return true;
+  if (profile?.safety_committee === false) return false;
+  return null;
+}
+
+/** Per-row assigned pool from underwriting (model `type` / DB category). */
+function underwritingRowCategoryLabel(uw: any): string {
+  const v = uw?.type ?? uw?.category;
+  if (v == null || String(v).trim() === "") return "-";
+  return String(v).trim();
+}
+
+function aggregatePriorFiveUnderwritingRows(rows: any[]) {
+  let vfbl = 0;
+  let wc = 0;
+  let totalPremium = 0;
+  let losses = 0;
+  let lae = 0;
+  let totalLossLae = 0;
+  let claims = 0;
+  for (const uw of rows) {
+    vfbl += parseFloat(uw.vfbl) || 0;
+    wc += parseFloat(uw.wc) || 0;
+    const tp = parseFloat(uw.total_premium);
+    const prem =
+      Number.isFinite(tp) && tp > 0 ? tp : (parseFloat(uw.vfbl) || 0) + (parseFloat(uw.wc) || 0);
+    totalPremium += prem;
+    losses += parseFloat(uw.losses) || 0;
+    lae += parseFloat(uw.lae) || 0;
+    const stored = uw?.total_loss_lae;
+    if (stored !== null && stored !== undefined && stored !== "") {
+      totalLossLae += parseFloat(stored) || 0;
+    } else {
+      totalLossLae += (parseFloat(uw.losses) || 0) + (parseFloat(uw.lae) || 0);
+    }
+    claims += parseInt(String(uw.number_of_claims ?? 0), 10) || 0;
+  }
+  return { vfbl, wc, totalPremium, losses, lae, totalLossLae, claims };
+}
+
 export default function AnalysisDetail() {
   const { fire_department_id } = useParams<{ fire_department_id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const analysisCompanyId = Number(searchParams.get("company_id"));
+  const companyIdValid =
+    Number.isFinite(analysisCompanyId) && analysisCompanyId > 0;
+
   const { data, isLoading, error, refetch } = useAnalysisDetail(
-    Number(fire_department_id)
+    Number(fire_department_id),
+    analysisCompanyId
   );
   const calculateAnalysis = useCalculateAnalysis();
   const updateProfile = useUpdateAnalysisProfile();
@@ -54,25 +178,25 @@ export default function AnalysisDetail() {
   }>({ open: false, code: null, message: "" });
 
   const [profileForm, setProfileForm] = useState<{
-    customer_since: string;
-    agent: string;
     population: number | "";
     square_miles: number | "";
     fire_calls: number | "";
     ems_calls: number | "";
-    safety_committee: boolean;
+    safety_committee: boolean | null;
     hs_officers: number | "";
     motorized_racing_team: boolean;
+    motorized_racing_team_count: number | "";
+    management_practice_penalty: number | "";
   }>({
-    customer_since: "",
-    agent: "",
     population: "",
     square_miles: "",
     fire_calls: "",
     ems_calls: "",
-    safety_committee: false,
+    safety_committee: null,
     hs_officers: "",
     motorized_racing_team: false,
+    motorized_racing_team_count: "",
+    management_practice_penalty: "",
   });
 
   type UnderwritingRowForm = {
@@ -82,9 +206,25 @@ export default function AnalysisDetail() {
     losses: number | "";
     lae: number | "";
     number_of_claims: number | "";
+    /** FDM | FDI | FPI | "" */
+    category: string;
     company_id?: number;
   };
   const [underwritingRows, setUnderwritingRows] = useState<UnderwritingRowForm[]>([]);
+
+  if (!companyIdValid) {
+    return (
+      <Box p={4}>
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          Missing or invalid <code>company_id</code>. Open this page from the analysis list, or add{" "}
+          <code>?company_id=</code> to the URL (subscribed company for this fire department).
+        </Alert>
+        <Button variant="outlined" onClick={() => navigate("/apps/analysis")}>
+          Back to list
+        </Button>
+      </Box>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -138,6 +278,25 @@ export default function AnalysisDetail() {
     return `${pct.toFixed(2)}%`;
   };
 
+  /** Prefer DB `total_loss_lae`; otherwise Losses + LAE (matches bulk-upsert / carrier-input). */
+  const formatTotalLossLaeCell = (uw: any) => {
+    const stored = uw?.total_loss_lae;
+    if (stored !== null && stored !== undefined && stored !== "") {
+      const n = typeof stored === "string" ? parseFloat(stored) : Number(stored);
+      if (!Number.isNaN(n)) return formatCurrency(n);
+    }
+    const losses =
+      uw?.losses !== null && uw?.losses !== undefined && uw?.losses !== ""
+        ? parseFloat(uw.losses)
+        : NaN;
+    const lae =
+      uw?.lae !== null && uw?.lae !== undefined && uw?.lae !== ""
+        ? parseFloat(uw.lae)
+        : NaN;
+    if (Number.isNaN(losses) && Number.isNaN(lae)) return "-";
+    return formatCurrency((Number.isNaN(losses) ? 0 : losses) + (Number.isNaN(lae) ? 0 : lae));
+  };
+
   const handleCalculate = async () => {
     if (!currentYear) {
       toast.error("No current year data available");
@@ -147,7 +306,10 @@ export default function AnalysisDetail() {
     try {
       await calculateAnalysis.mutateAsync({
         fire_department_id: Number(fire_department_id),
-        data: { underwriting_year: currentYear },
+        data: {
+          underwriting_year: currentYear,
+          company_id: analysisCompanyId,
+        },
       });
       toast.success("Analysis calculated successfully");
       refetch();
@@ -158,19 +320,24 @@ export default function AnalysisDetail() {
       if (error?.response?.status === 400 && (code === "MISSING_5_YEAR_DATA" || code === "MISSING_PROFILE")) {
         if (code === "MISSING_PROFILE") {
           setProfileForm({
-            customer_since: (profile?.customer_since ?? fire_department?.customer_since ?? "").toString(),
-            agent: (profile?.agent ?? fire_department?.agent ?? "").toString(),
             population: profile?.population ?? "",
             square_miles: profile?.square_miles ?? "",
             fire_calls: profile?.fire_calls ?? "",
             ems_calls: profile?.ems_calls ?? "",
-            safety_committee: !!profile?.safety_committee,
+            safety_committee: profileSafetyCommitteeFromApi(profile),
             hs_officers: profile?.hs_officers ?? "",
             motorized_racing_team: !!profile?.motorized_racing_team,
+            motorized_racing_team_count:
+              profile?.motorized_racing_team_count != null
+                ? Number(profile.motorized_racing_team_count)
+                : "",
+            management_practice_penalty:
+              profile?.management_practice_penalty != null && profile?.management_practice_penalty !== ""
+                ? Number(profile.management_practice_penalty)
+                : "",
           });
         }
         if (code === "MISSING_5_YEAR_DATA") {
-          const companyId = fire_department?.company_id ?? (underwriting?.[0] as any)?.company_id;
           const existingRows: UnderwritingRowForm[] = (underwriting || []).map((u: any) => ({
             underwriting_year: u.underwriting_year || "",
             vfbl: u.vfbl != null ? Number(u.vfbl) : "",
@@ -178,15 +345,28 @@ export default function AnalysisDetail() {
             losses: u.losses != null ? Number(u.losses) : "",
             lae: u.lae != null ? Number(u.lae) : "",
             number_of_claims: u.number_of_claims != null ? Number(u.number_of_claims) : "",
-            ...(companyId != null && { company_id: companyId }),
+            category: (u.type ?? u.category ?? "") as string,
+            company_id: analysisCompanyId,
           }));
-          setUnderwritingRows([...existingRows, { underwriting_year: "", vfbl: "", wc: "", losses: "", lae: "", number_of_claims: "", ...(companyId != null && { company_id: companyId }) }]);
+          setUnderwritingRows([
+            ...existingRows,
+            {
+              underwriting_year: "",
+              vfbl: "",
+              wc: "",
+              losses: "",
+              lae: "",
+              number_of_claims: "",
+              category: "",
+              company_id: analysisCompanyId,
+            },
+          ]);
         }
         setDataEntryDialog({
           open: true,
           code,
           message: code === "MISSING_5_YEAR_DATA"
-            ? "Analysis requires underwriting data for the last 5 years. Please add or complete data (including Losses/LAE) below and try again."
+            ? "Analysis needs the latest renewal year plus five prior years (worksheet 5-yr totals). Add or complete data (including Losses/LAE) below and try again."
             : (message.includes("Missing:") ? message : "Profile is missing required fields. Please complete the fields below and try again."),
         });
         return;
@@ -202,25 +382,30 @@ export default function AnalysisDetail() {
 
   const handleOpenProfileDialog = () => {
     setProfileForm({
-      customer_since: (profile?.customer_since ?? fire_department?.customer_since ?? "").toString(),
-      agent: (profile?.agent ?? fire_department?.agent ?? "").toString(),
       population: profile?.population ?? "",
       square_miles: profile?.square_miles ?? "",
       fire_calls: profile?.fire_calls ?? "",
       ems_calls: profile?.ems_calls ?? "",
-      safety_committee: !!profile?.safety_committee,
+      safety_committee: profileSafetyCommitteeFromApi(profile),
       hs_officers: profile?.hs_officers ?? "",
       motorized_racing_team: !!profile?.motorized_racing_team,
+      motorized_racing_team_count:
+        profile?.motorized_racing_team_count != null
+          ? Number(profile.motorized_racing_team_count)
+          : "",
+      management_practice_penalty:
+        profile?.management_practice_penalty != null && profile?.management_practice_penalty !== ""
+          ? Number(profile.management_practice_penalty)
+          : "",
     });
     setDataEntryDialog({
       open: true,
       code: "MISSING_PROFILE",
-      message: "Update Fire Department profile data and save to sync the database.",
+      message: "Update profile metrics and save to sync the database.",
     });
   };
 
   const handleOpenUnderwritingDialog = () => {
-    const companyId = fire_department?.company_id ?? (underwriting?.[0] as any)?.company_id;
     const existingRows: UnderwritingRowForm[] = (underwriting || []).map((u: any) => ({
       underwriting_year: u.underwriting_year || "",
       vfbl: u.vfbl != null ? Number(u.vfbl) : "",
@@ -228,7 +413,8 @@ export default function AnalysisDetail() {
       losses: u.losses != null ? Number(u.losses) : "",
       lae: u.lae != null ? Number(u.lae) : "",
       number_of_claims: u.number_of_claims != null ? Number(u.number_of_claims) : "",
-      ...(companyId != null && { company_id: companyId }),
+      category: (u.type ?? u.category ?? "") as string,
+      company_id: analysisCompanyId,
     }));
     setUnderwritingRows(
       existingRows.length > 0
@@ -241,7 +427,8 @@ export default function AnalysisDetail() {
               losses: "",
               lae: "",
               number_of_claims: "",
-              ...(companyId != null && { company_id: companyId }),
+              category: "",
+              company_id: analysisCompanyId,
             },
           ]
     );
@@ -254,20 +441,35 @@ export default function AnalysisDetail() {
 
   const handleSaveProfile = async () => {
     try {
-      // Convert empty strings to null, but preserve 0 and other valid numbers
       const data: any = {
-        customer_since: profileForm.customer_since ? profileForm.customer_since : null,
-        agent: profileForm.agent.trim() === "" ? null : profileForm.agent.trim(),
         population: profileForm.population === "" ? null : (typeof profileForm.population === "number" ? profileForm.population : null),
         square_miles: profileForm.square_miles === "" ? null : (typeof profileForm.square_miles === "number" ? profileForm.square_miles : null),
         fire_calls: profileForm.fire_calls === "" ? null : (typeof profileForm.fire_calls === "number" ? profileForm.fire_calls : null),
         ems_calls: profileForm.ems_calls === "" ? null : (typeof profileForm.ems_calls === "number" ? profileForm.ems_calls : null),
         safety_committee: profileForm.safety_committee,
-        hs_officers: profileForm.hs_officers === "" ? null : (typeof profileForm.hs_officers === "number" ? profileForm.hs_officers : null),
+        hs_officers:
+          profileForm.hs_officers === ""
+            ? null
+            : typeof profileForm.hs_officers === "number"
+              ? profileForm.hs_officers
+              : null,
         motorized_racing_team: profileForm.motorized_racing_team,
+        motorized_racing_team_count:
+          profileForm.motorized_racing_team_count === ""
+            ? null
+            : typeof profileForm.motorized_racing_team_count === "number"
+              ? profileForm.motorized_racing_team_count
+              : null,
+        management_practice_penalty:
+          profileForm.management_practice_penalty === ""
+            ? null
+            : typeof profileForm.management_practice_penalty === "number"
+              ? profileForm.management_practice_penalty
+              : null,
       };
       await updateProfile.mutateAsync({
         fire_department_id: Number(fire_department_id),
+        company_id: analysisCompanyId,
         data,
       });
       toast.success("Profile updated");
@@ -292,10 +494,18 @@ export default function AnalysisDetail() {
   const hasDuplicateYears = duplicateYears.size > 0;
 
   const handleAddUnderwritingRow = () => {
-    const companyId = fire_department?.company_id ?? (underwriting?.[0] as any)?.company_id;
     setUnderwritingRows((prev) => [
       ...prev,
-      { underwriting_year: "", vfbl: "", wc: "", losses: "", lae: "", number_of_claims: "", ...(companyId != null && { company_id: companyId }) },
+      {
+        underwriting_year: "",
+        vfbl: "",
+        wc: "",
+        losses: "",
+        lae: "",
+        number_of_claims: "",
+        category: "",
+        company_id: analysisCompanyId,
+      },
     ]);
   };
 
@@ -321,6 +531,7 @@ export default function AnalysisDetail() {
       lae: r.lae === "" ? undefined : Number(r.lae),
       number_of_claims: r.number_of_claims === "" ? undefined : Number(r.number_of_claims),
       company_id: r.company_id,
+      category: r.category === "" ? null : r.category,
     }));
     try {
       await bulkUpsertUnderwriting.mutateAsync({
@@ -335,96 +546,144 @@ export default function AnalysisDetail() {
     }
   };
 
-  // Get latest result (for current year)
-  const latestResult = results && results.length > 0 
-    ? results.find((r: any) => r.underwriting_year === currentYear) || results[0]
-    : null;
+  // Current view should show calculated output for current underwriting year only.
+  // Do not fallback to older-year results.
+  const latestResult =
+    results && results.length > 0
+      ? results.find((r: any) => r.underwriting_year === currentYear) || null
+      : null;
 
-  // Calculate 5-year totals
-  const fiveYearTotals = underwriting && underwriting.length > 0
-    ? {
-        vfbl: underwriting.reduce((sum: number, uw: any) => sum + (parseFloat(uw.vfbl) || 0), 0),
-        wc: underwriting.reduce((sum: number, uw: any) => sum + (parseFloat(uw.wc) || 0), 0),
-        totalPremium: underwriting.reduce((sum: number, uw: any) => sum + (parseFloat(uw.total_premium) || 0), 0),
-        losses: underwriting.reduce((sum: number, uw: any) => sum + (parseFloat(uw.losses) || 0), 0),
-        lae: underwriting.reduce((sum: number, uw: any) => sum + (parseFloat(uw.lae) || 0), 0),
-        totalLossLae: underwriting.reduce((sum: number, uw: any) => sum + (parseFloat(uw.losses) || 0) + (parseFloat(uw.lae) || 0), 0),
-        claims: underwriting.reduce((sum: number, uw: any) => sum + (parseInt(uw.number_of_claims) || 0), 0),
-        points: underwriting.reduce((sum: number, uw: any) => sum + (parseInt(uw.points) || 0), 0),
+  const priorFiveForTotals =
+    underwriting && currentYear ? getPriorFiveUnderwritingRows(underwriting, currentYear) : null;
+  const fiveYearTotals =
+    priorFiveForTotals && priorFiveForTotals.length === 5
+      ? aggregatePriorFiveUnderwritingRows(priorFiveForTotals)
+      : null;
+
+  const fiveYearLossRatio =
+    fiveYearTotals && fiveYearTotals.totalPremium > 0
+      ? fiveYearTotals.totalLossLae / fiveYearTotals.totalPremium
+      : 0;
+
+  const calcLossRatioPct =
+    fiveYearTotals && fiveYearTotals.totalPremium > 0
+      ? (fiveYearTotals.totalLossLae / fiveYearTotals.totalPremium) * 100
+      : null;
+  const calcDensity = getProfileDensityNumeric(profile);
+  const calcTotalCalls = getProfileTotalCallsNumeric(profile);
+  const calcClaimsPer100k =
+    fiveYearTotals && fiveYearTotals.totalPremium > 0
+      ? (fiveYearTotals.claims / fiveYearTotals.totalPremium) * 100000
+      : null;
+
+  /** Numeric field present (0 is valid). */
+  const hasNumeric = (v: any) =>
+    v !== null && v !== undefined && v !== "" && !Number.isNaN(Number(v));
+
+  /** One underwriting row: year, premium, losses, LAE, total loss/LAE, loss ratio (stored or computable). Points & # claims optional. Co not validated here (TBD). */
+  const underwritingRowCompleteForCalc = (row: any) => {
+    if (!row?.underwriting_year || String(row.underwriting_year).trim() === "") return false;
+
+    const prem =
+      (Number(row.vfbl) || 0) + (Number(row.wc) || 0) ||
+      (Number(row.total_premium) || 0);
+    if (!(prem > 0)) return false;
+
+    if (!hasNumeric(row.losses)) return false;
+    if (!hasNumeric(row.lae)) return false;
+
+    let totalLossLae: number;
+    if (row.total_loss_lae !== null && row.total_loss_lae !== undefined && row.total_loss_lae !== "") {
+      totalLossLae = Number(row.total_loss_lae);
+    } else {
+      totalLossLae = Number(row.losses || 0) + Number(row.lae || 0);
+    }
+    if (!Number.isFinite(totalLossLae)) return false;
+
+    let lossRatioPct: number | null = null;
+    if (row.loss_ratio !== null && row.loss_ratio !== undefined && row.loss_ratio !== "") {
+      const raw = Number(String(row.loss_ratio).replace(/%/g, "").trim());
+      if (Number.isFinite(raw)) {
+        lossRatioPct = raw <= 1 && raw >= 0 ? raw * 100 : raw;
       }
-    : null;
+    } else if (prem > 0) {
+      lossRatioPct = (totalLossLae / prem) * 100;
+    }
+    if (lossRatioPct === null || !Number.isFinite(lossRatioPct)) return false;
 
-  const fiveYearLossRatio = fiveYearTotals && fiveYearTotals.totalPremium > 0
-    ? fiveYearTotals.totalLossLae / fiveYearTotals.totalPremium
-    : 0;
+    return true;
+  };
 
-  const requiredProfileFields: Array<{
-    key: "population" | "square_miles" | "fire_calls" | "ems_calls" | "safety_committee" | "hs_officers" | "motorized_racing_team";
-    label: string;
-  }> = [
-    { key: "population", label: "Population" },
-    { key: "square_miles", label: "Square Miles" },
-    { key: "fire_calls", label: "Fire Calls" },
-    { key: "ems_calls", label: "EMS Calls" },
-    { key: "safety_committee", label: "Safety Committee" },
-    { key: "hs_officers", label: "HS Officers" },
-    { key: "motorized_racing_team", label: "Motorized Racing Team" },
-  ];
+  /** Community / exposure + call activity (insured header fields like Agent are NOT required). */
+  const getMissingProfileForCalc = (): string[] => {
+    const missing: string[] = [];
+    if (!profile) {
+      missing.push("Fire department profile (Edit profile)");
+      return missing;
+    }
 
-  const missingProfileFields = !profile
-    ? requiredProfileFields.map((f) => f.label)
-    : requiredProfileFields
-        .filter(({ key }) => {
-          const value = profile[key];
-          if (value === undefined || value === null) return true;
-          if (typeof value === "boolean") return false;
-          if (typeof value === "number") return Number.isNaN(value);
-          if (typeof value === "string") return value.trim() === "";
-          return false;
-        })
-        .map((f) => f.label);
+    if (profile.safety_committee !== true && profile.safety_committee !== false) {
+      missing.push("Safety Committee / Procedures (Yes or No)");
+    }
+    if (profile.motorized_racing_team === null || profile.motorized_racing_team === undefined) {
+      missing.push("Motorized Racing Team");
+    }
 
-  const lastFiveUnderwritingRows = underwriting?.slice(0, 5) || [];
-  const hasFiveYearData = lastFiveUnderwritingRows.length >= 5;
-  const missingUnderwritingData = hasFiveYearData
-    ? lastFiveUnderwritingRows.some((row: any) => {
-        const hasPremium =
-          (Number(row.vfbl) || 0) + (Number(row.wc) || 0) > 0 ||
-          (Number(row.total_premium) || 0) > 0;
-        const hasLosses = row.losses !== null && row.losses !== undefined && row.losses !== "";
-        const hasLae = row.lae !== null && row.lae !== undefined && row.lae !== "";
-        const hasClaims =
-          row.number_of_claims !== null &&
-          row.number_of_claims !== undefined &&
-          row.number_of_claims !== "";
-        return !hasPremium || !hasLosses || !hasLae || !hasClaims;
-      })
-    : true;
+    if (!hasNumeric(profile.population)) missing.push("Population");
+    if (!hasNumeric(profile.square_miles) || Number(profile.square_miles) <= 0) {
+      missing.push("Square Miles (> 0, for density)");
+    }
+    if (!hasNumeric(profile.fire_calls)) missing.push("Fire Calls");
+    if (!hasNumeric(profile.ems_calls)) missing.push("EMS Calls");
+    if (!hasNumeric(profile.hs_officers)) missing.push("# of H&S Officers (0 if none)");
+
+    const sqMi = Number(profile.square_miles);
+    const pop = Number(profile.population);
+    if (hasNumeric(profile.square_miles) && sqMi > 0 && hasNumeric(profile.population)) {
+      const density = pop / sqMi;
+      if (!Number.isFinite(density)) missing.push("Density (population ÷ sq mi)");
+    }
+
+    return missing;
+  };
+
+  const missingProfileFields = getMissingProfileForCalc();
+
+  const priorFiveForCalc =
+    underwriting && currentYear ? getPriorFiveUnderwritingRows(underwriting, currentYear) : null;
+  const hasPriorFiveYearWindow = priorFiveForCalc !== null && priorFiveForCalc.length === 5;
+  const missingUnderwritingData =
+    hasPriorFiveYearWindow && currentYearData
+      ? priorFiveForCalc!.some((row: any) => !underwritingRowCompleteForCalc(row)) ||
+        !underwritingRowCompleteForCalc(currentYearData)
+      : true;
 
   const canCalculateAnalysis =
     !!currentYear &&
     missingProfileFields.length === 0 &&
-    hasFiveYearData &&
+    hasPriorFiveYearWindow &&
     !missingUnderwritingData;
 
   const calculateDisabledReasons: string[] = [];
   if (missingProfileFields.length > 0) {
     calculateDisabledReasons.push(
-      `Complete Fire Department profile data (${missingProfileFields.join(", ")})`
+      `Profile: ${missingProfileFields.join(", ")}`
     );
   }
-  if (!hasFiveYearData) {
-    calculateDisabledReasons.push("Add underwriting records for the last 5 years");
+  if (!hasPriorFiveYearWindow) {
+    calculateDisabledReasons.push(
+      "Add at least six underwriting years (latest renewal plus five prior periods for the worksheet 5-yr totals)"
+    );
   } else if (missingUnderwritingData) {
     calculateDisabledReasons.push(
-      "Complete underwriting values for the last 5 years (premium, losses, LAE, and # claims)"
+      "The five years before the latest need: premium (VFBL/WC or total), Losses, LAE (or total loss/LAE), and a computable loss ratio. The latest year needs the same. # claims optional (defaults to 0). Loss ratio and frequency points use the 5-yr totals row."
     );
   }
   if (!currentYear) {
-    calculateDisabledReasons.push("No current underwriting year available");
+    calculateDisabledReasons.push("No latest underwriting year on file");
   }
   const calculateDisabledTooltip = calculateDisabledReasons.length
-    ? `Update required data before calculation: ${calculateDisabledReasons.join(" • ")}`
+    ? calculateDisabledReasons.join(" • ")
     : "";
 
   return (
@@ -441,12 +700,9 @@ export default function AnalysisDetail() {
 
       {/* Fire Department Information */}
       <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-          <Typography variant="h6">Fire Department Information</Typography>
-          <Button variant="outlined" size="small" onClick={handleOpenProfileDialog}>
-            Edit
-          </Button>
-        </Stack>
+        <Typography variant="h6" sx={{ mb: 2 }}>
+          Fire Department Information
+        </Typography>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6} md={3}>
             <Typography variant="body2" color="text.secondary">
@@ -487,41 +743,156 @@ export default function AnalysisDetail() {
         </Grid>
       </Paper>
 
-      {/* Profile Data */}
+      {/* Profile Data — compact grid */}
       {profile && (
-        <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-            <Typography variant="h6">Current Profile Data</Typography>
+        <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1.25 }}>
+            <Typography variant="subtitle1" fontWeight={600}>
+              Current Profile Data
+            </Typography>
             <Button variant="outlined" size="small" onClick={handleOpenProfileDialog}>
               Edit
             </Button>
           </Stack>
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="body2" color="text.secondary">
+
+          <Grid container spacing={1} columnSpacing={{ xs: 1, sm: 2 }}>
+            <Grid item xs={12}>
+              <Typography
+                variant="caption"
+                color="primary"
+                fontWeight={700}
+                sx={{ display: "block", lineHeight: 1.2, letterSpacing: 0.3 }}
+              >
+                Demographics &amp; area
+              </Typography>
+            </Grid>
+            <Grid item xs={6} sm={4} md={2}>
+              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: "block" }}>
                 Population
               </Typography>
-              <Typography variant="h6">
+              <Typography variant="body2" fontWeight={600}>
                 {profile.population?.toLocaleString() || "-"}
               </Typography>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="body2" color="text.secondary">
+            <Grid item xs={6} sm={4} md={2}>
+              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: "block" }}>
                 Square Miles
               </Typography>
-              <Typography variant="h6">{profile.square_miles || "-"}</Typography>
+              <Typography variant="body2" fontWeight={600}>{profile.square_miles || "-"}</Typography>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="body2" color="text.secondary">
+            <Grid item xs={6} sm={4} md={2}>
+              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: "block" }}>
+                Density (pop ÷ sq mi)
+              </Typography>
+              <Typography variant="body2" fontWeight={600}>{formatProfileDensity(profile)}</Typography>
+            </Grid>
+
+            <Grid item xs={12} sx={{ mt: 0.5 }}>
+              <Typography
+                variant="caption"
+                color="primary"
+                fontWeight={700}
+                sx={{ display: "block", lineHeight: 1.2, letterSpacing: 0.3 }}
+              >
+                Call volume
+              </Typography>
+            </Grid>
+            <Grid item xs={6} sm={4} md={2}>
+              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: "block" }}>
                 Fire Calls
               </Typography>
-              <Typography variant="h6">{profile.fire_calls || "-"}</Typography>
+              <Typography variant="body2" fontWeight={600}>{profile.fire_calls || "-"}</Typography>
             </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <Typography variant="body2" color="text.secondary">
+            <Grid item xs={6} sm={4} md={2}>
+              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: "block" }}>
                 EMS Calls
               </Typography>
-              <Typography variant="h6">{profile.ems_calls || "-"}</Typography>
+              <Typography variant="body2" fontWeight={600}>{profile.ems_calls || "-"}</Typography>
+            </Grid>
+            <Grid item xs={6} sm={4} md={2}>
+              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: "block" }}>
+                Total Calls
+              </Typography>
+              <Typography variant="body2" fontWeight={600}>{formatProfileTotalCalls(profile)}</Typography>
+            </Grid>
+
+            <Grid item xs={12} sx={{ mt: 0.5 }}>
+              <Typography
+                variant="caption"
+                color="primary"
+                fontWeight={700}
+                sx={{ display: "block", lineHeight: 1.2, letterSpacing: 0.3 }}
+              >
+                Motorized racing
+              </Typography>
+            </Grid>
+            <Grid item xs={6} sm={4} md={2}>
+              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: "block" }}>
+                Racing Team
+              </Typography>
+              <Typography variant="body2" fontWeight={600}>
+                {profile.motorized_racing_team === true
+                  ? "Yes"
+                  : profile.motorized_racing_team === false
+                    ? "No"
+                    : "-"}
+              </Typography>
+            </Grid>
+            <Grid item xs={6} sm={4} md={2}>
+              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: "block" }}>
+                Races / year
+              </Typography>
+              <Typography variant="body2" fontWeight={600}>
+                {profile.motorized_racing_team_count != null && profile.motorized_racing_team_count !== ""
+                  ? profile.motorized_racing_team_count
+                  : "-"}
+              </Typography>
+            </Grid>
+
+            <Grid item xs={12} sx={{ mt: 0.5 }}>
+              <Typography
+                variant="caption"
+                color="primary"
+                fontWeight={700}
+                sx={{ display: "block", lineHeight: 1.2, letterSpacing: 0.3 }}
+              >
+                Safety &amp; adjustments
+              </Typography>
+            </Grid>
+            <Grid item xs={6} sm={4} md={2}>
+              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: "block" }}>
+                H&amp;S Officers
+              </Typography>
+              <Typography variant="body2" fontWeight={600}>
+                {profile.hs_officers != null && profile.hs_officers !== "" ? profile.hs_officers : "-"}
+              </Typography>
+            </Grid>
+            <Grid item xs={6} sm={4} md={2}>
+              <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: "block" }}>
+                Safety comm.
+              </Typography>
+              <Typography variant="body2" fontWeight={600}>
+                {profile.safety_committee === true
+                  ? "Yes"
+                  : profile.safety_committee === false
+                    ? "No"
+                    : "-"}
+              </Typography>
+            </Grid>
+            <Grid item xs={6} sm={4} md={4}>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                sx={{ lineHeight: 1.2, display: "block" }}
+                title="Negative values penalize. Blank defaults to 0 in analysis."
+              >
+                Mgmt. / cooperation penalty (pts)
+              </Typography>
+              <Typography variant="body2" fontWeight={600}>
+                {profile.management_practice_penalty != null && profile.management_practice_penalty !== ""
+                  ? `${profile.management_practice_penalty}`
+                  : "—"}
+              </Typography>
             </Grid>
           </Grid>
         </Paper>
@@ -558,7 +929,13 @@ export default function AnalysisDetail() {
           </Stack>
           {currentYear && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-              Analysis will be calculated for current year: {currentYear}
+              Latest underwriting year on file for this company: <strong>{currentYear}</strong>. Calculate
+              Analysis uses this year until you add a newer year row (Edit underwriting).
+            </Typography>
+          )}
+          {!currentYear && (
+            <Typography variant="body2" color="warning.main" sx={{ mt: 1 }}>
+              No underwriting rows for this company yet. Use Edit to add years.
             </Typography>
           )}
         </Box>
@@ -570,7 +947,7 @@ export default function AnalysisDetail() {
                   Year
                 </TableCell>
                 <TableCell sx={{ fontWeight: "bold", bgcolor: "primary.main", color: "primary.contrastText" }}>
-                  Co
+                  Category
                 </TableCell>
                 <TableCell align="right" sx={{ fontWeight: "bold", bgcolor: "primary.main", color: "primary.contrastText" }}>
                   VFBL
@@ -586,6 +963,9 @@ export default function AnalysisDetail() {
                 </TableCell>
                 <TableCell align="right" sx={{ fontWeight: "bold", bgcolor: "primary.main", color: "primary.contrastText" }}>
                   LAE
+                </TableCell>
+                <TableCell align="right" sx={{ fontWeight: "bold", bgcolor: "primary.main", color: "primary.contrastText" }}>
+                  Total Loss/LAE
                 </TableCell>
                 <TableCell align="right" sx={{ fontWeight: "bold", bgcolor: "primary.main", color: "primary.contrastText" }}>
                   Loss Ratio
@@ -611,9 +991,7 @@ export default function AnalysisDetail() {
                         }}
                       >
                         <TableCell>{uw.underwriting_year}</TableCell>
-                        <TableCell>
-                          {uw.company?.Company_Name || "-"}
-                        </TableCell>
+                        <TableCell>{underwritingRowCategoryLabel(uw)}</TableCell>
                         <TableCell align="right">{formatCurrency(uw.vfbl)}</TableCell>
                         <TableCell align="right">{formatCurrency(uw.wc)}</TableCell>
                         <TableCell align="right">
@@ -621,12 +999,11 @@ export default function AnalysisDetail() {
                         </TableCell>
                         <TableCell align="right">{formatCurrency(uw.losses)}</TableCell>
                         <TableCell align="right">{formatCurrency(uw.lae)}</TableCell>
+                        <TableCell align="right">{formatTotalLossLaeCell(uw)}</TableCell>
                         <TableCell align="right">
                           {formatPercent(uw.loss_ratio)}
                         </TableCell>
-                        <TableCell align="right">
-                          {isCurrentYear ? (uw.points || "-") : "-"}
-                        </TableCell>
+                        <TableCell align="right">-</TableCell>
                         <TableCell align="right">{uw.number_of_claims || "-"}</TableCell>
                       </TableRow>
                     );
@@ -644,7 +1021,9 @@ export default function AnalysisDetail() {
                         },
                       }}
                     >
-                      <TableCell colSpan={2}>5 Yr Totals:</TableCell>
+                      <TableCell colSpan={2}>
+                        5 Yr Totals{currentYear ? ` (before ${currentYear})` : ""}:
+                      </TableCell>
                       <TableCell align="right">
                         {formatCurrency(fiveYearTotals.vfbl)}
                       </TableCell>
@@ -661,10 +1040,17 @@ export default function AnalysisDetail() {
                         {formatCurrency(fiveYearTotals.lae)}
                       </TableCell>
                       <TableCell align="right">
+                        {formatCurrency(fiveYearTotals.totalLossLae)}
+                      </TableCell>
+                      <TableCell align="right">
                         {formatPercent(fiveYearLossRatio)}
                       </TableCell>
                       <TableCell align="right">
-                        {fiveYearTotals.points || "-"}
+                        {latestResult &&
+                        latestResult.underwriting_year === currentYear &&
+                        latestResult.loss_ratio_points != null
+                          ? latestResult.loss_ratio_points
+                          : "-"}
                       </TableCell>
                       <TableCell align="right">
                         {fiveYearTotals.claims}
@@ -674,7 +1060,7 @@ export default function AnalysisDetail() {
                 </>
               ) : (
                 <TableRow>
-                  <TableCell colSpan={10} align="center">
+                  <TableCell colSpan={11} align="center">
                     No underwriting data available
                   </TableCell>
                 </TableRow>
@@ -682,128 +1068,242 @@ export default function AnalysisDetail() {
             </TableBody>
           </Table>
         </TableContainer>
-      </Paper>
+        <Typography variant="caption" color="text.secondary" sx={{ display: "block", px: 2, py: 1.5 }}>
+          5 Yr Totals sums the <strong>five underwriting periods immediately before</strong> the latest year
+          (same as the worksheet). <strong>Calculate Analysis</strong> uses this row for loss ratio points and
+          for claims per $100k premium (total claims ÷ total premium × 100,000).           Individual year rows do not
+          store or show points (like the worksheet). Only the 5 Yr Totals row shows{" "}
+          <strong>loss-ratio points</strong> from the last calculation when it matches the latest year. The{" "}
+          <strong>Category</strong> column is stored per year on each underwriting row (FDM / FDI / FPI); set it
+          in <strong>Edit</strong> or it is written on the latest year when you run <strong>Calculate Analysis</strong>.
+        </Typography>
 
-      {/* Analysis Results */}
-      {latestResult && (
-        <Paper elevation={2} sx={{ p: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Analysis Results ({latestResult.underwriting_year})
-          </Typography>
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Loss Ratio Points
-                  </Typography>
-                  <Typography variant="h4">
-                    {latestResult.loss_ratio_points || 0}
-                  </Typography>
-                </CardContent>
-              </Card>
+        {latestResult && (
+          <Box
+            sx={{
+              px: 2,
+              pb: 3,
+              pt: 2,
+              borderTop: 1,
+              borderColor: "divider",
+              bgcolor: "grey.50",
+            }}
+          >
+            <Typography variant="h6" gutterBottom>
+              Analysis calculation ({latestResult.underwriting_year})
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              After you run <strong>Calculate Analysis</strong>, this section shows how points were built from
+              the <strong>5-yr totals</strong> row (loss ratio and frequency), the fire department profile, and
+              the management penalty, then the total and assigned category (FDM / FDI / FPI).
+            </Typography>
+
+            <Box component="ul" sx={{ pl: 2.5, mb: 2, mt: 0 }}>
+              <Typography component="li" variant="body2" sx={{ mb: 0.75 }}>
+                <strong>Loss ratio points</strong> ({latestResult.loss_ratio_points ?? 0}):{" "}
+                {calcLossRatioPct != null ? (
+                  <>
+                    combined loss ratio over the <strong>five years before</strong> the renewal year{" "}
+                    <strong>{calcLossRatioPct.toFixed(2)}%</strong> (total loss + LAE ÷ total premium on that
+                    5-yr row), looked up in the loss-ratio points table.
+                  </>
+                ) : (
+                  "Inputs not available for narrative."
+                )}
+              </Typography>
+              <Typography component="li" variant="body2" sx={{ mb: 0.75 }}>
+                <strong>Density points</strong> ({latestResult.density_points ?? 0}):{" "}
+                {calcDensity != null ? (
+                  <>
+                    density <strong>{calcDensity.toLocaleString()}</strong> (rounded population ÷ square miles on
+                    profile), looked up in the density points table.
+                  </>
+                ) : (
+                  "—"
+                )}
+              </Typography>
+              <Typography component="li" variant="body2" sx={{ mb: 0.75 }}>
+                <strong>Call volume points</strong> ({latestResult.call_volume_points ?? 0}):{" "}
+                {calcTotalCalls != null ? (
+                  <>
+                    <strong>{calcTotalCalls.toLocaleString()}</strong> total calls (fire + EMS on profile), looked
+                    up in the call-volume table.
+                  </>
+                ) : (
+                  "—"
+                )}
+              </Typography>
+              <Typography component="li" variant="body2" sx={{ mb: 0.75 }}>
+                <strong>Frequency points</strong> ({latestResult.frequency_factor_points ?? 0}):{" "}
+                {calcClaimsPer100k != null ? (
+                  <>
+                    claims per $100k premium <strong>{calcClaimsPer100k.toFixed(2)}</strong> (total # claims ÷
+                    total premium × 100,000 on the 5-yr totals row), looked up in the frequency table.
+                  </>
+                ) : (
+                  "—"
+                )}
+              </Typography>
+              <Typography component="li" variant="body2" sx={{ mb: 0.75 }}>
+                <strong>Safety / H&amp;S / racing</strong>: safety +1 if Yes, −2 if No (unset in profile keeps
+                Calculate disabled); H&amp;S officers +1 if count is greater than zero, −2 if zero (blank keeps
+                Calculate disabled); motorized racing −2 if the team is present (checkbox or race count), 0 if
+                not.
+              </Typography>
+              <Typography component="li" variant="body2">
+                <strong>Cooperation / management penalty</strong>:{" "}
+                {latestResult.management_practice_penalty != null &&
+                latestResult.management_practice_penalty !== 0
+                  ? `${latestResult.management_practice_penalty} point(s) from profile at calculation time`
+                  : "none recorded for this run (0)"}
+                . If the sum of all point lines would exceed <strong>31</strong>, the total is capped at{" "}
+                <strong>31</strong>; category is then based on that capped total (the <strong>26–31</strong> band is{" "}
+                <strong>FPI</strong>).
+              </Typography>
+            </Box>
+
+            <Grid container spacing={2}>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Loss ratio points
+                    </Typography>
+                    <Typography variant="h4">{latestResult.loss_ratio_points ?? 0}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Density points
+                    </Typography>
+                    <Typography variant="h4">{latestResult.density_points ?? 0}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Call volume points
+                    </Typography>
+                    <Typography variant="h4">{latestResult.call_volume_points ?? 0}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Frequency points
+                    </Typography>
+                    <Typography variant="h4">{latestResult.frequency_factor_points ?? 0}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Safety committee
+                    </Typography>
+                    <Typography variant="h4">{latestResult.safety_points ?? 0}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      H&amp;S officers
+                    </Typography>
+                    <Typography variant="h4">{latestResult.hso_points ?? 0}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Racing penalty
+                    </Typography>
+                    <Typography variant="h4">{latestResult.racing_penalty ?? 0}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
+              <Grid item xs={12} sm={6} md={3}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="subtitle2" color="text.secondary">
+                      Mgmt. / cooperation (profile)
+                    </Typography>
+                    <Typography variant="h4">{latestResult.management_practice_penalty ?? 0}</Typography>
+                  </CardContent>
+                </Card>
+              </Grid>
             </Grid>
-            <Grid item xs={12} md={6}>
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Density Points
+
+            <Divider sx={{ my: 2 }} />
+
+            <Grid container spacing={2}>
+              <Grid item xs={12}>
+                <Box
+                  sx={{
+                    p: 2,
+                    bgcolor: "primary.main",
+                    color: "primary.contrastText",
+                    borderRadius: 1,
+                  }}
+                >
+                  <Typography variant="h5" gutterBottom>
+                    Total points: {latestResult.total_points ?? 0}
                   </Typography>
-                  <Typography variant="h4">
-                    {latestResult.density_points || 0}
+                  <Typography variant="h6" sx={{ mt: 1 }}>
+                    Final category:{" "}
+                    <strong>{latestResult.category || "—"}</strong>
+                    {latestResult.category === "FDM" && " (0–14 points band)"}
+                    {latestResult.category === "FDI" && " (15–25 points band)"}
+                    {latestResult.category === "FPI" &&
+                      " (26–31 → FPI; raw totals above 31 are capped at 31)"}
                   </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Call Volume Points
+                  <Typography variant="body1" sx={{ mt: 1 }}>
+                    Assigned company: {latestResult.assignedCompany?.Company_Name || "—"}
                   </Typography>
-                  <Typography variant="h4">
-                    {latestResult.call_volume_points || 0}
+                  {latestResult.company?.Company_Name && (
+                    <Typography variant="body2" sx={{ mt: 0.5, opacity: 0.9 }}>
+                      Writing company: {latestResult.company.Company_Name}
+                    </Typography>
+                  )}
+                </Box>
+              </Grid>
+              <Grid item xs={12}>
+                <Box
+                  sx={{
+                    p: 2,
+                    bgcolor: "grey.100",
+                    borderRadius: 1,
+                    border: "1px solid",
+                    borderColor: "grey.300",
+                  }}
+                >
+                  <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
+                    Category scale
                   </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-            <Grid item xs={12} md={6}>
-              <Card variant="outlined">
-                <CardContent>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Frequency Points
+                  <Typography variant="body2" component="div">
+                    <strong>0–14</strong> points → <strong>FDM</strong>
+                    <br />
+                    <strong>15–25</strong> points → <strong>FDI</strong>
+                    <br />
+                    <strong>26–31</strong> points → <strong>FPI</strong>
                   </Typography>
-                  <Typography variant="h4">
-                    {latestResult.frequency_factor_points || 0}
-                  </Typography>
-                </CardContent>
-              </Card>
+                </Box>
+              </Grid>
             </Grid>
-            <Grid item xs={12}>
-              <Divider sx={{ my: 2 }} />
-            </Grid>
-            <Grid item xs={12}>
-              <Box
-                sx={{
-                  p: 2,
-                  bgcolor: "primary.main",
-                  color: "primary.contrastText",
-                  borderRadius: 1,
-                }}
-              >
-                <Typography variant="h5" gutterBottom>
-                  Total Points: {latestResult.total_points || 0}
-                </Typography>
-                <Typography variant="body1">
-                  Assigned Company: {latestResult.assignedCompany?.Company_Name || "-"}
-                </Typography>
-              </Box>
-            </Grid>
-            <Grid item xs={12}>
-              <Box
-                sx={{
-                  mt: 2,
-                  p: 2,
-                  bgcolor: "grey.100",
-                  borderRadius: 1,
-                  border: "1px solid",
-                  borderColor: "grey.300",
-                }}
-              >
-                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>
-                  Point Range & Category:
-                </Typography>
-                <Typography variant="body1">
-                  {(() => {
-                    const points = Math.min(latestResult.total_points || 0, 31);
-                    const validPoints = Math.max(0, Math.min(31, points));
-                    
-                    if (validPoints >= 0 && validPoints <= 14) {
-                      return (
-                        <>
-                          <strong>0-14 points</strong> → <strong style={{ color: "#1976d2" }}>FDM</strong>
-                        </>
-                      );
-                    }
-                    if (validPoints >= 15 && validPoints <= 25) {
-                      return (
-                        <>
-                          <strong>15-25 points</strong> → <strong style={{ color: "#1976d2" }}>FDI</strong>
-                        </>
-                      );
-                    }
-                    return (
-                      <>
-                        <strong>26-31 points</strong> → <strong style={{ color: "#1976d2" }}>FPI</strong>
-                      </>
-                    );
-                  })()}
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
-        </Paper>
-      )}
+          </Box>
+        )}
+      </Paper>
 
       <Dialog open={dataEntryDialog.open} onClose={handleCloseDataEntryDialog} maxWidth="sm" fullWidth>
         <DialogTitle>
@@ -817,20 +1317,9 @@ export default function AnalysisDetail() {
           </Alert>
           {dataEntryDialog.code === "MISSING_PROFILE" && (
             <Stack spacing={2} sx={{ mt: 1 }}>
-              <TextField
-                label="Customer Since"
-                type="date"
-                value={profileForm.customer_since ? profileForm.customer_since.slice(0, 10) : ""}
-                onChange={(e) => setProfileForm((p) => ({ ...p, customer_since: e.target.value }))}
-                InputLabelProps={{ shrink: true }}
-                fullWidth
-              />
-              <TextField
-                label="Agent"
-                value={profileForm.agent}
-                onChange={(e) => setProfileForm((p) => ({ ...p, agent: e.target.value }))}
-                fullWidth
-              />
+              <Typography variant="overline" color="primary" sx={{ lineHeight: 1.2 }}>
+                Demographics &amp; area
+              </Typography>
               <TextField
                 label="Population"
                 type="number"
@@ -845,6 +1334,11 @@ export default function AnalysisDetail() {
                 onChange={(e) => setProfileForm((p) => ({ ...p, square_miles: e.target.value === "" ? "" : Number(e.target.value) }))}
                 fullWidth
               />
+
+              <Divider />
+              <Typography variant="overline" color="primary" sx={{ lineHeight: 1.2 }}>
+                Call volume
+              </Typography>
               <TextField
                 label="Fire Calls"
                 type="number"
@@ -859,22 +1353,11 @@ export default function AnalysisDetail() {
                 onChange={(e) => setProfileForm((p) => ({ ...p, ems_calls: e.target.value === "" ? "" : Number(e.target.value) }))}
                 fullWidth
               />
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    checked={profileForm.safety_committee}
-                    onChange={(e) => setProfileForm((p) => ({ ...p, safety_committee: e.target.checked }))}
-                  />
-                }
-                label="Safety Committee"
-              />
-              <TextField
-                label="HS Officers"
-                type="number"
-                value={profileForm.hs_officers}
-                onChange={(e) => setProfileForm((p) => ({ ...p, hs_officers: e.target.value === "" ? "" : Number(e.target.value) }))}
-                fullWidth
-              />
+
+              <Divider />
+              <Typography variant="overline" color="primary" sx={{ lineHeight: 1.2 }}>
+                Motorized racing
+              </Typography>
               <FormControlLabel
                 control={
                   <Checkbox
@@ -883,6 +1366,72 @@ export default function AnalysisDetail() {
                   />
                 }
                 label="Motorized Racing Team"
+              />
+              <TextField
+                label="Motorized races per year"
+                type="number"
+                value={profileForm.motorized_racing_team_count}
+                onChange={(e) =>
+                  setProfileForm((p) => ({
+                    ...p,
+                    motorized_racing_team_count: e.target.value === "" ? "" : Number(e.target.value),
+                  }))
+                }
+                fullWidth
+                helperText="Application field “Motorized Races Per Year”. When set, analysis uses one penalty point per race."
+              />
+
+              <Divider />
+              <Typography variant="overline" color="primary" sx={{ lineHeight: 1.2 }}>
+                Safety &amp; underwriting adjustments
+              </Typography>
+              <TextField
+                label="# of H&S Officers"
+                type="number"
+                value={profileForm.hs_officers}
+                onChange={(e) => setProfileForm((p) => ({ ...p, hs_officers: e.target.value === "" ? "" : Number(e.target.value) }))}
+                fullWidth
+                helperText="Required for analysis. Enter 0 if there are no H&S officers (−2 points)."
+              />
+              <FormControl component="fieldset" variant="standard" sx={{ width: "100%" }}>
+                <FormLabel component="legend">Safety comm. / procedures</FormLabel>
+                <RadioGroup
+                  row
+                  value={
+                    profileForm.safety_committee === null
+                      ? ""
+                      : profileForm.safety_committee
+                        ? "yes"
+                        : "no"
+                  }
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setProfileForm((p) => ({
+                      ...p,
+                      safety_committee: v === "yes" ? true : v === "no" ? false : null,
+                    }));
+                  }}
+                >
+                  <FormControlLabel value="yes" control={<Radio size="small" />} label="Yes (+1)" />
+                  <FormControlLabel value="no" control={<Radio size="small" />} label="No (−2)" />
+                </RadioGroup>
+                <Typography variant="caption" color="text.secondary" sx={{ display: "block", mt: 0.5 }}>
+                  Required to run Calculate Analysis. Leave unset only if you have not decided yet (analysis
+                  stays disabled).
+                </Typography>
+              </FormControl>
+              <TextField
+                label="Penalty — cooperation / management practices"
+                type="number"
+                value={profileForm.management_practice_penalty}
+                onChange={(e) =>
+                  setProfileForm((p) => ({
+                    ...p,
+                    management_practice_penalty: e.target.value === "" ? "" : Number(e.target.value),
+                  }))
+                }
+                fullWidth
+                helperText="Integer points added to the analysis total. Use negative values for penalties (e.g. lack of cooperation or losses suggesting poor management)."
               />
             </Stack>
           )}
@@ -990,6 +1539,29 @@ export default function AnalysisDetail() {
                         }}
                         fullWidth
                       />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <FormControl fullWidth size="small">
+                        <InputLabel id={`uw-category-${idx}`}>Category (FDM / FDI / FPI)</InputLabel>
+                        <Select
+                          labelId={`uw-category-${idx}`}
+                          label="Category (FDM / FDI / FPI)"
+                          value={row.category || ""}
+                          onChange={(e) => {
+                            const v = e.target.value as string;
+                            setUnderwritingRows((prev) =>
+                              prev.map((r, i) => (i === idx ? { ...r, category: v } : r))
+                            );
+                          }}
+                        >
+                          <MenuItem value="">
+                            <em>Not set</em>
+                          </MenuItem>
+                          <MenuItem value="FDM">FDM</MenuItem>
+                          <MenuItem value="FDI">FDI</MenuItem>
+                          <MenuItem value="FPI">FPI</MenuItem>
+                        </Select>
+                      </FormControl>
                     </Grid>
                   </Grid>
                 </Paper>
