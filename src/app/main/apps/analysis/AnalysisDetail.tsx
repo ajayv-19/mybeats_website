@@ -26,6 +26,7 @@ import {
   FormControlLabel,
   Checkbox,
   IconButton,
+  Tooltip,
 } from "@mui/material";
 import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import {
@@ -53,6 +54,8 @@ export default function AnalysisDetail() {
   }>({ open: false, code: null, message: "" });
 
   const [profileForm, setProfileForm] = useState<{
+    customer_since: string;
+    agent: string;
     population: number | "";
     square_miles: number | "";
     fire_calls: number | "";
@@ -61,6 +64,8 @@ export default function AnalysisDetail() {
     hs_officers: number | "";
     motorized_racing_team: boolean;
   }>({
+    customer_since: "",
+    agent: "",
     population: "",
     square_miles: "",
     fire_calls: "",
@@ -153,6 +158,8 @@ export default function AnalysisDetail() {
       if (error?.response?.status === 400 && (code === "MISSING_5_YEAR_DATA" || code === "MISSING_PROFILE")) {
         if (code === "MISSING_PROFILE") {
           setProfileForm({
+            customer_since: (profile?.customer_since ?? fire_department?.customer_since ?? "").toString(),
+            agent: (profile?.agent ?? fire_department?.agent ?? "").toString(),
             population: profile?.population ?? "",
             square_miles: profile?.square_miles ?? "",
             fire_calls: profile?.fire_calls ?? "",
@@ -193,10 +200,64 @@ export default function AnalysisDetail() {
     setDataEntryDialog({ open: false, code: null, message: "" });
   };
 
+  const handleOpenProfileDialog = () => {
+    setProfileForm({
+      customer_since: (profile?.customer_since ?? fire_department?.customer_since ?? "").toString(),
+      agent: (profile?.agent ?? fire_department?.agent ?? "").toString(),
+      population: profile?.population ?? "",
+      square_miles: profile?.square_miles ?? "",
+      fire_calls: profile?.fire_calls ?? "",
+      ems_calls: profile?.ems_calls ?? "",
+      safety_committee: !!profile?.safety_committee,
+      hs_officers: profile?.hs_officers ?? "",
+      motorized_racing_team: !!profile?.motorized_racing_team,
+    });
+    setDataEntryDialog({
+      open: true,
+      code: "MISSING_PROFILE",
+      message: "Update Fire Department profile data and save to sync the database.",
+    });
+  };
+
+  const handleOpenUnderwritingDialog = () => {
+    const companyId = fire_department?.company_id ?? (underwriting?.[0] as any)?.company_id;
+    const existingRows: UnderwritingRowForm[] = (underwriting || []).map((u: any) => ({
+      underwriting_year: u.underwriting_year || "",
+      vfbl: u.vfbl != null ? Number(u.vfbl) : "",
+      wc: u.wc != null ? Number(u.wc) : "",
+      losses: u.losses != null ? Number(u.losses) : "",
+      lae: u.lae != null ? Number(u.lae) : "",
+      number_of_claims: u.number_of_claims != null ? Number(u.number_of_claims) : "",
+      ...(companyId != null && { company_id: companyId }),
+    }));
+    setUnderwritingRows(
+      existingRows.length > 0
+        ? existingRows
+        : [
+            {
+              underwriting_year: "",
+              vfbl: "",
+              wc: "",
+              losses: "",
+              lae: "",
+              number_of_claims: "",
+              ...(companyId != null && { company_id: companyId }),
+            },
+          ]
+    );
+    setDataEntryDialog({
+      open: true,
+      code: "MISSING_5_YEAR_DATA",
+      message: "Update underwriting history and save to sync the database.",
+    });
+  };
+
   const handleSaveProfile = async () => {
     try {
       // Convert empty strings to null, but preserve 0 and other valid numbers
       const data: any = {
+        customer_since: profileForm.customer_since ? profileForm.customer_since : null,
+        agent: profileForm.agent.trim() === "" ? null : profileForm.agent.trim(),
         population: profileForm.population === "" ? null : (typeof profileForm.population === "number" ? profileForm.population : null),
         square_miles: profileForm.square_miles === "" ? null : (typeof profileForm.square_miles === "number" ? profileForm.square_miles : null),
         fire_calls: profileForm.fire_calls === "" ? null : (typeof profileForm.fire_calls === "number" ? profileForm.fire_calls : null),
@@ -297,6 +358,75 @@ export default function AnalysisDetail() {
     ? fiveYearTotals.totalLossLae / fiveYearTotals.totalPremium
     : 0;
 
+  const requiredProfileFields: Array<{
+    key: "population" | "square_miles" | "fire_calls" | "ems_calls" | "safety_committee" | "hs_officers" | "motorized_racing_team";
+    label: string;
+  }> = [
+    { key: "population", label: "Population" },
+    { key: "square_miles", label: "Square Miles" },
+    { key: "fire_calls", label: "Fire Calls" },
+    { key: "ems_calls", label: "EMS Calls" },
+    { key: "safety_committee", label: "Safety Committee" },
+    { key: "hs_officers", label: "HS Officers" },
+    { key: "motorized_racing_team", label: "Motorized Racing Team" },
+  ];
+
+  const missingProfileFields = !profile
+    ? requiredProfileFields.map((f) => f.label)
+    : requiredProfileFields
+        .filter(({ key }) => {
+          const value = profile[key];
+          if (value === undefined || value === null) return true;
+          if (typeof value === "boolean") return false;
+          if (typeof value === "number") return Number.isNaN(value);
+          if (typeof value === "string") return value.trim() === "";
+          return false;
+        })
+        .map((f) => f.label);
+
+  const lastFiveUnderwritingRows = underwriting?.slice(0, 5) || [];
+  const hasFiveYearData = lastFiveUnderwritingRows.length >= 5;
+  const missingUnderwritingData = hasFiveYearData
+    ? lastFiveUnderwritingRows.some((row: any) => {
+        const hasPremium =
+          (Number(row.vfbl) || 0) + (Number(row.wc) || 0) > 0 ||
+          (Number(row.total_premium) || 0) > 0;
+        const hasLosses = row.losses !== null && row.losses !== undefined && row.losses !== "";
+        const hasLae = row.lae !== null && row.lae !== undefined && row.lae !== "";
+        const hasClaims =
+          row.number_of_claims !== null &&
+          row.number_of_claims !== undefined &&
+          row.number_of_claims !== "";
+        return !hasPremium || !hasLosses || !hasLae || !hasClaims;
+      })
+    : true;
+
+  const canCalculateAnalysis =
+    !!currentYear &&
+    missingProfileFields.length === 0 &&
+    hasFiveYearData &&
+    !missingUnderwritingData;
+
+  const calculateDisabledReasons: string[] = [];
+  if (missingProfileFields.length > 0) {
+    calculateDisabledReasons.push(
+      `Complete Fire Department profile data (${missingProfileFields.join(", ")})`
+    );
+  }
+  if (!hasFiveYearData) {
+    calculateDisabledReasons.push("Add underwriting records for the last 5 years");
+  } else if (missingUnderwritingData) {
+    calculateDisabledReasons.push(
+      "Complete underwriting values for the last 5 years (premium, losses, LAE, and # claims)"
+    );
+  }
+  if (!currentYear) {
+    calculateDisabledReasons.push("No current underwriting year available");
+  }
+  const calculateDisabledTooltip = calculateDisabledReasons.length
+    ? `Update required data before calculation: ${calculateDisabledReasons.join(" • ")}`
+    : "";
+
   return (
     <Box sx={{ p: 3 }}>
       {/* Header */}
@@ -311,9 +441,12 @@ export default function AnalysisDetail() {
 
       {/* Fire Department Information */}
       <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          Fire Department Information
-        </Typography>
+        <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+          <Typography variant="h6">Fire Department Information</Typography>
+          <Button variant="outlined" size="small" onClick={handleOpenProfileDialog}>
+            Edit
+          </Button>
+        </Stack>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6} md={3}>
             <Typography variant="body2" color="text.secondary">
@@ -357,9 +490,12 @@ export default function AnalysisDetail() {
       {/* Profile Data */}
       {profile && (
         <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-          <Typography variant="h6" gutterBottom>
-            Current Profile Data
-          </Typography>
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
+            <Typography variant="h6">Current Profile Data</Typography>
+            <Button variant="outlined" size="small" onClick={handleOpenProfileDialog}>
+              Edit
+            </Button>
+          </Stack>
           <Grid container spacing={2}>
             <Grid item xs={12} sm={6} md={3}>
               <Typography variant="body2" color="text.secondary">
@@ -394,16 +530,31 @@ export default function AnalysisDetail() {
       {/* Underwriting History */}
       <Paper elevation={2} sx={{ mb: 3 }}>
         <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
-          <Stack direction="row" justifyContent="space-between" alignItems="center">
+          <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ gap: 1, flexWrap: "wrap" }}>
             <Typography variant="h6">Underwriting History (5 Years)</Typography>
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={handleCalculate}
-              disabled={!currentYear || calculateAnalysis.isPending}
-            >
-              {calculateAnalysis.isPending ? "Calculating..." : "Calculate Analysis"}
-            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button variant="outlined" size="small" onClick={handleOpenUnderwritingDialog}>
+                Edit
+              </Button>
+              {canCalculateAnalysis ? (
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleCalculate}
+                  disabled={calculateAnalysis.isPending}
+                >
+                  {calculateAnalysis.isPending ? "Calculating..." : "Calculate Analysis"}
+                </Button>
+              ) : (
+                <Tooltip title={calculateDisabledTooltip} arrow>
+                  <span>
+                    <Button variant="outlined" color="primary" disabled>
+                      Calculate Analysis
+                    </Button>
+                  </span>
+                </Tooltip>
+              )}
+            </Stack>
           </Stack>
           {currentYear && (
             <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
@@ -655,13 +806,31 @@ export default function AnalysisDetail() {
       )}
 
       <Dialog open={dataEntryDialog.open} onClose={handleCloseDataEntryDialog} maxWidth="sm" fullWidth>
-        <DialogTitle>Complete required data</DialogTitle>
+        <DialogTitle>
+          {dataEntryDialog.code === "MISSING_PROFILE"
+            ? "Edit Fire Department Profile"
+            : "Edit Underwriting History"}
+        </DialogTitle>
         <DialogContent>
           <Alert severity="info" sx={{ mb: 2 }}>
             {dataEntryDialog.message}
           </Alert>
           {dataEntryDialog.code === "MISSING_PROFILE" && (
             <Stack spacing={2} sx={{ mt: 1 }}>
+              <TextField
+                label="Customer Since"
+                type="date"
+                value={profileForm.customer_since ? profileForm.customer_since.slice(0, 10) : ""}
+                onChange={(e) => setProfileForm((p) => ({ ...p, customer_since: e.target.value }))}
+                InputLabelProps={{ shrink: true }}
+                fullWidth
+              />
+              <TextField
+                label="Agent"
+                value={profileForm.agent}
+                onChange={(e) => setProfileForm((p) => ({ ...p, agent: e.target.value }))}
+                fullWidth
+              />
               <TextField
                 label="Population"
                 type="number"

@@ -320,7 +320,9 @@ class AnalysisController {
    * Runs calculation, writes underwriting_results, updates underwriting + policies
    */
   async calculateAnalysis(req, res) {
-    const transaction = await sequelize.transaction();
+    // Do not open a DB transaction until validations pass — early returns used to leave
+    // transactions open and could exhaust the pool (502 from API Gateway / Lambda).
+    let transaction = null;
     try {
       const { fire_department_id } = req.params;
       const { underwriting_year } = req.body;
@@ -331,10 +333,9 @@ class AnalysisController {
         });
       }
 
-      // Get fire department
+      // Get fire department (read-only, no transaction yet)
       const fireDepartment = await FireDepartment.findByPk(
-        parseInt(fire_department_id),
-        { transaction }
+        parseInt(fire_department_id)
       );
 
       if (!fireDepartment) {
@@ -353,7 +354,6 @@ class AnalysisController {
           ],
         },
         order: [["effective_from", "DESC"]],
-        transaction,
       });
 
       // Get last 5 years of underwriting (including the target year)
@@ -363,12 +363,10 @@ class AnalysisController {
         },
         order: [["underwriting_year", "DESC"]],
         limit: 5,
-        transaction,
       });
 
       // --- Validation: require 5-year data and complete profile before running calculation ---
       if (!underwritingRows || underwritingRows.length < 5) {
-        await transaction.rollback();
         return res.status(400).json({
           code: "MISSING_5_YEAR_DATA",
           message:
@@ -380,7 +378,6 @@ class AnalysisController {
         (row) => row.underwriting_year === underwriting_year
       );
       if (!targetRow) {
-        await transaction.rollback();
         return res.status(400).json({
           code: "MISSING_5_YEAR_DATA",
           message:
@@ -392,7 +389,6 @@ class AnalysisController {
         (Number(targetRow.vfbl) || 0) + (Number(targetRow.wc) || 0) > 0 ||
         (Number(targetRow.total_premium) || 0) > 0;
       if (!hasPremium) {
-        await transaction.rollback();
         return res.status(400).json({
           code: "MISSING_5_YEAR_DATA",
           message:
@@ -401,7 +397,6 @@ class AnalysisController {
       }
 
       if (!profile) {
-        await transaction.rollback();
         return res.status(400).json({
           code: "MISSING_PROFILE",
           message:
@@ -427,12 +422,13 @@ class AnalysisController {
         return false;
       });
       if (missingFields.length > 0) {
-        await transaction.rollback();
         return res.status(400).json({
           code: "MISSING_PROFILE",
           message: `Fire department profile is incomplete. Missing: ${missingFields.join(", ")}. Please complete the profile (e.g. from approved application forms).`,
         });
       }
+
+      transaction = await sequelize.transaction();
 
       // Run calculation
       const calculationResult = await calculationService.calculate(
@@ -519,7 +515,13 @@ class AnalysisController {
         },
       });
     } catch (error) {
-      await transaction.rollback();
+      if (transaction && !transaction.finished) {
+        try {
+          await transaction.rollback();
+        } catch (rollbackErr) {
+          console.error("Rollback after calculateAnalysis error:", rollbackErr);
+        }
+      }
       console.error("Error calculating analysis:", error);
       res.status(500).json({
         message: "Error calculating analysis",
