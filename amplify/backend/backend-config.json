@@ -121,6 +121,14 @@
         }
       ]
     },
+    "AMPLIFY_function_user_censusApiKey": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "user"
+        }
+      ]
+    },
     "AMPLIFY_function_user_deploymentBucketName": {
       "usedBy": [
         {

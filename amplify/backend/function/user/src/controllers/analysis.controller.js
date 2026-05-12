@@ -14,6 +14,9 @@ const {
   computeProfileDensity,
   computeProfileTotalCalls,
 } = require("../services/profileDerivedFields");
+const {
+  fetchCountyPopulationFromCensus,
+} = require("../services/censusPopulation.service");
 
 /**
  * Analysis data model (subscribed company = fire_department_profile.company_id / underwriting.company_id):
@@ -37,6 +40,112 @@ class AnalysisController {
     app.post("/analysis/:fire_department_id/calculate", (...args) =>
       this.calculateAnalysis(...args)
     );
+    app.post("/analysis/:fire_department_id/verify-population", (...args) =>
+      this.verifyPopulation(...args)
+    );
+  }
+
+  /**
+   * POST /analysis/:fire_department_id/verify-population?company_id=...
+   * Cross-checks `fire_department_profile.population` against the US Census
+   * Bureau ACS5 county population (variable B01003_001E) using the fire
+   * department's state + county. Persists the value to
+   * `fire_department_profile.population_verified` and returns it so the UI
+   * can show it alongside the carrier-stored figure.
+   *
+   * Body: none. Query: company_id (required).
+   * Responses:
+   *   200 -> { data: { population_verified, source, name, year } } on success
+   *   200 -> { data: { population_verified: null }, message: "..." } when the
+   *          FD is non-US / county can't be matched (not treated as error so
+   *          the UI can just say "no match")
+   *   400 -> missing company_id / FD state-county
+   *   404 -> FD or profile missing
+   */
+  async verifyPopulation(req, res) {
+    try {
+      const { fire_department_id } = req.params;
+      const { company_id: companyIdQuery } = req.query;
+
+      if (!companyIdQuery) {
+        return res.status(400).json({
+          message: "company_id query parameter is required",
+        });
+      }
+      const companyIdInt = parseInt(companyIdQuery, 10);
+      if (!Number.isFinite(companyIdInt)) {
+        return res.status(400).json({ message: "company_id must be a valid integer" });
+      }
+
+      const fd = await FireDepartment.findByPk(parseInt(fire_department_id, 10));
+      if (!fd) {
+        return res.status(404).json({ message: "Fire department not found" });
+      }
+
+      const profile = await FireDepartmentProfile.findOne({
+        where: {
+          fire_department_id: parseInt(fire_department_id, 10),
+          company_id: companyIdInt,
+        },
+      });
+      if (!profile) {
+        return res.status(404).json({
+          message: "Fire department profile not found for this company",
+        });
+      }
+
+      const state = fd.state;
+      const county = fd.county;
+      if (!state || !county) {
+        return res.status(400).json({
+          message:
+            "Fire department is missing state or county; cannot verify population from Census API",
+        });
+      }
+
+      const census = await fetchCountyPopulationFromCensus({ state, county });
+      if (!census) {
+        // Not an error — just no match (e.g., Canadian county) — clear any stale value.
+        await profile.update({ population_verified: null });
+        return res.status(200).json({
+          message:
+            "No matching US county found in Census ACS5 for this state/county. Verification skipped.",
+          data: {
+            population_verified: null,
+            source: null,
+            name: null,
+            year: null,
+          },
+        });
+      }
+
+      await profile.update({ population_verified: census.population });
+
+      return res.status(200).json({
+        message: "Population verified from US Census Bureau",
+        data: {
+          population_verified: census.population,
+          source: census.source,
+          name: census.name,
+          year: census.year,
+        },
+      });
+    } catch (error) {
+      console.error("Error verifying population:", error);
+      // Census key not configured / invalid → 503 with the actionable message
+      // so the carrier UI can show it verbatim and the admin knows exactly
+      // what to fix. Other errors stay as 500.
+      if (error && error.keyError) {
+        return res.status(503).json({
+          code: "CENSUS_API_KEY_REQUIRED",
+          message: error.message,
+        });
+      }
+      return res.status(500).json({
+        message: "Error verifying population",
+        error: error.message,
+      });
+    }
   }
 
   /**
@@ -484,16 +593,11 @@ class AnalysisController {
         });
       }
 
-      const hasPremium =
-        (Number(targetRow.vfbl) || 0) + (Number(targetRow.wc) || 0) > 0 ||
-        (Number(targetRow.total_premium) || 0) > 0;
-      if (!hasPremium) {
-        return res.status(400).json({
-          code: "MISSING_5_YEAR_DATA",
-          message:
-            "Cannot run analysis: the selected year has no premium data (VFBL/WC). Please add or complete underwriting data.",
-        });
-      }
+      // Note: the renewal/target row is not part of the 5-year aggregates that
+      // produce points (see calculation.service.js getPriorFiveYearRows), so we
+      // intentionally do NOT require premium/losses/LAE on it. It only needs
+      // to exist so we have a year key to write underwriting_results / policy
+      // and to update underwriting.category after calculation.
 
       if (!profile) {
         return res.status(400).json({

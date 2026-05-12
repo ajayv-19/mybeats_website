@@ -535,6 +535,13 @@ const FireDepartmentProfile = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: true,
     },
+    /** Most recent county-level population pulled from the US Census Bureau API
+     * (ACS5 total population, B01003_001E). Stored so the analysis UI can show
+     * the official figure next to the carrier's stored `population` for cross-check. */
+    population_verified: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
     square_miles: {
       type: DataTypes.DECIMAL(10, 2),
       allowNull: true,

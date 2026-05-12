@@ -40,6 +40,7 @@ import {
   useAnalysisDetail,
   useCalculateAnalysis,
   useUpdateAnalysisProfile,
+  useVerifyPopulation,
 } from "../settings/apis/AnalysisApis";
 import { useBulkUpsertUnderwriting } from "../settings/apis/UnderwritingApis";
 import { toast } from "sonner";
@@ -117,10 +118,14 @@ function hasNumericForUwCalc(v: any): boolean {
   return v !== null && v !== undefined && v !== "" && !Number.isNaN(Number(v));
 }
 
-/** Human-readable gaps for a row that fails underwriting completeness (matches underwritingRowCompleteForCalc). */
+/** Human-readable gaps for a row that fails underwriting completeness (matches underwritingRowCompleteForCalc).
+ * `isRenewal: true` skips premium/losses/LAE/loss-ratio checks because the
+ * renewal row is not part of the 5-year aggregates the calculation uses; it
+ * only needs a year to act as a key for results / policy / category.
+ */
 function describeUnderwritingRowCalcGaps(
   row: any,
-  opts?: { requireCategory?: boolean }
+  opts?: { requireCategory?: boolean; isRenewal?: boolean }
 ): string[] {
   const gaps: string[] = [];
   if (!row?.underwriting_year || String(row.underwriting_year).trim() === "") {
@@ -128,33 +133,36 @@ function describeUnderwritingRowCalcGaps(
     return gaps;
   }
 
-  const prem =
-    (Number(row.vfbl) || 0) + (Number(row.wc) || 0) || (Number(row.total_premium) || 0);
-  if (!(prem > 0)) gaps.push("premium (VFBL + WC or total premium > 0)");
+  if (!opts?.isRenewal) {
+    const prem =
+      (Number(row.vfbl) || 0) + (Number(row.wc) || 0) || (Number(row.total_premium) || 0);
+    if (!(prem > 0)) gaps.push("premium (VFBL + WC or total premium > 0)");
 
-  if (!hasNumericForUwCalc(row.losses)) gaps.push("Losses");
-  if (!hasNumericForUwCalc(row.lae)) gaps.push("LAE");
+    if (!hasNumericForUwCalc(row.losses)) gaps.push("Losses");
+    if (!hasNumericForUwCalc(row.lae)) gaps.push("LAE");
 
-  let totalLossLae: number;
-  if (row.total_loss_lae !== null && row.total_loss_lae !== undefined && row.total_loss_lae !== "") {
-    totalLossLae = Number(row.total_loss_lae);
-  } else {
-    totalLossLae = Number(row.losses || 0) + Number(row.lae || 0);
-  }
-  if (!Number.isFinite(totalLossLae)) gaps.push("total loss/LAE (valid number)");
-
-  let lossRatioPct: number | null = null;
-  if (row.loss_ratio !== null && row.loss_ratio !== undefined && row.loss_ratio !== "") {
-    const raw = Number(String(row.loss_ratio).replace(/%/g, "").trim());
-    if (Number.isFinite(raw)) {
-      lossRatioPct = raw <= 1 && raw >= 0 ? raw * 100 : raw;
+    let totalLossLae: number;
+    if (row.total_loss_lae !== null && row.total_loss_lae !== undefined && row.total_loss_lae !== "") {
+      totalLossLae = Number(row.total_loss_lae);
+    } else {
+      totalLossLae = Number(row.losses || 0) + Number(row.lae || 0);
     }
-  } else if (prem > 0) {
-    lossRatioPct = (totalLossLae / prem) * 100;
+    if (!Number.isFinite(totalLossLae)) gaps.push("total loss/LAE (valid number)");
+
+    let lossRatioPct: number | null = null;
+    if (row.loss_ratio !== null && row.loss_ratio !== undefined && row.loss_ratio !== "") {
+      const raw = Number(String(row.loss_ratio).replace(/%/g, "").trim());
+      if (Number.isFinite(raw)) {
+        lossRatioPct = raw <= 1 && raw >= 0 ? raw * 100 : raw;
+      }
+    } else if (prem > 0) {
+      lossRatioPct = (totalLossLae / prem) * 100;
+    }
+    if (lossRatioPct === null || !Number.isFinite(lossRatioPct)) {
+      gaps.push("loss ratio (enter a value or ensure premium + losses/LAE allow calculation)");
+    }
   }
-  if (lossRatioPct === null || !Number.isFinite(lossRatioPct)) {
-    gaps.push("loss ratio (enter a value or ensure premium + losses/LAE allow calculation)");
-  }
+
   if (opts?.requireCategory) {
     const category = String(row?.type ?? row?.category ?? "").trim();
     if (!category) gaps.push("Category (FDM / FDI / FPI)");
@@ -243,6 +251,7 @@ export default function AnalysisDetail() {
   const calculateAnalysis = useCalculateAnalysis();
   const updateProfile = useUpdateAnalysisProfile();
   const bulkUpsertUnderwriting = useBulkUpsertUnderwriting();
+  const verifyPopulation = useVerifyPopulation();
 
   const [dataEntryDialog, setDataEntryDialog] = useState<{
     open: boolean;
@@ -659,36 +668,47 @@ export default function AnalysisDetail() {
   const hasNumeric = (v: any) =>
     v !== null && v !== undefined && v !== "" && !Number.isNaN(Number(v));
 
-  /** One underwriting row for calculation completeness. */
-  const underwritingRowCompleteForCalc = (row: any, opts?: { requireCategory?: boolean }) => {
+  /** One underwriting row for calculation completeness.
+   * `isRenewal: true` only requires `underwriting_year` to be set — the renewal
+   * row is excluded from the 5-year aggregates, so premium/losses/LAE/loss-ratio
+   * are not required (and category is optional too). The row exists purely so
+   * we have a year key to attach results / policy / category to after the calc.
+   */
+  const underwritingRowCompleteForCalc = (
+    row: any,
+    opts?: { requireCategory?: boolean; isRenewal?: boolean }
+  ) => {
     if (!row?.underwriting_year || String(row.underwriting_year).trim() === "") return false;
 
-    const prem =
-      (Number(row.vfbl) || 0) + (Number(row.wc) || 0) ||
-      (Number(row.total_premium) || 0);
-    if (!(prem > 0)) return false;
+    if (!opts?.isRenewal) {
+      const prem =
+        (Number(row.vfbl) || 0) + (Number(row.wc) || 0) ||
+        (Number(row.total_premium) || 0);
+      if (!(prem > 0)) return false;
 
-    if (!hasNumeric(row.losses)) return false;
-    if (!hasNumeric(row.lae)) return false;
+      if (!hasNumeric(row.losses)) return false;
+      if (!hasNumeric(row.lae)) return false;
 
-    let totalLossLae: number;
-    if (row.total_loss_lae !== null && row.total_loss_lae !== undefined && row.total_loss_lae !== "") {
-      totalLossLae = Number(row.total_loss_lae);
-    } else {
-      totalLossLae = Number(row.losses || 0) + Number(row.lae || 0);
-    }
-    if (!Number.isFinite(totalLossLae)) return false;
-
-    let lossRatioPct: number | null = null;
-    if (row.loss_ratio !== null && row.loss_ratio !== undefined && row.loss_ratio !== "") {
-      const raw = Number(String(row.loss_ratio).replace(/%/g, "").trim());
-      if (Number.isFinite(raw)) {
-        lossRatioPct = raw <= 1 && raw >= 0 ? raw * 100 : raw;
+      let totalLossLae: number;
+      if (row.total_loss_lae !== null && row.total_loss_lae !== undefined && row.total_loss_lae !== "") {
+        totalLossLae = Number(row.total_loss_lae);
+      } else {
+        totalLossLae = Number(row.losses || 0) + Number(row.lae || 0);
       }
-    } else if (prem > 0) {
-      lossRatioPct = (totalLossLae / prem) * 100;
+      if (!Number.isFinite(totalLossLae)) return false;
+
+      let lossRatioPct: number | null = null;
+      if (row.loss_ratio !== null && row.loss_ratio !== undefined && row.loss_ratio !== "") {
+        const raw = Number(String(row.loss_ratio).replace(/%/g, "").trim());
+        if (Number.isFinite(raw)) {
+          lossRatioPct = raw <= 1 && raw >= 0 ? raw * 100 : raw;
+        }
+      } else if (prem > 0) {
+        lossRatioPct = (totalLossLae / prem) * 100;
+      }
+      if (lossRatioPct === null || !Number.isFinite(lossRatioPct)) return false;
     }
-    if (lossRatioPct === null || !Number.isFinite(lossRatioPct)) return false;
+
     if (opts?.requireCategory && !String(row?.type ?? row?.category ?? "").trim()) return false;
 
     return true;
@@ -736,7 +756,11 @@ export default function AnalysisDetail() {
     hasPriorFiveYearWindow && currentYearData
       ? priorFiveForCalc!.some(
           (row: any) => !underwritingRowCompleteForCalc(row, { requireCategory: true })
-        ) || !underwritingRowCompleteForCalc(currentYearData, { requireCategory: false })
+        ) ||
+        !underwritingRowCompleteForCalc(currentYearData, {
+          requireCategory: false,
+          isRenewal: true,
+        })
       : true;
 
   const canCalculateAnalysis =
@@ -789,13 +813,18 @@ export default function AnalysisDetail() {
               Underwriting rows (Edit) — missing or invalid
             </Typography>
             <Typography variant="caption" component="div" color="inherit" sx={{ display: "block", mb: 0.35, opacity: 0.9 }}>
-              # Claims is optional. Category is required for the five prior years, optional for the latest year.
+              # Claims is optional. The latest year only needs an underwriting year — premium / Losses / LAE / loss
+              ratio / Category are all optional on it. The five prior years still require premium, Losses, LAE, a
+              derivable loss ratio, and Category (used in the 5-year totals).
             </Typography>
             <Box component="ul" sx={{ m: 0, pl: 2.25, mb: 0 }}>
               {[...priorFiveForCalc, currentYearData].map((row: any) => {
                 const y = String(row.underwriting_year);
                 const latest = y === String(currentYear);
-                const gaps = describeUnderwritingRowCalcGaps(row, { requireCategory: !latest });
+                const gaps = describeUnderwritingRowCalcGaps(row, {
+                  requireCategory: !latest,
+                  isRenewal: latest,
+                });
                 if (gaps.length === 0) return null;
                 return (
                   <Typography
@@ -898,13 +927,176 @@ export default function AnalysisDetail() {
                 Demographics &amp; area
               </Typography>
             </Grid>
-            <Grid item xs={6} sm={4} md={2}>
+            <Grid item xs={12} sm={8} md={4}>
               <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: "block" }}>
                 Population
               </Typography>
-              <Typography variant="body2" fontWeight={600}>
-                {profile.population?.toLocaleString() || "-"}
-              </Typography>
+              <Stack direction="row" alignItems="center" spacing={1.25} sx={{ flexWrap: "wrap" }}>
+                <Typography variant="body2" fontWeight={600}>
+                  {profile.population?.toLocaleString() || "-"}
+                </Typography>
+
+                {(() => {
+                  const verified = profile?.population_verified;
+                  const hasVerified = verified != null && verified !== "" && Number.isFinite(Number(verified));
+                  const stored = Number(profile?.population);
+                  const hasStored = Number.isFinite(stored) && stored > 0;
+                  const diffPct =
+                    hasVerified && hasStored
+                      ? ((Number(verified) - stored) / stored) * 100
+                      : null;
+                  const matches = diffPct != null && Math.abs(diffPct) < 1;
+
+                  return (
+                    <>
+                      {hasVerified && (
+                        <Tooltip
+                          title="Latest county population from the US Census Bureau (ACS 5-year, B01003_001E). Use the Update button to copy this value into Population."
+                          arrow
+                        >
+                          <Box
+                            sx={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 0.75,
+                              px: 1,
+                              py: 0.25,
+                              borderRadius: 1,
+                              bgcolor: matches ? "rgba(46,125,50,0.08)" : "rgba(237,108,2,0.08)",
+                              border: 1,
+                              borderColor: matches ? "success.light" : "warning.light",
+                            }}
+                          >
+                            <Typography
+                              variant="caption"
+                              sx={{ color: "text.secondary", lineHeight: 1.2 }}
+                            >
+                              Census:
+                            </Typography>
+                            <Typography
+                              variant="caption"
+                              fontWeight={700}
+                              sx={{ lineHeight: 1.2 }}
+                            >
+                              {Number(verified).toLocaleString()}
+                            </Typography>
+                            {diffPct != null && (
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  lineHeight: 1.2,
+                                  color: matches ? "success.dark" : "warning.dark",
+                                  fontWeight: 600,
+                                }}
+                              >
+                                ({diffPct >= 0 ? "+" : ""}
+                                {diffPct.toFixed(diffPct > -10 && diffPct < 10 ? 1 : 0)}%)
+                              </Typography>
+                            )}
+                          </Box>
+                        </Tooltip>
+                      )}
+
+                      <Tooltip
+                        title={
+                          hasVerified
+                            ? "Re-fetch the latest US Census Bureau county population (ACS 5-year)."
+                            : "Look up the official county population from the US Census Bureau (ACS 5-year) using this fire department's state and county."
+                        }
+                        arrow
+                      >
+                        <span>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            disabled={
+                              verifyPopulation.isPending ||
+                              !fire_department?.state ||
+                              !fire_department?.county
+                            }
+                            onClick={() => {
+                              verifyPopulation.mutate(
+                                {
+                                  fire_department_id: Number(fire_department_id),
+                                  company_id: analysisCompanyId,
+                                },
+                                {
+                                  onSuccess: (resp) => {
+                                    if (resp?.data?.population_verified != null) {
+                                      toast.success(
+                                        `Census: ${Number(
+                                          resp.data.population_verified
+                                        ).toLocaleString()} (${resp.data.source})`
+                                      );
+                                    } else {
+                                      toast.info(
+                                        resp?.message ||
+                                          "No matching US county found in Census ACS5."
+                                      );
+                                    }
+                                  },
+                                  onError: (err: any) => {
+                                    toast.error(
+                                      err?.response?.data?.message ||
+                                        err?.message ||
+                                        "Failed to verify population from Census API"
+                                    );
+                                  },
+                                }
+                              );
+                            }}
+                          >
+                            {verifyPopulation.isPending
+                              ? "Verifying…"
+                              : hasVerified
+                              ? "Refresh"
+                              : "Verify with Census"}
+                          </Button>
+                        </span>
+                      </Tooltip>
+
+                      {hasVerified && (
+                        <Tooltip
+                          title="Copy the Census value into Population and save."
+                          arrow
+                        >
+                          <span>
+                            <Button
+                              size="small"
+                              variant="contained"
+                              color="primary"
+                              disabled={
+                                updateProfile.isPending || Number(verified) === stored
+                              }
+                              onClick={() => {
+                                updateProfile.mutate(
+                                  {
+                                    fire_department_id: Number(fire_department_id),
+                                    company_id: analysisCompanyId,
+                                    data: { population: Number(verified) },
+                                  },
+                                  {
+                                    onSuccess: () =>
+                                      toast.success("Population updated from Census value"),
+                                    onError: (err: any) =>
+                                      toast.error(
+                                        err?.response?.data?.message ||
+                                          err?.message ||
+                                          "Failed to update population"
+                                      ),
+                                  }
+                                );
+                              }}
+                            >
+                              Use Census value
+                            </Button>
+                          </span>
+                        </Tooltip>
+                      )}
+                    </>
+                  );
+                })()}
+              </Stack>
             </Grid>
             <Grid item xs={6} sm={4} md={2}>
               <Typography variant="caption" color="text.secondary" sx={{ lineHeight: 1.2, display: "block" }}>

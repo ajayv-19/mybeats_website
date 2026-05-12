@@ -178,6 +178,52 @@ export const useCalculateAnalysis = () => {
   });
 };
 
+export interface VerifyPopulationResponse {
+  message: string;
+  data: {
+    population_verified: number | null;
+    source: string | null;
+    name: string | null;
+    year: number | null;
+  };
+}
+
+/**
+ * Cross-verify the carrier-stored population against the US Census Bureau
+ * ACS5 county population. Persists the value to
+ * `fire_department_profile.population_verified` server-side.
+ */
+export const useVerifyPopulation = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      fire_department_id,
+      company_id,
+    }: {
+      fire_department_id: number;
+      company_id: number;
+    }) => {
+      const response = await axios.post<VerifyPopulationResponse>(
+        `/analysis/${fire_department_id}/verify-population`,
+        {},
+        { params: { company_id } },
+      );
+      return response.data;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: [
+          "analysis",
+          "detail",
+          variables.fire_department_id,
+          variables.company_id,
+        ],
+      });
+    },
+  });
+};
+
 export interface UpdateProfileRequest {
   population?: number | null;
   square_miles?: number | null;
