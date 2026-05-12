@@ -113,6 +113,79 @@ function getPriorFiveUnderwritingRows(underwriting: any[], targetYear: string): 
   return asc.slice(idx - 5, idx);
 }
 
+function hasNumericForUwCalc(v: any): boolean {
+  return v !== null && v !== undefined && v !== "" && !Number.isNaN(Number(v));
+}
+
+/** Human-readable gaps for a row that fails underwriting completeness (matches underwritingRowCompleteForCalc). */
+function describeUnderwritingRowCalcGaps(
+  row: any,
+  opts?: { requireCategory?: boolean }
+): string[] {
+  const gaps: string[] = [];
+  if (!row?.underwriting_year || String(row.underwriting_year).trim() === "") {
+    gaps.push("underwriting year");
+    return gaps;
+  }
+
+  const prem =
+    (Number(row.vfbl) || 0) + (Number(row.wc) || 0) || (Number(row.total_premium) || 0);
+  if (!(prem > 0)) gaps.push("premium (VFBL + WC or total premium > 0)");
+
+  if (!hasNumericForUwCalc(row.losses)) gaps.push("Losses");
+  if (!hasNumericForUwCalc(row.lae)) gaps.push("LAE");
+
+  let totalLossLae: number;
+  if (row.total_loss_lae !== null && row.total_loss_lae !== undefined && row.total_loss_lae !== "") {
+    totalLossLae = Number(row.total_loss_lae);
+  } else {
+    totalLossLae = Number(row.losses || 0) + Number(row.lae || 0);
+  }
+  if (!Number.isFinite(totalLossLae)) gaps.push("total loss/LAE (valid number)");
+
+  let lossRatioPct: number | null = null;
+  if (row.loss_ratio !== null && row.loss_ratio !== undefined && row.loss_ratio !== "") {
+    const raw = Number(String(row.loss_ratio).replace(/%/g, "").trim());
+    if (Number.isFinite(raw)) {
+      lossRatioPct = raw <= 1 && raw >= 0 ? raw * 100 : raw;
+    }
+  } else if (prem > 0) {
+    lossRatioPct = (totalLossLae / prem) * 100;
+  }
+  if (lossRatioPct === null || !Number.isFinite(lossRatioPct)) {
+    gaps.push("loss ratio (enter a value or ensure premium + losses/LAE allow calculation)");
+  }
+  if (opts?.requireCategory) {
+    const category = String(row?.type ?? row?.category ?? "").trim();
+    if (!category) gaps.push("Category (FDM / FDI / FPI)");
+  }
+
+  return gaps;
+}
+
+/**
+ * Next older underwriting period from a "YYYY-YYYY" label (e.g. 2022-2021 → 2021-2020).
+ * Returns "" if the string does not match the expected pattern.
+ */
+function suggestPriorYearUnderwritingYear(fromYearLabel: string): string {
+  const trimmed = String(fromYearLabel ?? "").trim();
+  if (!trimmed) return "";
+  const m = trimmed.match(/^(\d{4})\s*-\s*(\d{4})$/);
+  if (!m) return "";
+  const a = parseInt(m[1], 10);
+  const b = parseInt(m[2], 10);
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return "";
+  return `${a - 1}-${b - 1}`;
+}
+
+function lastNonEmptyUnderwritingYear(rows: { underwriting_year?: string }[]): string {
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const y = String(rows[i]?.underwriting_year ?? "").trim();
+    if (y) return y;
+  }
+  return "";
+}
+
 /** Map API profile to tri-state safety for the form (do not coerce null to false). */
 function profileSafetyCommitteeFromApi(profile: any): boolean | null {
   if (profile?.safety_committee === true) return true;
@@ -348,10 +421,13 @@ export default function AnalysisDetail() {
             category: (u.type ?? u.category ?? "") as string,
             company_id: analysisCompanyId,
           }));
+          const suggestedYear = suggestPriorYearUnderwritingYear(
+            lastNonEmptyUnderwritingYear(existingRows)
+          );
           setUnderwritingRows([
             ...existingRows,
             {
-              underwriting_year: "",
+              underwriting_year: suggestedYear,
               vfbl: "",
               wc: "",
               losses: "",
@@ -494,19 +570,22 @@ export default function AnalysisDetail() {
   const hasDuplicateYears = duplicateYears.size > 0;
 
   const handleAddUnderwritingRow = () => {
-    setUnderwritingRows((prev) => [
-      ...prev,
-      {
-        underwriting_year: "",
-        vfbl: "",
-        wc: "",
-        losses: "",
-        lae: "",
-        number_of_claims: "",
-        category: "",
-        company_id: analysisCompanyId,
-      },
-    ]);
+    setUnderwritingRows((prev) => {
+      const suggested = suggestPriorYearUnderwritingYear(lastNonEmptyUnderwritingYear(prev));
+      return [
+        ...prev,
+        {
+          underwriting_year: suggested,
+          vfbl: "",
+          wc: "",
+          losses: "",
+          lae: "",
+          number_of_claims: "",
+          category: "",
+          company_id: analysisCompanyId,
+        },
+      ];
+    });
   };
 
   const handleRemoveUnderwritingRow = (idx: number) => {
@@ -580,8 +659,8 @@ export default function AnalysisDetail() {
   const hasNumeric = (v: any) =>
     v !== null && v !== undefined && v !== "" && !Number.isNaN(Number(v));
 
-  /** One underwriting row: year, premium, losses, LAE, total loss/LAE, loss ratio (stored or computable). Points & # claims optional. Co not validated here (TBD). */
-  const underwritingRowCompleteForCalc = (row: any) => {
+  /** One underwriting row for calculation completeness. */
+  const underwritingRowCompleteForCalc = (row: any, opts?: { requireCategory?: boolean }) => {
     if (!row?.underwriting_year || String(row.underwriting_year).trim() === "") return false;
 
     const prem =
@@ -610,6 +689,7 @@ export default function AnalysisDetail() {
       lossRatioPct = (totalLossLae / prem) * 100;
     }
     if (lossRatioPct === null || !Number.isFinite(lossRatioPct)) return false;
+    if (opts?.requireCategory && !String(row?.type ?? row?.category ?? "").trim()) return false;
 
     return true;
   };
@@ -654,8 +734,9 @@ export default function AnalysisDetail() {
   const hasPriorFiveYearWindow = priorFiveForCalc !== null && priorFiveForCalc.length === 5;
   const missingUnderwritingData =
     hasPriorFiveYearWindow && currentYearData
-      ? priorFiveForCalc!.some((row: any) => !underwritingRowCompleteForCalc(row)) ||
-        !underwritingRowCompleteForCalc(currentYearData)
+      ? priorFiveForCalc!.some(
+          (row: any) => !underwritingRowCompleteForCalc(row, { requireCategory: true })
+        ) || !underwritingRowCompleteForCalc(currentYearData, { requireCategory: false })
       : true;
 
   const canCalculateAnalysis =
@@ -664,27 +745,78 @@ export default function AnalysisDetail() {
     hasPriorFiveYearWindow &&
     !missingUnderwritingData;
 
-  const calculateDisabledReasons: string[] = [];
-  if (missingProfileFields.length > 0) {
-    calculateDisabledReasons.push(
-      `Profile: ${missingProfileFields.join(", ")}`
+  const calculateDisabledTooltipContent =
+    !canCalculateAnalysis ? (
+      <Box component="div" sx={{ maxWidth: 400, py: 0.25 }}>
+        <Typography variant="caption" component="div" fontWeight={700} sx={{ mb: 0.75, display: "block" }}>
+          Complete the following to enable Calculate Analysis:
+        </Typography>
+        {!currentYear && (
+          <Typography variant="caption" component="div" color="inherit" sx={{ display: "block", mb: 0.75 }}>
+            • <strong>Underwriting:</strong> add at least one year (Edit underwriting).
+          </Typography>
+        )}
+        {missingProfileFields.length > 0 && (
+          <Box sx={{ mb: 0.75 }}>
+            <Typography variant="caption" component="div" fontWeight={600} sx={{ display: "block", mb: 0.25 }}>
+              Profile (Edit profile)
+            </Typography>
+            <Box component="ul" sx={{ m: 0, pl: 2.25, mb: 0 }}>
+              {missingProfileFields.map((label) => (
+                <Typography
+                  key={label}
+                  variant="caption"
+                  component="li"
+                  color="inherit"
+                  sx={{ display: "list-item", pl: 0.25 }}
+                >
+                  {label}
+                </Typography>
+              ))}
+            </Box>
+          </Box>
+        )}
+        {currentYear && !hasPriorFiveYearWindow && (
+          <Typography variant="caption" component="div" color="inherit" sx={{ display: "block", mb: 0.75 }}>
+            • <strong>Underwriting years:</strong> need the latest renewal row plus five periods immediately before
+            it (six rows total, contiguous). You currently have {underwriting?.length ?? 0} row(s). Add older years
+            if needed (Edit underwriting).
+          </Typography>
+        )}
+        {hasPriorFiveYearWindow && currentYearData && missingUnderwritingData && priorFiveForCalc && (
+          <Box>
+            <Typography variant="caption" component="div" fontWeight={600} sx={{ display: "block", mb: 0.25 }}>
+              Underwriting rows (Edit) — missing or invalid
+            </Typography>
+            <Typography variant="caption" component="div" color="inherit" sx={{ display: "block", mb: 0.35, opacity: 0.9 }}>
+              # Claims is optional. Category is required for the five prior years, optional for the latest year.
+            </Typography>
+            <Box component="ul" sx={{ m: 0, pl: 2.25, mb: 0 }}>
+              {[...priorFiveForCalc, currentYearData].map((row: any) => {
+                const y = String(row.underwriting_year);
+                const latest = y === String(currentYear);
+                const gaps = describeUnderwritingRowCalcGaps(row, { requireCategory: !latest });
+                if (gaps.length === 0) return null;
+                return (
+                  <Typography
+                    key={y}
+                    variant="caption"
+                    component="li"
+                    color="inherit"
+                    sx={{ display: "list-item", pl: 0.25 }}
+                  >
+                    <strong>{y}</strong>
+                    {latest ? " (latest year)" : ""}: {gaps.join("; ")}
+                  </Typography>
+                );
+              })}
+            </Box>
+          </Box>
+        )}
+      </Box>
+    ) : (
+      ""
     );
-  }
-  if (!hasPriorFiveYearWindow) {
-    calculateDisabledReasons.push(
-      "Add at least six underwriting years (latest renewal plus five prior periods for the worksheet 5-yr totals)"
-    );
-  } else if (missingUnderwritingData) {
-    calculateDisabledReasons.push(
-      "The five years before the latest need: premium (VFBL/WC or total), Losses, LAE (or total loss/LAE), and a computable loss ratio. The latest year needs the same. # claims optional (defaults to 0). Loss ratio and frequency points use the 5-yr totals row."
-    );
-  }
-  if (!currentYear) {
-    calculateDisabledReasons.push("No latest underwriting year on file");
-  }
-  const calculateDisabledTooltip = calculateDisabledReasons.length
-    ? calculateDisabledReasons.join(" • ")
-    : "";
 
   return (
     <Box sx={{ p: 3 }}>
@@ -750,7 +882,7 @@ export default function AnalysisDetail() {
             <Typography variant="subtitle1" fontWeight={600}>
               Current Profile Data
             </Typography>
-            <Button variant="outlined" size="small" onClick={handleOpenProfileDialog}>
+            <Button variant="contained" color="primary" size="small" onClick={handleOpenProfileDialog}>
               Edit
             </Button>
           </Stack>
@@ -904,7 +1036,7 @@ export default function AnalysisDetail() {
           <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ gap: 1, flexWrap: "wrap" }}>
             <Typography variant="h6">Underwriting History (5 Years)</Typography>
             <Stack direction="row" spacing={1}>
-              <Button variant="outlined" size="small" onClick={handleOpenUnderwritingDialog}>
+              <Button variant="contained" color="primary" size="small" onClick={handleOpenUnderwritingDialog}>
                 Edit
               </Button>
               {canCalculateAnalysis ? (
@@ -917,7 +1049,20 @@ export default function AnalysisDetail() {
                   {calculateAnalysis.isPending ? "Calculating..." : "Calculate Analysis"}
                 </Button>
               ) : (
-                <Tooltip title={calculateDisabledTooltip} arrow>
+                <Tooltip
+                  title={calculateDisabledTooltipContent}
+                  arrow
+                  enterDelay={200}
+                  componentsProps={{
+                    tooltip: {
+                      sx: {
+                        maxWidth: 440,
+                        bgcolor: "grey.900",
+                        "& .MuiTypography-root": { color: "common.white" },
+                      },
+                    },
+                  }}
+                >
                   <span>
                     <Button variant="outlined" color="primary" disabled>
                       Calculate Analysis
@@ -1442,6 +1587,10 @@ export default function AnalysisDetail() {
                   Same year cannot be entered twice. Please use a unique year (e.g. 2024-2025) for each row.
                 </Alert>
               )}
+              <Typography variant="caption" color="text.secondary" sx={{ display: "block" }}>
+                New rows use the next older period from the row above (e.g. <strong>2022-2021</strong> →{" "}
+                <strong>2021-2020</strong>). Tab out of Year to fill the row below if it is still empty.
+              </Typography>
               {underwritingRows.map((row, idx) => (
                 <Paper
                   key={`uw-row-${idx}`}
@@ -1462,6 +1611,18 @@ export default function AnalysisDetail() {
                           prev.map((r, i) => (i === idx ? { ...r, underwriting_year: e.target.value } : r))
                         )
                       }
+                      onBlur={() => {
+                        const suggested = suggestPriorYearUnderwritingYear(String(row.underwriting_year ?? ""));
+                        if (!suggested) return;
+                        setUnderwritingRows((prev) => {
+                          if (idx >= prev.length - 1) return prev;
+                          const nextRow = prev[idx + 1];
+                          if (String(nextRow?.underwriting_year ?? "").trim() !== "") return prev;
+                          return prev.map((r, i) =>
+                            i === idx + 1 ? { ...r, underwriting_year: suggested } : r
+                          );
+                        });
+                      }}
                       error={duplicateYears.has(String(row.underwriting_year).trim())}
                       sx={{ maxWidth: 160 }}
                     />
@@ -1566,7 +1727,7 @@ export default function AnalysisDetail() {
                   </Grid>
                 </Paper>
               ))}
-              <Button variant="outlined" onClick={handleAddUnderwritingRow} fullWidth>
+              <Button variant="contained" color="primary" onClick={handleAddUnderwritingRow} fullWidth>
                 Add row
               </Button>
             </Stack>
@@ -1576,6 +1737,7 @@ export default function AnalysisDetail() {
           <Button onClick={handleCloseDataEntryDialog}>Cancel</Button>
           <Button
             variant="contained"
+            color="primary"
             onClick={dataEntryDialog.code === "MISSING_PROFILE" ? handleSaveProfile : handleSaveUnderwriting}
             disabled={
               dataEntryDialog.code === "MISSING_PROFILE"

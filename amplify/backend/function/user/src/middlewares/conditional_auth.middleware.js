@@ -70,10 +70,21 @@ const conditionalAuthMiddleware = async (req, res, next) => {
     req.method === 'GET' && 
     (req.path.match(new RegExp(`^${API_PREFIX}/agentform/\\d+/attachments$`)) || // Matches /backendapi/agentform/:formId/attachments
      req.path.match(new RegExp(`^${API_PREFIX}/attachments/\\d+$`))); // Matches /backendapi/attachments/:formId (alias for broker compatibility)
-  
-  console.log({ currentPath: req.path, method: req.method, bypassRoutes, isBrokerFormReadRequest, isFireDepartmentsReadRequest, isAttachmentsReadRequest });
-  
-  if (bypassRoutes.includes(req.path) || isBrokerFormReadRequest || isFireDepartmentsReadRequest || isAttachmentsReadRequest) {
+
+  // Allow broker forms to fetch the single fire department linked to a form without auth
+  const isFireDepartmentForFormReadRequest =
+    req.method === 'GET' &&
+    req.path.match(new RegExp(`^${API_PREFIX}/agentform/\\d+/fire-department$`));
+
+  console.log({ currentPath: req.path, method: req.method, bypassRoutes, isBrokerFormReadRequest, isFireDepartmentsReadRequest, isAttachmentsReadRequest, isFireDepartmentForFormReadRequest });
+
+  if (
+    bypassRoutes.includes(req.path) ||
+    isBrokerFormReadRequest ||
+    isFireDepartmentsReadRequest ||
+    isAttachmentsReadRequest ||
+    isFireDepartmentForFormReadRequest
+  ) {
     // Skip authentication for these routes
     return next();
   }

@@ -96,9 +96,58 @@ const EmptyState = styled(Box)(({ theme }) => ({
   color: theme.palette.text.secondary,
 }));
 
+/**
+ * API may return `message` as a stringified JSON, a raw string, or an already-parsed object
+ * (Postgres JSONB columns are commonly deserialized server-side). Handle all three so we
+ * never call JSON.parse on a non-string (yields "[object Object]" is not valid JSON).
+ */
+const parseStoredMessage = (raw: unknown): { message: string; type: string } => {
+  if (raw && typeof raw === "object") {
+    const obj = raw as Record<string, any>;
+    return {
+      message: obj.message ?? "",
+      type: obj.type ?? "text",
+    };
+  }
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (
+      (trimmed.startsWith("{") && trimmed.endsWith("}")) ||
+      (trimmed.startsWith("[") && trimmed.endsWith("]"))
+    ) {
+      try {
+        const obj = JSON.parse(trimmed);
+        if (obj && typeof obj === "object") {
+          return {
+            message: obj.message ?? "",
+            type: obj.type ?? "text",
+          };
+        }
+      } catch (_) {
+        /* fall through to treat as plain text */
+      }
+    }
+    return { message: raw, type: "text" };
+  }
+  return { message: "", type: "text" };
+};
+
+/** Pull the readable file name out of an S3-style URL. Handles URL-encoded paths (e.g. %2F) and strips the leading "<timestamp>-" prefix added on upload. */
+const getDisplayFileName = (rawUrl: string): string => {
+  if (!rawUrl) return "file";
+  let decoded = rawUrl;
+  try {
+    decoded = decodeURIComponent(rawUrl);
+  } catch (_) {
+    /* keep raw if it isn't a valid URI */
+  }
+  const last = decoded.split("/").pop() || decoded;
+  return last.replace(/^\d+-/, "");
+};
+
 const RenderFile = ({ data }: { data: string }) => {
-  const extension = data.split(".").pop();
-  const fileName = data.split("/").pop();
+  const extension = (data.split(".").pop() || "").toLowerCase();
+  const fileName = getDisplayFileName(data);
   let previewComponent = null;
   switch (extension) {
     case "pdf":
@@ -124,7 +173,15 @@ const RenderFile = ({ data }: { data: string }) => {
       <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
         <Typography
           variant="body2"
-          sx={{ fontWeight: 600, color: "success.main" }}
+          title={fileName}
+          sx={{
+            fontWeight: 600,
+            color: "success.main",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            maxWidth: "100%",
+          }}
         >
           {fileName}
         </Typography>
@@ -228,19 +285,22 @@ const AgentFormMessageDialog = (props: AgentFormMessageDialogProps) => {
       setMessages(
         formMessages.data
           .filter((row) => {
-            let isMyMsg =
+            const isMyMsg =
               row.sender_id === getUserId() || row.receiver_id === getUserId();
-            let invalidMsg = row.sender_id === row.receiver_id;
+            const invalidMsg = row.sender_id === row.receiver_id;
             return isMyMsg && !invalidMsg;
           })
-          .map((row) => ({
-            sender: row.sender_id === getUserId() ? "You" : "Agent",
-            text: JSON.parse(row.message).message,
-            type: JSON.parse(row.message).type,
-            time: row.created_at,
-            read: row.read,
-            id: row.id,
-          })),
+          .map((row) => {
+            const parsed = parseStoredMessage(row.message);
+            return {
+              sender: row.sender_id === getUserId() ? "You" : "Agent",
+              text: parsed.message,
+              type: parsed.type,
+              time: row.created_at,
+              read: row.read,
+              id: row.id,
+            };
+          }),
       );
     }
   }, [formMessages]);
@@ -264,8 +324,8 @@ const AgentFormMessageDialog = (props: AgentFormMessageDialogProps) => {
         "text",
       );
 
-      let newMessage = response.data;
-      let msgObj = JSON.parse(newMessage.message);
+      const newMessage = response.data;
+      const msgObj = parseStoredMessage(newMessage.message);
       setMessages((prev) => [
         ...prev,
         {

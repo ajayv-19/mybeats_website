@@ -465,6 +465,15 @@ class AnalysisController {
             "Cannot run analysis: five complete underwriting years immediately before the selected year are required (same as the worksheet 5-year totals row). Add older years or choose a different year.",
         });
       }
+      const priorFiveMissingCategory = priorFive
+        .filter((row) => String(row.type ?? row.category ?? "").trim() === "")
+        .map((row) => row.underwriting_year);
+      if (priorFiveMissingCategory.length > 0) {
+        return res.status(400).json({
+          code: "MISSING_5_YEAR_DATA",
+          message: `Cannot run analysis: category (FDM / FDI / FPI) is required on each of the five years before the selected year. Missing category for: ${priorFiveMissingCategory.join(", ")}.`,
+        });
+      }
 
       const rowCompanyId =
         targetRow.company_id != null ? parseInt(targetRow.company_id, 10) : null;

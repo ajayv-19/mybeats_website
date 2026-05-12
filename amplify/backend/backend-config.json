@@ -88,6 +88,56 @@
       "service": "Lambda"
     }
   },
+  "parameters": {
+    "AMPLIFY_function_getQuickSightDashboardEmbedURL_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getQuickSightDashboardEmbedURL"
+        }
+      ]
+    },
+    "AMPLIFY_function_getQuickSightDashboardEmbedURL_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getQuickSightDashboardEmbedURL"
+        }
+      ]
+    },
+    "AMPLIFY_function_getcompanyofuser_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getcompanyofuser"
+        }
+      ]
+    },
+    "AMPLIFY_function_getcompanyofuser_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "getcompanyofuser"
+        }
+      ]
+    },
+    "AMPLIFY_function_user_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "user"
+        }
+      ]
+    },
+    "AMPLIFY_function_user_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "user"
+        }
+      ]
+    }
+  },
   "storage": {
     "InsuranceDashboardImages": {
       "dependsOn": [],

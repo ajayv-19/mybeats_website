@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   useAgentForms,
   callUpdateAgentFormStatus,
@@ -26,6 +26,10 @@ import {
   Box,
   CircularProgress,
   InputAdornment,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from "@mui/material";
 import { Link } from "react-router-dom";
 import { fetchAuthSession } from "@aws-amplify/auth";
@@ -75,6 +79,11 @@ export default function AgentFormsTab() {
     direction: "desc", // 'asc' or 'desc'
   });
 
+  /** Table filters (client-side; list is already limited to application_status = Submitted from API). */
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterType, setFilterType] = useState<string>("all");
+  const [filterSearch, setFilterSearch] = useState<string>("");
+
   // Fetch user session on mount
   useEffect(() => {
     setState((prevState) => ({
@@ -115,7 +124,11 @@ export default function AgentFormsTab() {
   // Update state when agent forms data changes
   useEffect(() => {
     const rawData = agentForms.data?.data || [];
-    const sortedData = sortData(rawData, sortConfig.key, sortConfig.direction);
+    const submittedOnly = rawData.filter((form: any) => {
+      const s = String(form?.application_status ?? "").trim().toLowerCase();
+      return s === "submitted";
+    });
+    const sortedData = sortData(submittedOnly, sortConfig.key, sortConfig.direction);
 
     setState((prevState) => ({
       ...prevState,
@@ -124,6 +137,24 @@ export default function AgentFormsTab() {
       error: agentForms.error,
     }));
   }, [agentForms.data, agentForms.isLoading, agentForms.error, sortConfig]);
+
+  const filteredForms = useMemo(() => {
+    return (state.agentForms as any[]).filter((form: any) => {
+      if (filterStatus !== "all" && String(form.status || "") !== filterStatus) {
+        return false;
+      }
+      const t = String(form.type || "").toLowerCase();
+      if (filterType === "initial" && t !== "initial") return false;
+      if (filterType === "renewal" && t !== "renewal") return false;
+      const q = filterSearch.trim().toLowerCase();
+      if (q) {
+        const idStr = String(form.id ?? "");
+        const fd = String(form.fire_department || "").toLowerCase();
+        if (!idStr.includes(q) && !fd.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [state.agentForms, filterStatus, filterType, filterSearch]);
 
   // Handler for opening Losses/LAE dialog
   const handleOpenLossesLaeDialog = async (form: any) => {
@@ -292,20 +323,87 @@ export default function AgentFormsTab() {
   };
 
   return (
-    <div className="flex flex-col flex-1 p-24">
-      <div className="flex items-center mb-16 relative">
+    <div className="flex flex-col flex-1 min-h-0 p-24">
+      <div className="flex items-center mb-16 relative shrink-0">
         <h2 className="text-lg font-bold flex-1 text-center">
           Application Forms
         </h2>
       </div>
 
+      <Paper
+        elevation={0}
+        variant="outlined"
+        className="mb-16 shrink-0"
+        sx={{ p: 2, borderRadius: 1 }}
+      >
+        <Stack
+          direction={{ xs: "column", sm: "row" }}
+          spacing={2}
+          alignItems={{ xs: "stretch", sm: "center" }}
+          flexWrap="wrap"
+          useFlexGap
+        >
+          <TextField
+            size="small"
+            label="Search"
+            placeholder="ID or fire department"
+            value={filterSearch}
+            onChange={(e) => setFilterSearch(e.target.value)}
+            sx={{ minWidth: { xs: "100%", sm: 220 } }}
+          />
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel id="agent-forms-filter-status">Status</InputLabel>
+            <Select
+              labelId="agent-forms-filter-status"
+              label="Status"
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+            >
+              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="Approved">Approved</MenuItem>
+              <MenuItem value="Pending">Pending</MenuItem>
+              <MenuItem value="Rejected">Rejected</MenuItem>
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel id="agent-forms-filter-type">Type</InputLabel>
+            <Select
+              labelId="agent-forms-filter-type"
+              label="Type"
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+            >
+              <MenuItem value="all">All</MenuItem>
+              <MenuItem value="initial">Initial</MenuItem>
+              <MenuItem value="renewal">Renewal</MenuItem>
+            </Select>
+          </FormControl>
+          <Button
+            variant="contained"
+            color="secondary"
+            size="small"
+            className="rounded px-8 py-4 min-h-0 h-auto min-w-0"
+            onClick={() => {
+              setFilterStatus("all");
+              setFilterType("all");
+              setFilterSearch("");
+            }}
+          >
+            Clear filters
+          </Button>
+          <Typography variant="body2" color="text.secondary" sx={{ ml: { sm: "auto" } }}>
+            Showing {filteredForms.length} of {state.agentForms.length}
+          </Typography>
+        </Stack>
+      </Paper>
+
       <TableContainer
         component={Paper}
-        className="flex-1"
-        style={{
-          maxHeight: "500px",
+        className="flex-1 min-h-0 w-full"
+        sx={{
+          maxHeight: "calc(100vh - 300px)",
           overflowY: "auto",
-        }} // Ensure scrolling is applied to the body
+        }}
       >
         <Table stickyHeader>
           <TableHead>
@@ -373,8 +471,8 @@ export default function AgentFormsTab() {
                   Loading...
                 </TableCell>
               </TableRow>
-            ) : state.agentForms.length > 0 ? (
-              state.agentForms.map((form) => (
+            ) : filteredForms.length > 0 ? (
+              filteredForms.map((form) => (
                 <TableRow key={form.id}>
                   <TableCell>{form.id}</TableCell>
                   <TableCell>{form.fire_department || "-"}</TableCell>
@@ -559,7 +657,9 @@ export default function AgentFormsTab() {
                   align="center"
                   style={{ color: "#999", fontSize: "1rem" }}
                 >
-                  No forms found.
+                  {state.agentForms.length === 0
+                    ? "No forms found."
+                    : "No forms match the current filters."}
                 </TableCell>
               </TableRow>
             )}

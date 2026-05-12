@@ -1,53 +1,22 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useParams } from "react-router-dom";
 import { useAgentForm } from "../apis/AgentFormsapis";
-import filedsMapping from "./_data/fileds_mapping";
 import { BASE_URL } from "../../../../constant/baseurl";
 import { Button } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
-import FormAttachments from "./FormAttachments";
 
 /** Message type the carrier sends to the broker iframe so it can populate the form. Broker form.html/renewal.html should listen: window.addEventListener('message', (e) => { if (e.data?.type === 'CARRIER_FORM_DATA') { ... apply e.data.data ... } }); */
 const CARRIER_FORM_DATA_TYPE = "CARRIER_FORM_DATA";
 
 function MultiPageForm(props) {
-  const { formsData, companyId, formId, formType, formRecord } = props;
-  const [currentPage, setCurrentPage] = useState(0);
+  const { companyId, formId, formType, formRecord } = props;
   const [iframeKey, setIframeKey] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
-  const [brokerCurrentPage, setBrokerCurrentPage] = useState<number | null>(null);
-
-  const currentForm = formsData[currentPage];
-  const mappedLabels = filedsMapping?.[companyId] || {};
-  
-  // Determine which page should show attachments
-  // Page 4 (formNumber "4") for initial forms, Page 3 (formNumber "3") for renewal forms
-  // Note: formNumber is 1-indexed string ("1", "2", "3", "4")
-  const attachmentsPageNumber = formType?.toLowerCase() === "renewal" ? "3" : "4";
-  
-  // Show attachments when:
-  // 1. Broker form sends page number and we're on the attachments page, OR
-  // 2. Broker form hasn't sent page info yet (show always as fallback)
-  // When broker form sends postMessage with { type: "BROKER_PAGE_CHANGE", page: <pageNumber> }, we'll filter by page
-  // For now, always show attachments when viewing a form (brokerCurrentPage is null initially)
-  const shouldShowAttachments = brokerCurrentPage === null || 
-    String(brokerCurrentPage) === attachmentsPageNumber;
-  
-  // Debug logging
-  console.log("[MultiPageForm] brokerCurrentPage:", brokerCurrentPage);
-  console.log("[MultiPageForm] attachmentsPageNumber:", attachmentsPageNumber);
-  console.log("[MultiPageForm] shouldShowAttachments:", shouldShowAttachments);
-  console.log("[MultiPageForm] formId:", formId);
-  console.log("[MultiPageForm] formType:", formType);
-  console.log("[MultiPageForm] formId type:", typeof formId);
-  console.log("[MultiPageForm] Will render attachments section:", shouldShowAttachments && formId);
 
   // initial → form.html, renewal → renewal.html (per FormData.type)
   const formFileName =
     (formType || "").toLowerCase() === "renewal" ? "renewal.html" : "form.html";
 
-  // Change this to your production domain when ready
-  // const brokerDomain = "https://broker.mybeatshealth.com/"
   const brokerDomain =
     window.location.hostname === "localhost"
       ? "http://localhost:5173/"
@@ -62,28 +31,7 @@ function MultiPageForm(props) {
   // Force iframe reload when formId or formType changes
   useEffect(() => {
     setIframeKey((prev) => prev + 1);
-    setBrokerCurrentPage(null); // Reset page tracking
   }, [formId, formType]);
-
-  // Listen for page change messages from broker iframe
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      // Only accept messages from broker origin
-      if (event.origin !== brokerOrigin) return;
-      
-      // Listen for page change events from broker form
-      if (event.data?.type === "BROKER_PAGE_CHANGE" && typeof event.data.page === "number") {
-        setBrokerCurrentPage(event.data.page);
-      }
-      // Also check if broker sends formNumber in the message
-      if (event.data?.formNumber && typeof event.data.formNumber === "string") {
-        setBrokerCurrentPage(parseInt(event.data.formNumber, 10));
-      }
-    };
-
-    window.addEventListener("message", handleMessage);
-    return () => window.removeEventListener("message", handleMessage);
-  }, [brokerOrigin]);
 
   // Send form data to iframe so broker can populate (renewal.html often doesn't call API; postMessage + retries so listener can attach late)
   const sendFormDataToIframe = () => {
@@ -101,20 +49,13 @@ function MultiPageForm(props) {
 
   const handleIframeLoad = () => {
     sendFormDataToIframe();
-    // Retry after short delays so broker renewal.html has time to add message listener
     window.setTimeout(sendFormDataToIframe, 100);
     window.setTimeout(sendFormDataToIframe, 500);
   };
 
-  console.log(
-    { formsData, companyId, docurl },
-    "formdata, companyid, and iframe url",
-  );
-
   return (
     <div className="max-w-full h-screen flex flex-col">
-      {/* Iframe Panel */}
-      <div className={`flex-1 overflow-auto ${shouldShowAttachments ? 'pb-64' : ''}`} style={{ minHeight: 0 }}>
+      <div className="flex-1 overflow-auto" style={{ minHeight: 0 }}>
         <iframe
           ref={iframeRef}
           key={iframeKey}
@@ -125,13 +66,6 @@ function MultiPageForm(props) {
           onError={() => console.error("Iframe failed to load")}
         />
       </div>
-      
-      {/* Attachments Section - Show on page 4 (initial) or page 3 (renewal) */}
-      {shouldShowAttachments && formId && (
-        <div className="border-t bg-white p-4 max-h-64 overflow-y-auto shadow-lg" style={{ flexShrink: 0, zIndex: 10 }}>
-          <FormAttachments formId={Number(formId)} />
-        </div>
-      )}
     </div>
   );
 }

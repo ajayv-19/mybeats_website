@@ -18,6 +18,8 @@ export interface AgentForm {
   insurance_company?: string;
   fire_department?: string;
   status?: string;
+  /** Broker workflow: list shows rows with Submitted only (see GET /agentforms). */
+  application_status?: string | null;
   updated_by?: string;
   created_at: string;
   updated_at: string;
