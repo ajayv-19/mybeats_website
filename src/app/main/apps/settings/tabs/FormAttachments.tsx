@@ -18,6 +18,7 @@ import {
   PictureAsPdf as PdfIcon,
 } from "@mui/icons-material";
 import { useFormAttachments } from "../apis/AgentFormsapis";
+import { getAttachmentDisplayFileName } from "../utils/attachmentDisplayName";
 
 interface FormAttachmentsProps {
   formId: number;
@@ -26,19 +27,8 @@ interface FormAttachmentsProps {
 export default function FormAttachments({ formId }: FormAttachmentsProps) {
   const { data: attachmentsData, isLoading, error } = useFormAttachments(formId);
 
-  // Debug logging
-  console.log("[FormAttachments] formId:", formId);
-  console.log("[FormAttachments] attachmentsData:", attachmentsData);
-  console.log("[FormAttachments] isLoading:", isLoading);
-  console.log("[FormAttachments] error:", error);
-
   const attachments = attachmentsData?.data || [];
-  
-  console.log("[FormAttachments] attachments array:", attachments);
-  console.log("[FormAttachments] attachments length:", attachments.length);
-  console.log("[FormAttachments] attachmentsData structure:", JSON.stringify(attachmentsData, null, 2));
-  
-  // Additional check: if attachmentsData exists but data is not an array, log it
+
   if (attachmentsData && !Array.isArray(attachmentsData.data)) {
     console.warn("[FormAttachments] attachmentsData.data is not an array:", attachmentsData.data);
   }
@@ -51,23 +41,6 @@ export default function FormAttachments({ formId }: FormAttachmentsProps) {
       return <ImageIcon color="primary" />;
     }
     return <DescriptionIcon color="action" />;
-  };
-
-  const getFileName = (link: string) => {
-    try {
-      // Decode URL-encoded strings (e.g., %2F -> /)
-      const decodedLink = decodeURIComponent(link);
-      const urlParts = decodedLink.split("/");
-      const fileName = urlParts[urlParts.length - 1];
-      // Remove timestamp prefix if present (format: timestamp-filename)
-      const parts = fileName.split("-");
-      if (parts.length > 1 && /^\d+$/.test(parts[0])) {
-        return parts.slice(1).join("-");
-      }
-      return fileName;
-    } catch {
-      return link;
-    }
   };
 
   if (isLoading) {
@@ -131,8 +104,8 @@ export default function FormAttachments({ formId }: FormAttachmentsProps) {
             decodedLink = attachment.link;
           }
           
-          const fileName = getFileName(decodedLink);
-          
+          const fileName = getAttachmentDisplayFileName(decodedLink);
+
           return (
             <ListItem
               key={attachment.id || `attachment-${decodedLink}`}
@@ -148,10 +121,16 @@ export default function FormAttachments({ formId }: FormAttachmentsProps) {
                     href={decodedLink}
                     target="_blank"
                     rel="noopener noreferrer"
+                    title={fileName}
                     sx={{
                       textDecoration: "none",
                       color: "primary.main",
                       "&:hover": { textDecoration: "underline" },
+                      display: "block",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
+                      maxWidth: "100%",
                     }}
                   >
                     {fileName}

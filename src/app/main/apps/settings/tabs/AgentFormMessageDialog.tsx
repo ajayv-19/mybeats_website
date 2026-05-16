@@ -35,6 +35,7 @@ import {
   sendAgentFormMessage,
   markReadAgentFormMessage,
 } from "../apis/AgentFormsapis";
+import { getAttachmentDisplayFileName } from "../utils/attachmentDisplayName";
 import { toast } from "sonner";
 
 // Styled components for better UI
@@ -132,22 +133,9 @@ const parseStoredMessage = (raw: unknown): { message: string; type: string } => 
   return { message: "", type: "text" };
 };
 
-/** Pull the readable file name out of an S3-style URL. Handles URL-encoded paths (e.g. %2F) and strips the leading "<timestamp>-" prefix added on upload. */
-const getDisplayFileName = (rawUrl: string): string => {
-  if (!rawUrl) return "file";
-  let decoded = rawUrl;
-  try {
-    decoded = decodeURIComponent(rawUrl);
-  } catch (_) {
-    /* keep raw if it isn't a valid URI */
-  }
-  const last = decoded.split("/").pop() || decoded;
-  return last.replace(/^\d+-/, "");
-};
-
 const RenderFile = ({ data }: { data: string }) => {
   const extension = (data.split(".").pop() || "").toLowerCase();
-  const fileName = getDisplayFileName(data);
+  const fileName = getAttachmentDisplayFileName(data) || "file";
   let previewComponent = null;
   switch (extension) {
     case "pdf":

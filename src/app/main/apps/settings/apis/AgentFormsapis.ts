@@ -17,6 +17,8 @@ export interface AgentForm {
   data: any;
   insurance_company?: string;
   fire_department?: string;
+  /** Set when the form is linked to a fire department (used for analysis deep links). */
+  fire_department_id?: number | null;
   status?: string;
   /** Broker workflow: list shows rows with Submitted only (see GET /agentforms). */
   application_status?: string | null;

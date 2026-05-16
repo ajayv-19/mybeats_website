@@ -676,8 +676,33 @@
     const pages = document.querySelectorAll('[data-page]');
     let current = parseInt(localStorage.getItem('form-company1_tab')) || 0;
 
+    /** Tell the carrier parent (e.g. Application Form Details) which page is visible so it can show “View Analytics” on the last page only. */
+    function notifyBrokerFormPage(pageIndex) {
+      const idx = typeof pageIndex === 'number' ? pageIndex : current;
+      const total = pages.length;
+      const params = new URLSearchParams(location.search);
+      const parentOrigin = params.get('parentOrigin');
+      const target = parentOrigin || '*';
+      try {
+        if (window.parent !== window) {
+          window.parent.postMessage(
+            {
+              type: 'BROKER_FORM_PAGE',
+              pageIndex: idx,
+              totalPageSections: total,
+              isLastPage: total > 0 && idx === total - 1,
+            },
+            target
+          );
+        }
+      } catch (e) {
+        console.warn('postMessage to parent failed', e);
+      }
+    }
+
     const showPage = (idx) => {
       pages.forEach((p, i) => p.classList.toggle('hidden', i !== idx));
+      notifyBrokerFormPage(idx);
     };
 
     showPage(current);
