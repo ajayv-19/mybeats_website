@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Box, Button, Typography } from "@mui/material";
+import { Button } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAgentForm } from "../apis/AgentFormsapis";
 import { BASE_URL } from "../../../../constant/baseurl";
@@ -214,61 +214,46 @@ export default function AgentFormsDetails() {
   return (
     <div className="flex flex-col flex-1">
       <div className="p-6 border-b">
-        <div className="flex items-center justify-between">
-          <div className="flex-1" />
-          <h2 className="text-2xl font-bold text-center flex-1">Application Form #{formId}</h2>
-          <div className="flex-1 flex justify-end">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex-1 flex justify-start min-w-0">
             <Button variant="contained" color="primary" onClick={() => window.history.back()}>
               Back
             </Button>
+          </div>
+          <h2 className="text-2xl font-bold text-center flex-1 px-2 shrink-0">
+            Application Form #{formId}
+          </h2>
+          <div className="flex-1 flex justify-end min-w-0">
+            {analyticsUnlocked && (
+              <Button
+                variant="contained"
+                color="primary"
+                disabled={!canNavigateToAnalysis}
+                onClick={goToAnalysis}
+                title={
+                  canNavigateToAnalysis
+                    ? "Opens analysis for this form's linked fire department and subscribed company (from Form_Data)."
+                    : "This form has no fire_department_id yet; link a fire department (e.g. after approval) to open analysis."
+                }
+              >
+                View Analytics
+              </Button>
+            )}
           </div>
         </div>
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden" style={{ minHeight: 0 }}>
         {formPages.length > 0 && companyId != null && Number.isFinite(companyId) ? (
-          <>
-            <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
-              <MultiPageForm
-                companyId={companyId}
-                formId={formId}
-                formType={formRecord?.type}
-                formRecord={formRecord}
-                parentOrigin={parentOrigin}
-              />
-            </div>
-            {analyticsUnlocked && (
-              <Box
-                sx={{
-                  flexShrink: 0,
-                  borderTop: 1,
-                  borderColor: "divider",
-                  px: 2,
-                  py: 1.5,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  flexWrap: "wrap",
-                  gap: 1,
-                  bgcolor: "background.paper",
-                }}
-              >
-                <Typography variant="caption" color="text.secondary">
-                  {canNavigateToAnalysis
-                    ? "Opens analysis for this form's linked fire department and subscribed company (from Form_Data)."
-                    : "This form has no fire_department_id yet; link a fire department (e.g. after approval) to open analysis."}
-                </Typography>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  disabled={!canNavigateToAnalysis}
-                  onClick={goToAnalysis}
-                >
-                  View Analytics
-                </Button>
-              </Box>
-            )}
-          </>
+          <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+            <MultiPageForm
+              companyId={companyId}
+              formId={formId}
+              formType={formRecord?.type}
+              formRecord={formRecord}
+              parentOrigin={parentOrigin}
+            />
+          </div>
         ) : (
           <div className="flex items-center justify-center h-64">
             <p className="text-gray-500">No form data available.</p>

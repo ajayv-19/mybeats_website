@@ -44,10 +44,11 @@ Example path: `agent_forms/{companyId}/form.html` or `agent_forms/{companyId}/re
 
 ### 6. Fetch fire departments list (for dropdowns)
 
-- If you need to populate a fire departments dropdown, call `GET {carrierApiBase}/fire-departments`.
-- You can provide `company_id` directly: `GET {carrierApiBase}/fire-departments?company_id={company_id}` (extract `company_id` from URL parameters).
-- Alternatively, if you have `editFormId`, you can use: `GET {carrierApiBase}/fire-departments?editFormId={editFormId}` (the API will extract `company_id` from the form).
-- Response has `data`: an array of fire departments with `fire_department_id`, `fire_department_name`, `county`, `state`, `company_id`.
+- If you need to populate a fire departments dropdown, call `GET {carrierApiBase}/fire-departments` **with at least one query parameter** (do not call the bare URL).
+- Preferred (from iframe URL): `?editFormId={editFormId}` and/or `?company_id={company_id}`.
+- If the form is already linked to a fire department (carrier view / read-only), pass the id from `Form_Data` after loading the form: `?fire_department_id={fire_department_id}`. The API resolves `company_id` from the latest `Form_Data` row or from `fire_departments`, then returns the full list for that company. If only the department id is known, it still returns at least that one row.
+- Direct: `?company_id={company_id}`.
+- Response `data`: array of `{ fire_department_id, fire_department_name, county, state, company_id }`.
 
 ### 5. postMessage as backup data source
 

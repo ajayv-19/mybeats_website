@@ -428,17 +428,55 @@ class AgentController {
   }
 
   /**
-   * GET /fire-departments?company_id=...&editFormId=...&form_id=...
-   * Get list of fire departments for a company.
-   * Used by broker forms to populate dropdowns.
+   * Resolve subscribed company from a fire department id (Form_Data or fire_departments).
+   */
+  async _resolveCompanyIdFromFireDepartmentId(fdIdRaw, source) {
+    const parsed = parseInt(fdIdRaw, 10);
+    if (!Number.isFinite(parsed)) return null;
+
+    try {
+      const formRow = await FormData.findOne({
+        where: { fire_department_id: parsed },
+        order: [["id", "DESC"]],
+        attributes: ["company_id", "fire_department_id"],
+      });
+      if (formRow?.company_id != null) {
+        console.log(
+          `[getFireDepartments] Extracted company_id ${formRow.company_id} from ${source} ${parsed} (Form_Data)`,
+        );
+        return formRow.company_id;
+      }
+
+      const fd = await FireDepartment.findByPk(parsed, {
+        attributes: ["company_id"],
+      });
+      if (fd?.company_id != null) {
+        console.log(
+          `[getFireDepartments] Extracted company_id ${fd.company_id} from ${source} ${parsed} (fire_departments)`,
+        );
+        return fd.company_id;
+      }
+    } catch (err) {
+      console.warn(
+        `[getFireDepartments] Could not resolve company_id from ${source} ${parsed}:`,
+        err.message,
+      );
+    }
+    return null;
+  }
+
+  /**
+   * GET /fire-departments?company_id=...&editFormId=...&form_id=...&fire_department_id=...
+   * Get list of fire departments for a company (broker dropdown).
    *
-   * Resolution order for company_id (use first non-empty):
+   * Resolution order for company_id (first match wins):
    *   1) ?company_id=
-   *   2) ?editFormId= → FormData.company_id
-   *   3) ?form_id=    → FormData.company_id
-   *   4) Referer URL's ?company_id= / ?editFormId= / ?form_id=
-   *      (broker iframe URL embeds editFormId, so this works even if the
-   *      broker call itself omits the params).
+   *   2) ?editFormId= / ?form_id= → Form_Data.company_id
+   *   3) ?fire_department_id= → Form_Data (latest row) or fire_departments.company_id
+   *   4) Referer ?company_id= / ?editFormId= / ?form_id= / ?fire_department_id=
+   *
+   * If company_id still cannot be resolved but ?fire_department_id= is valid,
+   * returns a one-item list for that department (read-only carrier view).
    */
   async getFireDepartments(req, res) {
     const isMissing = (v) =>
@@ -447,6 +485,14 @@ class AgentController {
       v === "" ||
       v === "undefined" ||
       v === "null";
+
+    const fdListAttributes = [
+      "fire_department_id",
+      "fire_department_name",
+      "county",
+      "state",
+      "company_id",
+    ];
 
     const resolveCompanyIdFromForm = async (formIdRaw, source) => {
       const parsed = parseInt(formIdRaw, 10);
@@ -459,6 +505,13 @@ class AgentController {
           );
           return form.company_id;
         }
+        if (form && form.fire_department_id != null) {
+          const fromFd = await this._resolveCompanyIdFromFireDepartmentId(
+            form.fire_department_id,
+            `${source} (via form ${parsed} fire_department_id)`,
+          );
+          if (fromFd != null) return fromFd;
+        }
       } catch (formError) {
         console.warn(
           `[getFireDepartments] Could not extract company_id from ${source} ${parsed}:`,
@@ -469,13 +522,19 @@ class AgentController {
     };
 
     try {
-      let { company_id, editFormId, form_id } = req.query;
+      let { company_id, editFormId, form_id, fire_department_id } = req.query;
 
       if (isMissing(company_id) && !isMissing(editFormId)) {
         company_id = await resolveCompanyIdFromForm(editFormId, "editFormId");
       }
       if (isMissing(company_id) && !isMissing(form_id)) {
         company_id = await resolveCompanyIdFromForm(form_id, "form_id");
+      }
+      if (isMissing(company_id) && !isMissing(fire_department_id)) {
+        company_id = await this._resolveCompanyIdFromFireDepartmentId(
+          fire_department_id,
+          "fire_department_id",
+        );
       }
 
       // Fallback: pull from the Referer URL (broker iframe URL has editFormId, etc.)
@@ -487,6 +546,8 @@ class AgentController {
             const refCompanyId = refUrl.searchParams.get("company_id");
             const refEditFormId = refUrl.searchParams.get("editFormId");
             const refFormId = refUrl.searchParams.get("form_id");
+            const refFireDepartmentId =
+              refUrl.searchParams.get("fire_department_id");
 
             if (!isMissing(refCompanyId)) {
               company_id = refCompanyId;
@@ -503,6 +564,11 @@ class AgentController {
                 refFormId,
                 "Referer form_id",
               );
+            } else if (!isMissing(refFireDepartmentId)) {
+              company_id = await this._resolveCompanyIdFromFireDepartmentId(
+                refFireDepartmentId,
+                "Referer fire_department_id",
+              );
             }
           } catch (refErr) {
             console.warn(
@@ -514,22 +580,29 @@ class AgentController {
       }
 
       const companyIdInt = parseInt(company_id, 10);
+      const fdIdInt = parseInt(fire_department_id, 10);
+
       if (!Number.isFinite(companyIdInt)) {
+        if (Number.isFinite(fdIdInt)) {
+          const single = await FireDepartment.findByPk(fdIdInt, {
+            attributes: fdListAttributes,
+          });
+          if (single) {
+            return res.status(200).json({
+              message: "Fire department retrieved successfully",
+              data: [single],
+            });
+          }
+        }
         return res.status(400).json({
           message:
-            "company_id could not be resolved. Pass ?company_id=, ?editFormId=, or ?form_id= (the iframe URL's params are also checked).",
+            "company_id could not be resolved. Pass ?company_id=, ?editFormId=, ?form_id=, or ?fire_department_id= (Referer query params are also checked).",
         });
       }
 
       const fireDepartments = await FireDepartment.findAll({
         where: { company_id: companyIdInt },
-        attributes: [
-          "fire_department_id",
-          "fire_department_name",
-          "county",
-          "state",
-          "company_id",
-        ],
+        attributes: fdListAttributes,
         order: [["fire_department_name", "ASC"]],
       });
 
