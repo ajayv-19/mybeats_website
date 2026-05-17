@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Box, Button, Typography } from "@mui/material";
 import { useQueryClient } from "@tanstack/react-query";
@@ -8,13 +8,17 @@ import { BASE_URL } from "../../../../constant/baseurl";
 /** Message type the carrier sends to the broker iframe so it can populate the form. Broker form.html/renewal.html should listen: window.addEventListener('message', (e) => { if (e.data?.type === 'CARRIER_FORM_DATA') { ... apply e.data.data ... } }); */
 const CARRIER_FORM_DATA_TYPE = "CARRIER_FORM_DATA";
 
+/** Broker posts this after each page change; carrier unlocks View Analytics when isLastPage is true (once, then stays visible). */
+const BROKER_FORM_PAGE_TYPE = "BROKER_FORM_PAGE";
+
 function MultiPageForm(props: {
   companyId: number;
   formId: string | undefined;
   formType: string | undefined;
   formRecord: unknown;
+  parentOrigin: string;
 }) {
-  const { companyId, formId, formType, formRecord } = props;
+  const { companyId, formId, formType, formRecord, parentOrigin } = props;
   const [iframeKey, setIframeKey] = useState(0);
   const iframeRef = useRef<HTMLIFrameElement>(null);
 
@@ -31,7 +35,7 @@ function MultiPageForm(props: {
 
   const docurl = `${brokerDomain}agent_forms/${companyId}/${formFileName}?company_id=${companyId}&editFormId=${formId}&isReadOnly=true&isHideButtons=true&carrierApiBase=${encodeURIComponent(
     BASE_URL
-  )}`;
+  )}&parentOrigin=${encodeURIComponent(parentOrigin)}`;
 
   useEffect(() => {
     setIframeKey((prev) => prev + 1);
@@ -78,6 +82,49 @@ export default function AgentFormsDetails() {
   const [searchParams] = useSearchParams();
   const queryClient = useQueryClient();
 
+  const parentOrigin = typeof window !== "undefined" ? window.location.origin : "";
+
+  const brokerOriginConfigured = useMemo(() => {
+    const brokerDomain =
+      typeof window !== "undefined" && window.location.hostname === "localhost"
+        ? "http://localhost:5173/"
+        : "https://broker.mybeatshealth.com/";
+    try {
+      return new URL(brokerDomain).origin;
+    } catch {
+      return "";
+    }
+  }, []);
+
+  /**
+   * Latched true the first time the user reaches the last iframe page (page 4).
+   * Stays true if they navigate back to earlier pages.
+   */
+  const [analyticsUnlocked, setAnalyticsUnlocked] = useState(false);
+
+  useEffect(() => {
+    setAnalyticsUnlocked(false);
+  }, [formId]);
+
+  const onFormPageMessage = useCallback(
+    (e: MessageEvent) => {
+      const allowed =
+        e.origin === parentOrigin ||
+        (!!brokerOriginConfigured && e.origin === brokerOriginConfigured);
+      if (!allowed) return;
+      if (e.data?.type !== BROKER_FORM_PAGE_TYPE) return;
+      if (e.data.isLastPage === true) {
+        setAnalyticsUnlocked(true);
+      }
+    },
+    [parentOrigin, brokerOriginConfigured]
+  );
+
+  useEffect(() => {
+    window.addEventListener("message", onFormPageMessage);
+    return () => window.removeEventListener("message", onFormPageMessage);
+  }, [onFormPageMessage]);
+
   const {
     data: agentPayload,
     isLoading,
@@ -103,7 +150,6 @@ export default function AgentFormsDetails() {
         ? Number.parseInt(String(rawFdId), 10)
         : undefined;
 
-  /** View Analytics is shown on every form page when Form_Data has fire_department_id + company_id (last-page-only can be restored later via broker postMessage). */
   const canNavigateToAnalysis =
     typeof fireDepartmentId === "number" &&
     Number.isFinite(fireDepartmentId) &&
@@ -188,37 +234,40 @@ export default function AgentFormsDetails() {
                 formId={formId}
                 formType={formRecord?.type}
                 formRecord={formRecord}
+                parentOrigin={parentOrigin}
               />
             </div>
-            <Box
-              sx={{
-                flexShrink: 0,
-                borderTop: 1,
-                borderColor: "divider",
-                px: 2,
-                py: 1.5,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "space-between",
-                flexWrap: "wrap",
-                gap: 1,
-                bgcolor: "background.paper",
-              }}
-            >
-              <Typography variant="caption" color="text.secondary" component="div">
-                {canNavigateToAnalysis
-                  ? "Opens analysis for this form's linked fire department and subscribed company (from Form_Data)."
-                  : "This form has no fire_department_id yet; link a fire department (e.g. after approval) to open analysis."}
-              </Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                disabled={!canNavigateToAnalysis}
-                onClick={goToAnalysis}
+            {analyticsUnlocked && (
+              <Box
+                sx={{
+                  flexShrink: 0,
+                  borderTop: 1,
+                  borderColor: "divider",
+                  px: 2,
+                  py: 1.5,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: 1,
+                  bgcolor: "background.paper",
+                }}
               >
-                View Analytics
-              </Button>
-            </Box>
+                <Typography variant="caption" color="text.secondary">
+                  {canNavigateToAnalysis
+                    ? "Opens analysis for this form's linked fire department and subscribed company (from Form_Data)."
+                    : "This form has no fire_department_id yet; link a fire department (e.g. after approval) to open analysis."}
+                </Typography>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  disabled={!canNavigateToAnalysis}
+                  onClick={goToAnalysis}
+                >
+                  View Analytics
+                </Button>
+              </Box>
+            )}
           </>
         ) : (
           <div className="flex items-center justify-center h-64">

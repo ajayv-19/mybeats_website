@@ -15,6 +15,7 @@ The carrier portal embeds broker forms in an iframe: `form.html` for initial app
 | `isReadOnly`     | `"true"` = form is read-only                              |
 | `isHideButtons`  | `"true"` = only Previous and Next should work (see below) |
 | `carrierApiBase` | URL-encoded API base URL for fetching form data           |
+| `parentOrigin`   | Carrier app origin (e.g. `http://localhost:3000`) — required for **View Analytics** unlock (see below) |
 
 Example path: `agent_forms/{companyId}/form.html` or `agent_forms/{companyId}/renewal.html` with the above query params.
 
@@ -53,6 +54,44 @@ Example path: `agent_forms/{companyId}/form.html` or `agent_forms/{companyId}/re
 - Listen for `message` events where `event.data.type === 'CARRIER_FORM_DATA'`.
 - Use `event.data.data` (same shape as API: e.g. `data` array of `{ formNumber, data }`) to populate the form.
 - Carrier sends this on iframe load and retries at 100ms and 500ms, so a late-attached listener can still receive it.
+
+### 7. Notify carrier when the user changes pages (**View Analytics** — required)
+
+The carrier app shows a **View Analytics** button only after the user has reached the **last page** of the form (e.g. page 4 / attachments). Once unlocked, the button **stays visible** even if the user goes back to earlier pages.
+
+**You must post a message to the parent window on every page change** (initial load, Next, Previous, and after submit advances the page).
+
+1. Read `parentOrigin` from the query string (the carrier adds `parentOrigin=...` to the iframe URL).
+2. After showing a page, call:
+
+```javascript
+function notifyParentFormPage(pageIndex, totalPages) {
+  const params = new URLSearchParams(window.location.search);
+  const parentOrigin = params.get("parentOrigin");
+  const target = parentOrigin || "*";
+
+  if (window.parent === window) return;
+
+  window.parent.postMessage(
+    {
+      type: "BROKER_FORM_PAGE",
+      pageIndex: pageIndex,           // 0-based index of the visible page
+      totalPageSections: totalPages,  // total number of pages/sections
+      isLastPage: totalPages > 0 && pageIndex === totalPages - 1,
+    },
+    target
+  );
+}
+```
+
+3. Call `notifyParentFormPage` from your existing `showPage(idx)` (or equivalent) **after** the new page is visible.
+4. Call it on **first paint** for whichever page is shown on load.
+
+**Last page rule:** `isLastPage` must be `true` only when the user is on the **final** section (e.g. `data-page="4"` or the attachments / thank-you step). For a 4-page form, that is `pageIndex === 3` when `totalPageSections === 4`.
+
+**Reference:** `public/company1/form.html` in the carrier repo includes `notifyBrokerFormPage` — copy the same pattern into your deployed `form.html` and `renewal.html`.
+
+If you do not send `BROKER_FORM_PAGE` with `isLastPage: true`, the carrier will **never** show View Analytics.
 
 ---
 
