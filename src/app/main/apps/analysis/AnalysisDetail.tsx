@@ -43,6 +43,8 @@ import {
   useVerifyPopulation,
 } from "../settings/apis/AnalysisApis";
 import { useBulkUpsertUnderwriting } from "../settings/apis/UnderwritingApis";
+import { useAgentForm } from "../settings/apis/AgentFormsapis";
+import ApplicationApprovalBar from "./ApplicationApprovalBar";
 import { toast } from "sonner";
 
 function formatProfileDensity(profile: any): string {
@@ -243,6 +245,13 @@ export default function AnalysisDetail() {
   const analysisCompanyId = Number(searchParams.get("company_id"));
   const companyIdValid =
     Number.isFinite(analysisCompanyId) && analysisCompanyId > 0;
+
+  const formIdParam = searchParams.get("form_id");
+  const linkedFormId = formIdParam ? Number.parseInt(formIdParam, 10) : NaN;
+  const linkedFormIdValid = Number.isFinite(linkedFormId) && linkedFormId > 0;
+  const { data: linkedFormPayload, refetch: refetchLinkedForm } = useAgentForm(
+    linkedFormIdValid ? linkedFormId : 0
+  );
 
   const { data, isLoading, error, refetch } = useAnalysisDetail(
     Number(fire_department_id),
@@ -1639,6 +1648,30 @@ export default function AnalysisDetail() {
               </Grid>
             </Grid>
           </Box>
+        )}
+
+        {linkedFormIdValid && linkedFormPayload?.data && (
+          <ApplicationApprovalBar
+            formId={linkedFormId}
+            formStatus={linkedFormPayload.data.status}
+            applicationStatus={linkedFormPayload.data.application_status}
+            renewalYear={currentYear}
+            hasAnalysisResult={!!latestResult}
+            renewalVfbl={
+              currentYearData?.vfbl != null && currentYearData?.vfbl !== ""
+                ? Number(currentYearData.vfbl)
+                : null
+            }
+            renewalWc={
+              currentYearData?.wc != null && currentYearData?.wc !== ""
+                ? Number(currentYearData.wc)
+                : null
+            }
+            onSuccess={() => {
+              refetch();
+              refetchLinkedForm();
+            }}
+          />
         )}
       </Paper>
 

@@ -113,7 +113,209 @@ If you do not send `BROKER_FORM_PAGE` with `isLastPage: true`, the carrier will 
 
 ---
 
+## 8. Application lifecycle: `In_Progress` → `Submitted` → carrier `Approved` / `Rejected`
+
+This section is **required** for the **broker portal** (separate app/repo).
+
+**Extraction** (`underwriting`, `fire_department_profile`, **`underwriting.form_id`**) is implemented on the **broker** side — see **`BROKER_FORM_EXTRACTION.md`**.
+
+The **carrier** `POST .../agentform/mark-submitted` only sets `application_status: Submitted` and duplicate checks; it does **not** write underwriting/profile.
+
+### How the broker portal calls the carrier API
+
+The broker app already has the carrier API base URL (same as today for `GET /agentform/{id}`):
+
+- Query param on the form URL: `carrierApiBase` (URL-encoded), e.g.  
+  `https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev/backendapi`
+- Decode it once: `const apiBase = decodeURIComponent(params.get('carrierApiBase'))`
+
+**Initial (`form.html`) and renewal (`renewal.html`) use the same endpoints and the same lifecycle.** Only the HTML/fields differ; `type` on the row may be `initial` vs `renewal` — extraction does not branch on that.
+
+Example when the user finishes the **last page** (broker JavaScript):
+
+```javascript
+async function markApplicationSubmitted(formId, allPagesData, updatedBy) {
+  const params = new URLSearchParams(window.location.search);
+  const apiBase = decodeURIComponent(params.get("carrierApiBase") || "");
+
+  const res = await fetch(`${apiBase}/agentform/mark-submitted`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      id: formId,
+      data: allPagesData, // [{ formNumber, data }, ...] all pages
+      updated_by: updatedBy,
+    }),
+  });
+
+  const json = await res.json();
+  if (!res.ok) throw new Error(json.message || "mark-submitted failed");
+  return json;
+}
+```
+
+Per-page save (not final):
+
+```javascript
+await fetch(`${apiBase}/agentform/update`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    id: formId,
+    data: allPagesDataSoFar,
+    application_status: "In_Progress",
+    updated_by: updatedBy,
+  }),
+});
+```
+
+No auth header is required for these routes today (same as existing `submit` / `update` bypass list on the carrier API).
+
+### What changed vs the old flow
+
+| Before | Now |
+| ------ | --- |
+| Carrier extracted on approve | Broker **brokerapi** extracts on mark-submitted; carrier API mark-submitted = Submitted flag only |
+| Approve on agent-forms list | **Approve / Reject** on **Analysis** page after **Calculate Analysis** (5-yr history + profile checks) |
+| Same for initial and renewal | Same — one `mark-submitted` + one extraction path |
+
+Carrier side after Submitted: underwriter opens form → **View Analytics** → validates/fills missing **loss history** and **profile** if needed → **Calculate Analysis** → **Approve** or **Reject** (optional premium override on approve only).
+
+The carrier no longer copies form data into `underwriting` / `fire_department_profile` on approve.
+
+### Two status fields on `Form_Data`
+
+| Field | Who sets it | Values | Meaning |
+| ----- | ----------- | ------ | ------- |
+| `application_status` | **Broker** | `In_Progress`, `Submitted` | Broker workflow only — **stays `Submitted`** after carrier approves |
+| `status` | **Carrier** (analysis page) | `Pending`, `Approved`, `Rejected` | Underwriting decision after analytics |
+
+**Important:** `POST /agentform/approveOrReject` uses a body field named `application_status` with values `"Approved"` / `"Rejected"`, but the API writes the **`status`** column on `Form_Data`, not `application_status`.  
+**Calculate Analysis** does not change either field; it only creates/updates **`underwriting_results`**. Approve/Reject buttons on the analysis page run only after Calculate Analysis succeeds.
+
+Carrier agent-forms list shows rows where `application_status = Submitted` only.
+
+### Per-page save (in progress) — **no extraction**
+
+When the user saves a **single page** (not finished with the whole application):
+
+```http
+POST {carrierApiBase}/agentform/update
+Content-Type: application/json
+
+{
+  "id": 628,
+  "data": [ { "formNumber": "1", "data": { ... } }, ... ],
+  "application_status": "In_Progress",
+  "insurance_company": "...",
+  "fire_department": "...",
+  "updated_by": "broker@example.com"
+}
+```
+
+- Set `application_status` to **`In_Progress`** (or omit if already in progress).
+- **Do not** call `mark-submitted` here.
+- **Do not** expect `underwriting` or `fire_department_profile` to update on this call.
+
+If `status` on the row is already **`Approved`**, the API returns **400** — the form cannot be edited.
+
+### Final submit (all pages complete) — **extraction happens here**
+
+When the user completes the **last page** and the application is ready for the carrier:
+
+1. Ensure `data` contains **all pages** (same array shape as today).
+2. Ensure `effective_date` is set (used for policy year `YYYY-YYYY`).
+3. Ensure `fire_department` (name) and/or `fire_department_id` is set on the form.
+4. Call:
+
+```http
+POST {carrierApiBase}/agentform/mark-submitted
+Content-Type: application/json
+
+{
+  "id": 628,
+  "data": [ ... optional final merge of all pages ... ],
+  "updated_by": "broker@example.com"
+}
+```
+
+**Carrier API behavior** (`POST {carrierApiBase}/agentform/mark-submitted`):
+
+- Sets `application_status` = **`Submitted`**
+- Sets `year` from `effective_date` if not already set
+- **Duplicate guard** (one Submitted per company + FD + policy year)
+- **Does not** extract — broker must run extraction per **`BROKER_FORM_EXTRACTION.md`** (same DB)
+
+**Do not** use `POST /agentform/update` with `application_status: "Submitted"` — use `mark-submitted` only.
+
+### Initial create
+
+```http
+POST {carrierApiBase}/agentform/submit
+```
+
+Carrier sets `application_status: "In_Progress"` on create. Broker should keep it in progress until `mark-submitted`.
+
+### Carrier approval (broker does not call this)
+
+After the carrier runs **Calculate Analysis** on the analysis page:
+
+```http
+POST {carrierApiBase}/agentform/approveOrReject
+Authorization: Bearer <carrier token>
+
+{
+  "id": 628,
+  "application_status": "Approved",
+  "keep_premiums": true
+}
+```
+
+Or to override renewal premiums on the underwriting row:
+
+```json
+{
+  "id": 628,
+  "application_status": "Approved",
+  "keep_premiums": false,
+  "vfbl": 142503,
+  "wc": 4890
+}
+```
+
+Reject:
+
+```json
+{ "id": 628, "application_status": "Rejected" }
+```
+
+**Rules:**
+
+- `application_status` must already be **`Submitted`**
+- **`UnderwritingResults`** must exist for that FD + company + renewal year (Calculate Analysis was run)
+- Sets `status` to **`Approved`** or **`Rejected`** only (does **not** re-run extraction)
+- After **`Approved`**, broker **`update`** calls are blocked
+
+### Recommended broker UI flow
+
+```text
+Create form (submit) → application_status In_Progress
+Each page Next/Save → update with In_Progress + page data
+Last page complete   → mark-submitted (Submitted) → carrier list shows form
+Carrier              → View Analytics → Calculate Analysis → Approve/Reject
+```
+
+### Fields written on broker extraction (not carrier API)
+
+See **`BROKER_FORM_EXTRACTION.md`** — including **`underwriting.form_id`** = `Form_Data.id`.
+
+Losses, LAE, and claims are **not** from the broker form; carrier enters those on the analysis page.
+
+---
+
 ## Testing
 
 - Opening a renewal form from the carrier should load data, show only Previous/Next when `isHideButtons=true`, and keep fields read-only when `isReadOnly=true`.
 - Initial and renewal forms should behave the same when opened from the carrier.
+- Broker: per-page `update` leaves DB underwriting unchanged; `mark-submitted` creates/updates renewal row.
+- Carrier: approve without Calculate Analysis returns **400** `ANALYSIS_REQUIRED`.

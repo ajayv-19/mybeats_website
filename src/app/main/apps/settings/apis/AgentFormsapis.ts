@@ -81,10 +81,21 @@ export const useAgentForm = (formId: number) => {
   });
 };
 
-export const callUpdateAgentFormStatus = (formId: number, status: any) => {
+export interface ApproveAgentFormPayload {
+  keep_premiums?: boolean;
+  vfbl?: number;
+  wc?: number;
+}
+
+export const callUpdateAgentFormStatus = (
+  formId: number,
+  status: "Approved" | "Rejected" | "Pending",
+  options?: ApproveAgentFormPayload
+) => {
   return axios.post(`/agentform/approveOrReject`, {
     id: formId,
     application_status: status,
+    ...options,
   });
 };
 

@@ -1,5 +1,17 @@
-const { Company, FormData, FireDepartment, FormMessage, DocumentAttachment } = require("../models");
-const { extractFormData } = require("../services/formExtraction.service");
+const {
+  Company,
+  FormData,
+  FireDepartment,
+  FormMessage,
+  DocumentAttachment,
+  sequelize,
+  UnderwritingResults,
+} = require("../models");
+const {
+  updateRenewalYearPremiums,
+  extractPolicyYear,
+  flattenFormData,
+} = require("../services/formExtraction.service");
 const { Op } = require("sequelize");
 const uploadDocuments = require("../config/multerDocuments");
 
@@ -7,6 +19,8 @@ class AgentController {
   setupRoutes(app) {
     app.post("/agentform/submit", (...args) => this.submitAgentForm(...args));
     app.post("/agentform/update", (...args) => this.updateAgentForm(...args));
+    /** Broker: all pages complete → application_status Submitted only (extraction is broker-side; see BROKER_FORM_EXTRACTION.md) */
+    app.post("/agentform/mark-submitted", (...args) => this.markAgentFormSubmitted(...args));
     app.post("/agentform/approveOrReject", (...args) => this.approveOrRejectAgentForm(...args));
     app.get("/agentforms", (...args) => this.getAgentForms(...args));
     app.get("/agentform/:formId", (...args) => this.getAgentFormById(...args));
@@ -128,6 +142,7 @@ class AgentController {
       insurance_company: insurance_company || null,
       fire_department: fire_department || null,
       status: status || "Pending",
+      application_status: "In_Progress",
       updated_by: updated_by || null
     });
     try {
@@ -144,8 +159,28 @@ class AgentController {
   }
 
   async updateAgentForm(req, res) {
-    const { id, data, insurance_company, fire_department, status, updated_by } = req.body;
+    const { id, data, insurance_company, fire_department, status, updated_by, application_status } =
+      req.body;
     try {
+      const existing = await FormData.findByPk(id);
+      if (!existing) {
+        return res.status(404).json({ message: "Agent form not found" });
+      }
+
+      if (existing.status === "Approved") {
+        return res.status(400).json({
+          message:
+            "This form is Approved and cannot be edited. Start a new application if changes are required.",
+        });
+      }
+
+      if (application_status === "Submitted") {
+        return res.status(400).json({
+          message:
+            "Use POST /agentform/mark-submitted when all pages are complete (do not set Submitted via update).",
+        });
+      }
+
       const updateData = { data: data };
 
       // Only update these fields if they are provided
@@ -162,10 +197,12 @@ class AgentController {
         updateData.updated_by = updated_by;
       }
 
-      const result = await FormData.update(
-        updateData,
-        { where: { id: id } }
-      );
+      // Broker in-progress saves (per-page); extraction runs only on mark-submitted
+      if (application_status === "In_Progress" || application_status === "In Progress") {
+        updateData.application_status = "In_Progress";
+      }
+
+      const result = await FormData.update(updateData, { where: { id: id } });
       res.status(200).json({
         "message": "Agent form updated successfully",
         "data": {
@@ -185,13 +222,119 @@ class AgentController {
     }
   }
 
-  async approveOrRejectAgentForm(req, res) {
-    const { id, application_status } = req.body;
-    const updatedBy = req.user?.email || req.user?.username || "system"; // Get user from auth context
-    
+  /**
+   * Broker: final step when every page is complete.
+   * Sets application_status = Submitted on Form_Data (validation + duplicate guard only).
+   *
+   * Extraction → underwriting + fire_department_profile (including underwriting.form_id)
+   * is implemented in the BROKER portal (brokerapi). See BROKER_FORM_EXTRACTION.md.
+   * Broker must run extraction before or immediately after this call (shared DB).
+   */
+  async markAgentFormSubmitted(req, res) {
+    const { id, data, updated_by } = req.body;
+
     try {
-      // Map the application_status to the new status values
-      // Frontend sends "Approved" | "Rejected" | "Pending"; also accept "approve" | "reject"
+      const form = await FormData.findByPk(id);
+      if (!form) {
+        return res.status(404).json({ message: "Agent form not found" });
+      }
+
+      if (form.status === "Approved") {
+        return res.status(400).json({
+          message: "This form is Approved and cannot be submitted again.",
+        });
+      }
+
+      if (form.application_status === "Submitted") {
+        return res.status(400).json({
+          message: "This application is already Submitted.",
+        });
+      }
+
+      if (data !== undefined) {
+        await FormData.update(
+          { data, updated_by: updated_by ?? form.updated_by },
+          { where: { id } },
+        );
+      }
+
+      const refreshed = await FormData.findByPk(id);
+      const flattened = flattenFormData(refreshed.data);
+      const policyYear =
+        refreshed.year || extractPolicyYear(flattened.effective_date);
+
+      if (!policyYear) {
+        return res.status(400).json({
+          message:
+            "Cannot submit: effective_date is required to determine the policy year.",
+        });
+      }
+
+      if (!refreshed.company_id) {
+        return res.status(400).json({
+          message: "Cannot submit: company_id is required on the form.",
+        });
+      }
+
+      const duplicateWhere = {
+        company_id: refreshed.company_id,
+        year: policyYear,
+        application_status: "Submitted",
+        id: { [Op.ne]: id },
+      };
+
+      if (refreshed.fire_department_id) {
+        duplicateWhere.fire_department_id = refreshed.fire_department_id;
+      } else if (refreshed.fire_department) {
+        duplicateWhere.fire_department = refreshed.fire_department;
+      } else {
+        return res.status(400).json({
+          message:
+            "Cannot submit: fire department must be set on the form before marking Submitted.",
+        });
+      }
+
+      const duplicateSubmitted = await FormData.findOne({ where: duplicateWhere });
+      if (duplicateSubmitted) {
+        return res.status(400).json({
+          message:
+            "Another application is already Submitted for this fire department, company, and policy year.",
+          existing_form_id: duplicateSubmitted.id,
+        });
+      }
+
+      await FormData.update(
+        {
+          application_status: "Submitted",
+          status: refreshed.status || "Pending",
+          year: policyYear,
+          updated_by: updated_by ?? refreshed.updated_by,
+        },
+        { where: { id } },
+      );
+
+      // Extraction disabled on carrier API — broker brokerapi owns underwriting/profile writes.
+      // await extractFormData(id, updatedBy);
+
+      res.status(200).json({
+        message:
+          "Application marked Submitted. Broker must sync underwriting and fire_department_profile (see BROKER_FORM_EXTRACTION.md).",
+        data: { id, application_status: "Submitted", year: policyYear },
+      });
+    } catch (error) {
+      console.error("Error in markAgentFormSubmitted:", error);
+      res.status(500).json({
+        message: "Error marking application as Submitted",
+        error: error.message,
+      });
+    }
+  }
+
+  async approveOrRejectAgentForm(req, res) {
+    const { id, application_status, keep_premiums, vfbl, wc } = req.body;
+    const updatedBy = req.user?.email || req.user?.username || "system";
+
+    try {
       let newStatus;
       const action = String(application_status || "").toLowerCase();
       if (application_status === "Approved" || action === "approve") {
@@ -202,116 +345,123 @@ class AgentController {
         newStatus = "Pending";
       } else {
         return res.status(400).json({
-          "message": "Invalid application_status. Must be 'approve'/'Approved', 'reject'/'Rejected', or 'Pending'"
+          message:
+            "Invalid application_status. Must be 'Approved', 'Rejected', or 'Pending'",
         });
       }
 
-      // Fetch form to check for duplicates and get year
-      const form = await FormData.findOne({
-        where: { id }
-      });
-
+      const form = await FormData.findByPk(id);
       if (!form) {
-        return res.status(404).json({
-          "message": "Agent form not found"
-        });
+        return res.status(404).json({ message: "Agent form not found" });
       }
 
-      // Prevent rejecting approved forms (data already stored in database)
       if (form.status === "Approved" && newStatus === "Rejected") {
         return res.status(400).json({
-          "message": "Cannot reject an approved form. Data has already been stored in the database (underwriting and fire_department_profile tables)."
+          message: "Cannot reject an approved form.",
         });
       }
 
-      // If approving, check for duplicate approval
-      if (newStatus === "Approved") {
-        // Extract policy year from form data if not already set
-        let policyYear = form.year;
-        if (!policyYear && form.data) {
-          const formDataArray = Array.isArray(form.data) ? form.data : [];
-          const flattenedData = {};
-          formDataArray.forEach(section => {
-            if (section && section.data) {
-              Object.assign(flattenedData, section.data);
-            }
+      if (newStatus === "Approved" || newStatus === "Rejected") {
+        if (form.application_status !== "Submitted") {
+          return res.status(400).json({
+            message:
+              "Only Submitted applications can be approved or rejected. The broker must complete all pages and mark the application Submitted first.",
           });
-          
-          if (flattenedData.effective_date) {
-            const date = new Date(flattenedData.effective_date);
-            const year = date.getFullYear();
-            const month = date.getMonth() + 1;
-            policyYear = month >= 6 ? `${year}-${year + 1}` : `${year - 1}-${year}`;
-          }
+        }
+      }
+
+      if (newStatus === "Approved") {
+        const policyYear = form.year;
+        if (!policyYear) {
+          return res.status(400).json({
+            message: "Form has no policy year; ensure it was marked Submitted first.",
+          });
         }
 
-        // Check for duplicate approved form (same fire_department_id + year)
-        if (form.fire_department_id && policyYear) {
-          const duplicate = await FormData.findOne({
-            where: {
-              fire_department_id: form.fire_department_id,
-              year: policyYear,
-              status: "Approved",
-              id: { [Op.ne]: id }, // Exclude current form
-            }
+        if (!form.fire_department_id) {
+          return res.status(400).json({
+            message: "Form has no fire_department_id; ensure it was marked Submitted first.",
           });
+        }
 
-          if (duplicate) {
+        const duplicateApproved = await FormData.findOne({
+          where: {
+            fire_department_id: form.fire_department_id,
+            company_id: form.company_id,
+            year: policyYear,
+            status: "Approved",
+            id: { [Op.ne]: id },
+          },
+        });
+        if (duplicateApproved) {
+          return res.status(400).json({
+            message:
+              "Cannot approve: another approved form already exists for this fire department, company, and policy year.",
+          });
+        }
+
+        const analysisDone = await UnderwritingResults.findOne({
+          where: {
+            fire_department_id: form.fire_department_id,
+            company_id: form.company_id,
+            underwriting_year: policyYear,
+          },
+        });
+        if (!analysisDone) {
+          return res.status(400).json({
+            message:
+              "Run Calculate Analysis for this renewal year before approving the application.",
+            code: "ANALYSIS_REQUIRED",
+          });
+        }
+      }
+
+      const result = await FormData.update({ status: newStatus }, { where: { id } });
+      if (result[0] === 0) {
+        return res.status(404).json({ message: "Agent form not found" });
+      }
+
+      /*
+       * Extraction on approve REMOVED — data is written when the broker marks application_status
+       * Submitted (POST /agentform/mark-submitted). Approval only sets status and may adjust
+       * renewal-year premiums on the existing underwriting row.
+       */
+      if (newStatus === "Approved") {
+        const keepSame =
+          keep_premiums === true ||
+          keep_premiums === "true" ||
+          keep_premiums === 1;
+
+        if (!keepSame) {
+          const transaction = await sequelize.transaction();
+          try {
+            await updateRenewalYearPremiums(
+              form.fire_department_id,
+              form.company_id,
+              form.year,
+              vfbl,
+              wc,
+              transaction,
+            );
+            await transaction.commit();
+          } catch (premiumErr) {
+            await transaction.rollback();
             return res.status(400).json({
-              "message": "Cannot approve form: An approved form already exists for this fire department and policy year"
+              message: premiumErr.message || "Failed to update renewal premiums",
             });
           }
         }
       }
 
-      // Update form status
-      const updateData = { status: newStatus };
-      if (newStatus === "Approved") {
-        updateData.application_status = "Submitted";
-      }
-
-      const result = await FormData.update(
-        updateData,
-        { where: { id } }
-      );
-
-      if (result[0] === 0) {
-        return res.status(404).json({
-          "message": "Agent form not found"
-        });
-      }
-
-      // If approving, extract form data and populate underwriting/profile tables
-      if (newStatus === "Approved") {
-        try {
-          await extractFormData(id, updatedBy);
-        } catch (extractionError) {
-          console.error("Error extracting form data:", extractionError);
-          // Don't fail the approval, but log the error
-          // You may want to return a warning or handle this differently
-          return res.status(200).json({
-            "message": `Agent form approved successfully, but there was an error extracting form data: ${extractionError.message}`,
-            "data": {
-              id: id,
-              status: newStatus
-            },
-            "warning": extractionError.message
-          });
-        }
-      }
-
       res.status(200).json({
-        "message": `Agent form ${newStatus === "Approved" ? "approved" : newStatus === "Rejected" ? "rejected" : "updated"} successfully`,
-        "data": {
-          id: id,
-          status: newStatus
-        }
+        message: `Agent form ${newStatus === "Approved" ? "approved" : newStatus === "Rejected" ? "rejected" : "updated"} successfully`,
+        data: { id, status: newStatus },
       });
     } catch (error) {
       console.error("Error in approveOrRejectAgentForm:", error);
       res.status(500).json({
-        "message": "Error updating agent form status",
-        "error": error.message
+        message: "Error updating agent form status",
+        error: error.message,
       });
     }
   }

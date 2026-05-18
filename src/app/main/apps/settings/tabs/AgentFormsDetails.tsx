@@ -159,7 +159,9 @@ export default function AgentFormsDetails() {
 
   const goToAnalysis = () => {
     if (!canNavigateToAnalysis) return;
-    navigate(`/apps/analysis/${fireDepartmentId}?company_id=${companyId}`);
+    navigate(
+      `/apps/analysis/${fireDepartmentId}?company_id=${companyId}&form_id=${formId}`
+    );
   };
 
   if (isLoading) {

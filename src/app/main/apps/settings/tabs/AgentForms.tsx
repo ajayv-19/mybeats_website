@@ -1,8 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  useAgentForms,
-  callUpdateAgentFormStatus,
-} from "../apis/AgentFormsapis";
+import { useAgentForms } from "../apis/AgentFormsapis";
 import {
   TableContainer,
   Table,
@@ -15,8 +12,6 @@ import {
   Chip,
   Stack,
   Tooltip,
-  Switch,
-  FormControlLabel,
   Dialog,
   DialogTitle,
   DialogContent,
@@ -274,21 +269,6 @@ export default function AgentFormsTab() {
     }
   };
 
-  const handleUpdateAgentFormStatus = (formId: number, status: any) => {
-    callUpdateAgentFormStatus(formId, status)
-      .then((response) => {
-        if (response.status === 200) {
-          toast.success("Agent form status updated successfully");
-          agentForms.refetch();
-        } else {
-          toast.warning(response.data?.message || "Failed to update agent form status");
-        }
-      })
-      .catch(() => {
-        // Error toast/warning is shown by axios interceptor (400 → warning, others → error)
-      });
-  };
-
   // Handler for opening chat box
   const handleOpenChatBox = (formData: any) => {
     setState((prevState) => ({
@@ -528,56 +508,18 @@ export default function AgentFormsTab() {
                   </TableCell>
                   <TableCell>
                     <Stack direction="row" spacing={1} alignItems="center">
-                      <Tooltip
-                        title={
-                          form.status === "Pending"
-                            ? "Click to approve"
-                            : form.status === "Approved"
-                              ? "Approved forms cannot be rejected (data already stored in database)"
-                              : "Click to set pending"
-                        }
-                      >
-                        <FormControlLabel
-                          control={
-                            <Switch
-                              checked={form.status === "Approved"}
-                              onChange={(event) => {
-                                // Prevent rejecting approved forms (data already stored in database)
-                                if (form.status === "Approved") {
-                                  toast.warning("Approved forms cannot be rejected. Data has already been stored in the database.");
-                                  return;
-                                }
-                                
-                                let newStatus;
-                                if (form.status === "Pending") {
-                                  newStatus = "Approved";
-                                } else if (form.status === "Rejected") {
-                                  newStatus = "Pending";
-                                } else {
-                                  newStatus = "Pending";
-                                }
-                                handleUpdateAgentFormStatus(form.id, newStatus);
-                              }}
-                              disabled={form.status === "Approved"}
-                              color="success"
-                              size="small"
-                            />
+                      <Tooltip title="Open the form, use View Analytics, run Calculate Analysis, then Approve or Reject on the analysis page.">
+                        <Chip
+                          size="small"
+                          label={form.status || "Pending"}
+                          color={
+                            form.status === "Approved"
+                              ? "success"
+                              : form.status === "Rejected"
+                                ? "error"
+                                : "warning"
                           }
-                          label={form.status}
-                          labelPlacement="end"
-                          sx={{
-                            margin: 0,
-                            "& .MuiFormControlLabel-label": {
-                              fontSize: "0.75rem",
-                              color:
-                                form.status === "Approved"
-                                  ? "green"
-                                  : form.status === "Rejected"
-                                    ? "red"
-                                    : "orange",
-                              fontWeight: "bold",
-                            },
-                          }}
+                          variant="outlined"
                         />
                       </Tooltip>
                     </Stack>

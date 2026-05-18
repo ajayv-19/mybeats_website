@@ -51,7 +51,8 @@ const conditionalAuthMiddleware = async (req, res, next) => {
     `${API_PREFIX}/webhook`,
     `${API_PREFIX}/addcomment`,
     `${API_PREFIX}/agentform/submit`,
-    `${API_PREFIX}/agentform/update`
+    `${API_PREFIX}/agentform/update`,
+    `${API_PREFIX}/agentform/mark-submitted`,
   ];
   
   // Allow broker forms to fetch form data without auth (read-only GET requests)
