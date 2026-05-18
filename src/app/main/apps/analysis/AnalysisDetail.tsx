@@ -1611,8 +1611,7 @@ export default function AnalysisDetail() {
                     <strong>{latestResult.category || "—"}</strong>
                     {latestResult.category === "FDM" && " (0–14 points band)"}
                     {latestResult.category === "FDI" && " (15–25 points band)"}
-                    {latestResult.category === "FPI" &&
-                      " (26–31 → FPI; raw totals above 31 are capped at 31)"}
+                    {latestResult.category === "FPI" && " (26–31 points band)"}
                   </Typography>
                   <Typography variant="body1" sx={{ mt: 1 }}>
                     Assigned company: {latestResult.assignedCompany?.Company_Name || "—"}

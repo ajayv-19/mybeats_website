@@ -151,8 +151,14 @@ export default function AgentFormsTab() {
     });
   }, [state.agentForms, filterStatus, filterType, filterSearch]);
 
-  // Handler for opening Losses/LAE dialog
+  // Handler for opening Losses/LAE dialog (carrier: only after status = Approved)
   const handleOpenLossesLaeDialog = async (form: any) => {
+    if (form.status !== "Approved") {
+      toast.info(
+        "Losses and LAE can be entered after the application is approved on the Analysis page."
+      );
+      return;
+    }
     try {
       // Get fire department ID
       const fdResponse = await axios.get(`/agentform/${form.id}/fire-department-id`);
@@ -546,18 +552,31 @@ export default function AgentFormsTab() {
                           />
                         </Link>
                       </Tooltip>
-                      <Tooltip title="Enter Losses/LAE">
-                        <Button
-                          size="small"
-                          variant="outlined"
-                          startIcon={<EditIcon color="primary" />}
-                          onClick={() => handleOpenLossesLaeDialog(form)}
-                          sx={{
-                            border: "none",
-                            minWidth: "auto",
-                            padding: "4px",
-                          }}
-                        />
+                      <Tooltip
+                        title={
+                          form.status === "Approved"
+                            ? "Enter Losses/LAE"
+                            : "Available after the form is approved on the Analysis page"
+                        }
+                      >
+                        <span>
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            disabled={form.status !== "Approved"}
+                            startIcon={
+                              <EditIcon
+                                color={form.status === "Approved" ? "primary" : "disabled"}
+                              />
+                            }
+                            onClick={() => handleOpenLossesLaeDialog(form)}
+                            sx={{
+                              border: "none",
+                              minWidth: "auto",
+                              padding: "4px",
+                            }}
+                          />
+                        </span>
                       </Tooltip>
                       <Tooltip title="Request Information">
                         <Button
