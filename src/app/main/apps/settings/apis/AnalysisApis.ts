@@ -178,6 +178,7 @@ export const useCalculateAnalysis = () => {
   });
 };
 
+/* Census county population verification disabled — see CENSUS_POPULATION_API.md
 export interface VerifyPopulationResponse {
   message: string;
   data: {
@@ -188,11 +189,6 @@ export interface VerifyPopulationResponse {
   };
 }
 
-/**
- * Cross-verify the carrier-stored population against the US Census Bureau
- * ACS5 county population. Persists the value to
- * `fire_department_profile.population_verified` server-side.
- */
 export const useVerifyPopulation = () => {
   const queryClient = useQueryClient();
 
@@ -223,6 +219,7 @@ export const useVerifyPopulation = () => {
     },
   });
 };
+*/
 
 export interface UpdateProfileRequest {
   population?: number | null;
