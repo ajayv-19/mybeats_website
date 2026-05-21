@@ -1009,30 +1009,35 @@ export default function AnalysisDetail() {
   );
 
   return (
-    <Box sx={{ p: 3 }}>
-      {/* Header */}
-      <Box
-        sx={{
-          mb: 3,
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <Typography variant="h4">
-          {fire_department?.fire_department_name || "Fire Department Analysis"}
-        </Typography>
-        <Button variant="outlined" onClick={() => navigate("/apps/analysis")}>
-          Back to List
-        </Button>
-      </Box>
-
+    <div className="flex flex-col flex-1 min-h-0 p-24">
       {/* Fire Department Information */}
-      <Paper elevation={2} sx={{ p: 3, mb: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          Fire Department Information
-        </Typography>
+      <Paper elevation={0} variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 1 }}>
+        <Stack
+          direction="row"
+          justifyContent="space-between"
+          alignItems="center"
+          sx={{ mb: 2 }}
+        >
+          <Typography variant="h6">Fire Department Information</Typography>
+          <Button
+            variant="contained"
+            color="secondary"
+            size="small"
+            className="rounded px-8 py-4 min-h-0 h-auto min-w-0"
+            onClick={() => navigate("/apps/analysis")}
+          >
+            Back to list
+          </Button>
+        </Stack>
         <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} md={6}>
+            <Typography variant="body2" color="text.secondary">
+              Name
+            </Typography>
+            <Typography variant="body1" fontWeight="medium">
+              {fire_department?.fire_department_name || "-"}
+            </Typography>
+          </Grid>
           <Grid item xs={12} sm={6} md={3}>
             <Typography variant="body2" color="text.secondary">
               County
@@ -1075,7 +1080,7 @@ export default function AnalysisDetail() {
 
       {/* Profile Data — compact grid */}
       {profile && (
-        <Paper elevation={2} sx={{ p: 2, mb: 2 }}>
+        <Paper elevation={0} variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 1 }}>
           <Stack
             direction="row"
             justifyContent="space-between"
@@ -1307,7 +1312,7 @@ export default function AnalysisDetail() {
       )}
 
       {/* Underwriting History */}
-      <Paper elevation={2} sx={{ mb: 3 }}>
+      <Paper elevation={0} variant="outlined" sx={{ mb: 2, borderRadius: 1, overflow: "hidden" }}>
         <Box sx={{ p: 2, borderBottom: 1, borderColor: "divider" }}>
           <Stack
             direction="row"
@@ -2353,6 +2358,6 @@ export default function AnalysisDetail() {
           </Button>
         </DialogActions>
       </Dialog>
-    </Box>
+    </div>
   );
 }

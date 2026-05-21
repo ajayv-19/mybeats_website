@@ -310,12 +310,6 @@ export default function AgentFormsTab() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 p-24">
-      <div className="flex items-center mb-16 relative shrink-0">
-        <h2 className="text-lg font-bold flex-1 text-center">
-          Application Forms
-        </h2>
-      </div>
-
       <Paper
         elevation={0}
         variant="outlined"
