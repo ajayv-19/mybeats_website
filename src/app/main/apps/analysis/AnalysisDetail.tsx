@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
   Box,
@@ -49,14 +49,14 @@ import { toast } from "sonner";
 
 function formatProfileDensity(profile: any): string {
   if (!profile) return "-";
-  const stored = profile.density;
-  if (stored != null && stored !== "" && Number.isFinite(Number(stored))) {
-    return Math.round(Number(stored)).toLocaleString();
-  }
-  const pop = Number(profile.population);
-  const sq = Number(profile.square_miles);
-  if (Number.isFinite(pop) && Number.isFinite(sq) && sq > 0) {
+  const pop = coerceApiNumber(profile.population);
+  const sq = coerceApiNumber(profile.square_miles);
+  if (pop != null && sq != null && sq > 0) {
     return Math.round(pop / sq).toLocaleString();
+  }
+  const stored = coerceApiNumber(profile.density);
+  if (stored != null && stored > 0) {
+    return Math.round(stored).toLocaleString();
   }
   return "-";
 }
@@ -79,14 +79,11 @@ function formatProfileTotalCalls(profile: any): string {
 
 function getProfileDensityNumeric(profile: any): number | null {
   if (!profile) return null;
-  if (profile.density != null && profile.density !== "") {
-    const n = Number(profile.density);
-    if (Number.isFinite(n)) return n;
-  }
-  const pop = Number(profile.population);
-  const sq = Number(profile.square_miles);
-  if (Number.isFinite(pop) && Number.isFinite(sq) && sq > 0)
-    return Math.round(pop / sq);
+  const pop = coerceApiNumber(profile.population);
+  const sq = coerceApiNumber(profile.square_miles);
+  if (pop != null && sq != null && sq > 0) return Math.round(pop / sq);
+  const stored = coerceApiNumber(profile.density);
+  if (stored != null && stored > 0) return Math.round(stored);
   return null;
 }
 
@@ -107,6 +104,55 @@ function getProfileTotalCallsNumeric(profile: any): number | null {
   if (hasF || hasE)
     return (Number(profile.fire_calls) || 0) + (Number(profile.ems_calls) || 0);
   return null;
+}
+
+/** Coerce API numbers (strings, Sequelize DECIMAL objects) for display/math. */
+function coerceApiNumber(value: unknown): number | null {
+  if (value === null || value === undefined || value === "") return null;
+  const raw =
+    typeof value === "object" && value !== null && "toString" in value
+      ? String((value as { toString: () => string }).toString()).trim()
+      : String(value).trim();
+  if (raw === "") return null;
+  const n = Number(raw.replace(/,/g, ""));
+  return Number.isFinite(n) ? n : null;
+}
+
+/** API DECIMAL/INTEGER fields often arrive as strings; normalize for form state. */
+function profileNumericFromApi(value: unknown): number | "" {
+  const n = coerceApiNumber(value);
+  return n === null ? "" : n;
+}
+
+/** Square miles: keep string in the form so decimals are not lost by type="number". */
+function profileSquareMilesFromApi(value: unknown): string {
+  const n = coerceApiNumber(value);
+  return n === null ? "" : String(n);
+}
+
+/** Persist profile numeric fields (accepts number or numeric string from controlled inputs). */
+function profileNumericToApi(value: number | ""): number | null {
+  if (value === "") return null;
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : null;
+}
+
+function buildProfileFormFromApi(profile: any) {
+  return {
+    population: profileNumericFromApi(profile?.population),
+    square_miles: profileSquareMilesFromApi(profile?.square_miles),
+    fire_calls: profileNumericFromApi(profile?.fire_calls),
+    ems_calls: profileNumericFromApi(profile?.ems_calls),
+    safety_committee: profileSafetyCommitteeFromApi(profile),
+    hs_officers: profileNumericFromApi(profile?.hs_officers),
+    motorized_racing_team: !!profile?.motorized_racing_team,
+    motorized_racing_team_count: profileNumericFromApi(
+      profile?.motorized_racing_team_count,
+    ),
+    management_practice_penalty: profileNumericFromApi(
+      profile?.management_practice_penalty,
+    ),
+  };
 }
 
 /** Five periods immediately before `targetYear` (worksheet 5-yr totals), same ordering as backend. */
@@ -264,6 +310,18 @@ function aggregatePriorFiveUnderwritingRows(rows: any[]) {
   return { vfbl, wc, totalPremium, losses, lae, totalLossLae, claims };
 }
 
+const ANALYSIS_NOTES_STORAGE_PREFIX = "analysis_notes_v1";
+
+function getAnalysisNotesStorageKey(
+  fireDepartmentId: string | undefined,
+  companyId: number,
+): string | null {
+  if (!fireDepartmentId || !Number.isFinite(companyId) || companyId <= 0) {
+    return null;
+  }
+  return `${ANALYSIS_NOTES_STORAGE_PREFIX}:${fireDepartmentId}:${companyId}`;
+}
+
 export default function AnalysisDetail() {
   const { fire_department_id } = useParams<{ fire_department_id: string }>();
   const navigate = useNavigate();
@@ -296,7 +354,7 @@ export default function AnalysisDetail() {
 
   const [profileForm, setProfileForm] = useState<{
     population: number | "";
-    square_miles: number | "";
+    square_miles: string;
     fire_calls: number | "";
     ems_calls: number | "";
     safety_committee: boolean | null;
@@ -330,6 +388,56 @@ export default function AnalysisDetail() {
   const [underwritingRows, setUnderwritingRows] = useState<
     UnderwritingRowForm[]
   >([]);
+  const notesStorageKey = getAnalysisNotesStorageKey(
+    fire_department_id,
+    analysisCompanyId,
+  );
+  const [analysisNotes, setAnalysisNotes] = useState("");
+  const [analysisNotesSavedAt, setAnalysisNotesSavedAt] = useState<
+    string | null
+  >(null);
+
+  useEffect(() => {
+    if (!notesStorageKey) {
+      setAnalysisNotes("");
+      setAnalysisNotesSavedAt(null);
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(notesStorageKey);
+      if (!raw) {
+        setAnalysisNotes("");
+        setAnalysisNotesSavedAt(null);
+        return;
+      }
+      const parsed = JSON.parse(raw) as { notes?: unknown; savedAt?: unknown };
+      setAnalysisNotes(typeof parsed.notes === "string" ? parsed.notes : "");
+      setAnalysisNotesSavedAt(
+        typeof parsed.savedAt === "string" ? parsed.savedAt : null,
+      );
+    } catch {
+      setAnalysisNotes("");
+      setAnalysisNotesSavedAt(null);
+    }
+  }, [notesStorageKey]);
+
+  const handleSaveAnalysisNotes = () => {
+    if (!notesStorageKey) {
+      toast.error("Cannot save notes without a valid fire department/company.");
+      return;
+    }
+    const savedAt = new Date().toISOString();
+    try {
+      window.localStorage.setItem(
+        notesStorageKey,
+        JSON.stringify({ notes: analysisNotes.trim(), savedAt }),
+      );
+      setAnalysisNotesSavedAt(savedAt);
+      toast.success("Notes saved");
+    } catch {
+      toast.error("Failed to save notes");
+    }
+  };
 
   if (!companyIdValid) {
     return (
@@ -447,24 +555,7 @@ export default function AnalysisDetail() {
         (code === "MISSING_5_YEAR_DATA" || code === "MISSING_PROFILE")
       ) {
         if (code === "MISSING_PROFILE") {
-          setProfileForm({
-            population: profile?.population ?? "",
-            square_miles: profile?.square_miles ?? "",
-            fire_calls: profile?.fire_calls ?? "",
-            ems_calls: profile?.ems_calls ?? "",
-            safety_committee: profileSafetyCommitteeFromApi(profile),
-            hs_officers: profile?.hs_officers ?? "",
-            motorized_racing_team: !!profile?.motorized_racing_team,
-            motorized_racing_team_count:
-              profile?.motorized_racing_team_count != null
-                ? Number(profile.motorized_racing_team_count)
-                : "",
-            management_practice_penalty:
-              profile?.management_practice_penalty != null &&
-              profile?.management_practice_penalty !== ""
-                ? Number(profile.management_practice_penalty)
-                : "",
-          });
+          setProfileForm(buildProfileFormFromApi(profile));
         }
         if (code === "MISSING_5_YEAR_DATA") {
           const existingRows: UnderwritingRowForm[] = (underwriting || []).map(
@@ -519,24 +610,7 @@ export default function AnalysisDetail() {
   };
 
   const handleOpenProfileDialog = () => {
-    setProfileForm({
-      population: profile?.population ?? "",
-      square_miles: profile?.square_miles ?? "",
-      fire_calls: profile?.fire_calls ?? "",
-      ems_calls: profile?.ems_calls ?? "",
-      safety_committee: profileSafetyCommitteeFromApi(profile),
-      hs_officers: profile?.hs_officers ?? "",
-      motorized_racing_team: !!profile?.motorized_racing_team,
-      motorized_racing_team_count:
-        profile?.motorized_racing_team_count != null
-          ? Number(profile.motorized_racing_team_count)
-          : "",
-      management_practice_penalty:
-        profile?.management_practice_penalty != null &&
-        profile?.management_practice_penalty !== ""
-          ? Number(profile.management_practice_penalty)
-          : "",
-    });
+    setProfileForm(buildProfileFormFromApi(profile));
     setDataEntryDialog({
       open: true,
       code: "MISSING_PROFILE",
@@ -582,53 +656,41 @@ export default function AnalysisDetail() {
   };
 
   const handleSaveProfile = async () => {
+    const sqMi = parseFloat(
+      String(profileForm.square_miles).replace(/,/g, "").trim(),
+    );
+    if (!Number.isFinite(sqMi) || sqMi <= 0) {
+      toast.error("Square miles must be greater than 0 (density is population ÷ square miles).");
+      return;
+    }
     try {
       const data: any = {
-        population:
-          profileForm.population === ""
-            ? null
-            : typeof profileForm.population === "number"
-              ? profileForm.population
-              : null,
-        square_miles:
-          profileForm.square_miles === ""
-            ? null
-            : typeof profileForm.square_miles === "number"
-              ? profileForm.square_miles
-              : null,
-        fire_calls:
-          profileForm.fire_calls === ""
-            ? null
-            : typeof profileForm.fire_calls === "number"
-              ? profileForm.fire_calls
-              : null,
-        ems_calls:
-          profileForm.ems_calls === ""
-            ? null
-            : typeof profileForm.ems_calls === "number"
-              ? profileForm.ems_calls
-              : null,
         safety_committee: profileForm.safety_committee,
-        hs_officers:
-          profileForm.hs_officers === ""
-            ? null
-            : typeof profileForm.hs_officers === "number"
-              ? profileForm.hs_officers
-              : null,
         motorized_racing_team: profileForm.motorized_racing_team,
-        motorized_racing_team_count:
-          profileForm.motorized_racing_team_count === ""
-            ? null
-            : typeof profileForm.motorized_racing_team_count === "number"
-              ? profileForm.motorized_racing_team_count
-              : null,
-        management_practice_penalty:
-          profileForm.management_practice_penalty === ""
-            ? null
-            : typeof profileForm.management_practice_penalty === "number"
-              ? profileForm.management_practice_penalty
-              : null,
       };
+      if (profileForm.population !== "") {
+        data.population = profileNumericToApi(profileForm.population);
+      }
+      data.square_miles = sqMi;
+      if (profileForm.fire_calls !== "") {
+        data.fire_calls = profileNumericToApi(profileForm.fire_calls);
+      }
+      if (profileForm.ems_calls !== "") {
+        data.ems_calls = profileNumericToApi(profileForm.ems_calls);
+      }
+      if (profileForm.hs_officers !== "") {
+        data.hs_officers = profileNumericToApi(profileForm.hs_officers);
+      }
+      if (profileForm.motorized_racing_team_count !== "") {
+        data.motorized_racing_team_count = profileNumericToApi(
+          profileForm.motorized_racing_team_count,
+        );
+      }
+      if (profileForm.management_practice_penalty !== "") {
+        data.management_practice_penalty = profileNumericToApi(
+          profileForm.management_practice_penalty,
+        );
+      }
       await updateProfile.mutateAsync({
         fire_department_id: Number(fire_department_id),
         company_id: analysisCompanyId,
@@ -1146,7 +1208,10 @@ export default function AnalysisDetail() {
                 Square Miles
               </Typography>
               <Typography variant="body2" fontWeight={600}>
-                {profile.square_miles || "-"}
+                {(() => {
+                  const sq = coerceApiNumber(profile?.square_miles);
+                  return sq !== null ? sq : "-";
+                })()}
               </Typography>
             </Grid>
             <Grid item xs={6} sm={4} md={2}>
@@ -1903,6 +1968,40 @@ export default function AnalysisDetail() {
             }}
           />
         )}
+
+      </Paper>
+
+      <Paper elevation={0} variant="outlined" sx={{ p: 2, mb: 2, borderRadius: 1 }}>
+        <Typography variant="h6" gutterBottom>
+          Analysis Notes
+        </Typography>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+          Add internal notes after reviewing the analysis for this fire
+          department.
+        </Typography>
+        <TextField
+          fullWidth
+          multiline
+          minRows={4}
+          placeholder="Type notes here..."
+          value={analysisNotes}
+          onChange={(e) => setAnalysisNotes(e.target.value)}
+        />
+        <Stack
+          direction="row"
+          alignItems="center"
+          justifyContent="space-between"
+          sx={{ mt: 1.25 }}
+        >
+          <Typography variant="caption" color="text.secondary">
+            {analysisNotesSavedAt
+              ? `Last saved ${new Date(analysisNotesSavedAt).toLocaleString()}`
+              : "Not saved yet"}
+          </Typography>
+          <Button variant="contained" onClick={handleSaveAnalysisNotes}>
+            Save notes
+          </Button>
+        </Stack>
       </Paper>
 
       <Dialog
@@ -1944,13 +2043,14 @@ export default function AnalysisDetail() {
               />
               <TextField
                 label="Square Miles"
-                type="number"
+                type="text"
+                inputMode="decimal"
+                placeholder="e.g. 4.5"
                 value={profileForm.square_miles}
                 onChange={(e) =>
                   setProfileForm((p) => ({
                     ...p,
-                    square_miles:
-                      e.target.value === "" ? "" : Number(e.target.value),
+                    square_miles: e.target.value,
                   }))
                 }
                 fullWidth

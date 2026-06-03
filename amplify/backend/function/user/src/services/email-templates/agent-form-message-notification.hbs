@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <title>New Message Notification</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; color: #111827; line-height: 1.5;">
+    <h2 style="margin: 0 0 12px;">You have a new message</h2>
+    <p style="margin: 0 0 10px;">
+      The insurance team sent you a new message for Form #{{formId}}.
+    </p>
+    <p style="margin: 0 0 10px;"><strong>Fire Department:</strong> {{fireDepartment}}</p>
+    {{#if insuranceCompany}}
+      <p style="margin: 0 0 10px;"><strong>Insurance Company:</strong> {{insuranceCompany}}</p>
+    {{/if}}
+    <p style="margin: 0 0 10px;"><strong>From:</strong> {{senderEmail}}</p>
+    <p style="margin: 0 0 14px;"><strong>Message Preview:</strong> {{messagePreview}}</p>
+    <p style="margin: 0;">Please sign in to the broker portal to reply.</p>
+  </body>
+</html>

@@ -7,7 +7,7 @@ class EmailController {
 
     setupRoutes(app) {
         app.post("/email/send", (req, res) => this.sendEmail(req, res));
-        app.post("/email/invite", (req, res) => this.invite(req, res));
+        app.post("/", (req, res) => this.invite(req, res));
         app.post("/email/invite/cancel", (req, res) => this.cancelInvite(req, res));
     }
 

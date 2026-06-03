@@ -260,7 +260,28 @@ export const useUpdateAnalysisProfile = () => {
       );
       return response.data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (response, variables) => {
+      const saved = response?.data;
+      if (saved) {
+        queryClient.setQueryData(
+          [
+            "analysis",
+            "detail",
+            variables.fire_department_id,
+            variables.company_id,
+          ],
+          (old: AnalysisDetailResponse | undefined) => {
+            if (!old?.data) return old;
+            return {
+              ...old,
+              data: {
+                ...old.data,
+                profile: { ...(old.data.profile || {}), ...saved },
+              },
+            };
+          },
+        );
+      }
       queryClient.invalidateQueries({
         queryKey: [
           "analysis",

@@ -65,8 +65,8 @@ export default function ApplicationApprovalBar({
       onSuccess();
     } catch (err: unknown) {
       const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        "Failed to reject application";
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to reject application";
       toast.error(message);
     } finally {
       setBusy(false);
@@ -99,8 +99,8 @@ export default function ApplicationApprovalBar({
       onSuccess();
     } catch (err: unknown) {
       const message =
-        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ||
-        "Failed to approve application";
+        (err as { response?: { data?: { message?: string } } })?.response?.data
+          ?.message || "Failed to approve application";
       toast.error(message);
     } finally {
       setBusy(false);
@@ -118,7 +118,7 @@ export default function ApplicationApprovalBar({
       </Typography>
 
       {isApproved && (
-        <Alert severity="success">This application is approved. The broker cannot edit it.</Alert>
+        <Alert severity="success">This application is approved.</Alert>
       )}
       {isRejected && (
         <Alert severity="error">This application was rejected.</Alert>
@@ -128,7 +128,8 @@ export default function ApplicationApprovalBar({
         <>
           {!hasAnalysisResult && (
             <Alert severity="warning" sx={{ mb: 2 }}>
-              Run <strong>Calculate Analysis</strong> above before you can approve or reject.
+              Run <strong>Calculate Analysis</strong> above before you can
+              approve or reject.
             </Alert>
           )}
           <Stack direction="row" spacing={1} flexWrap="wrap">
@@ -152,17 +153,25 @@ export default function ApplicationApprovalBar({
         </>
       )}
 
-      <Dialog open={approveOpen} onClose={() => !busy && setApproveOpen(false)} maxWidth="sm" fullWidth>
+      <Dialog
+        open={approveOpen}
+        onClose={() => !busy && setApproveOpen(false)}
+        maxWidth="sm"
+        fullWidth
+      >
         <DialogTitle>Approve application</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-            Premiums for <strong>{renewalYear}</strong> were loaded when the broker marked the form
-            Submitted. Choose whether to keep those amounts or override them on the renewal underwriting
-            row (used in future analytics).
+            Premiums for <strong>{renewalYear}</strong> were loaded when the
+            broker marked the form Submitted. Choose whether to keep those
+            amounts or override them on the renewal underwriting row (used in
+            future analytics).
           </Typography>
           <RadioGroup
             value={premiumChoice}
-            onChange={(e) => setPremiumChoice(e.target.value as "keep" | "update")}
+            onChange={(e) =>
+              setPremiumChoice(e.target.value as "keep" | "update")
+            }
           >
             <FormControlLabel
               value="keep"
@@ -173,7 +182,11 @@ export default function ApplicationApprovalBar({
                   : "Keep application premiums (from form)"
               }
             />
-            <FormControlLabel value="update" control={<Radio />} label="Update renewal premiums" />
+            <FormControlLabel
+              value="update"
+              control={<Radio />}
+              label="Update renewal premiums"
+            />
           </RadioGroup>
           {premiumChoice === "update" && (
             <Stack spacing={2} sx={{ mt: 2 }}>
@@ -198,7 +211,12 @@ export default function ApplicationApprovalBar({
           <Button onClick={() => setApproveOpen(false)} disabled={busy}>
             Cancel
           </Button>
-          <Button variant="contained" color="success" onClick={handleApprove} disabled={busy}>
+          <Button
+            variant="contained"
+            color="success"
+            onClick={handleApprove}
+            disabled={busy}
+          >
             Confirm approve
           </Button>
         </DialogActions>

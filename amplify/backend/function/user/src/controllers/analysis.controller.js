@@ -11,6 +11,11 @@ const {
 const { Op } = require("sequelize");
 const calculationService = require("../services/calculation.service");
 const {
+  LATEST_PROFILE_ORDER,
+  parseProfileDecimal,
+  parseProfileInteger,
+  parseSquareMiles,
+  serializeProfileRow,
   computeProfileDensity,
   computeProfileTotalCalls,
 } = require("../services/profileDerivedFields");
@@ -156,18 +161,31 @@ class AnalysisController {
           fire_department_id: parseInt(fire_department_id),
           company_id: companyIdInt,
         },
+        order: LATEST_PROFILE_ORDER,
       });
 
       const updateData = {};
-      if (body.population !== undefined) updateData.population = body.population;
-      if (body.square_miles !== undefined) updateData.square_miles = body.square_miles;
-      if (body.fire_calls !== undefined) updateData.fire_calls = body.fire_calls;
-      if (body.ems_calls !== undefined) updateData.ems_calls = body.ems_calls;
+      if (body.population !== undefined) {
+        const pop = parseProfileInteger(body.population);
+        if (pop != null) updateData.population = pop;
+      }
+      if (body.square_miles !== undefined) {
+        const sq = parseSquareMiles(body.square_miles);
+        if (sq != null) updateData.square_miles = sq;
+      }
+      if (body.fire_calls !== undefined) {
+        updateData.fire_calls = parseProfileInteger(body.fire_calls);
+      }
+      if (body.ems_calls !== undefined) {
+        updateData.ems_calls = parseProfileInteger(body.ems_calls);
+      }
       if (body.safety_committee !== undefined) {
         updateData.safety_committee =
           body.safety_committee === null ? null : !!body.safety_committee;
       }
-      if (body.hs_officers !== undefined) updateData.hs_officers = body.hs_officers;
+      if (body.hs_officers !== undefined) {
+        updateData.hs_officers = parseProfileInteger(body.hs_officers);
+      }
       if (body.motorized_racing_team_count !== undefined) {
         updateData.motorized_racing_team_count = body.motorized_racing_team_count;
         const cnt = body.motorized_racing_team_count;
@@ -181,30 +199,42 @@ class AnalysisController {
         updateData.motorized_racing_team = !!body.motorized_racing_team;
       }
       if (body.management_practice_penalty !== undefined) {
-        updateData.management_practice_penalty = body.management_practice_penalty;
+        updateData.management_practice_penalty = parseProfileInteger(
+          body.management_practice_penalty
+        );
       }
       if (body.customer_since !== undefined) updateData.customer_since = body.customer_since;
       if (body.agent !== undefined) updateData.agent = body.agent;
 
       const mergeForDerived = (base) => ({
         population:
-          updateData.population !== undefined ? updateData.population : base.population,
+          updateData.population !== undefined
+            ? updateData.population
+            : parseProfileInteger(base.population),
         square_miles:
-          updateData.square_miles !== undefined ? updateData.square_miles : base.square_miles,
+          updateData.square_miles !== undefined
+            ? updateData.square_miles
+            : parseSquareMiles(base.square_miles),
         fire_calls:
-          updateData.fire_calls !== undefined ? updateData.fire_calls : base.fire_calls,
+          updateData.fire_calls !== undefined
+            ? updateData.fire_calls
+            : parseProfileInteger(base.fire_calls),
         ems_calls:
-          updateData.ems_calls !== undefined ? updateData.ems_calls : base.ems_calls,
+          updateData.ems_calls !== undefined
+            ? updateData.ems_calls
+            : parseProfileInteger(base.ems_calls),
       });
 
       if (profile) {
         const m = mergeForDerived(profile.get({ plain: true }));
-        updateData.density = computeProfileDensity(m.population, m.square_miles);
+        const newDensity = computeProfileDensity(m.population, m.square_miles);
+        if (newDensity != null) updateData.density = newDensity;
         updateData.total_calls = computeProfileTotalCalls(m.fire_calls, m.ems_calls);
         await profile.update(updateData);
+        await profile.reload();
         return res.status(200).json({
           message: "Profile updated successfully",
-          data: profile,
+          data: serializeProfileRow(profile),
         });
       }
 
@@ -222,10 +252,10 @@ class AnalysisController {
         else if (cnt === 0) motorizedRacingTeam = false;
       }
 
-      const pop = body.population ?? null;
-      const sq = body.square_miles ?? null;
-      const fc = body.fire_calls ?? null;
-      const ec = body.ems_calls ?? null;
+      const pop = parseProfileInteger(body.population);
+      const sq = parseSquareMiles(body.square_miles);
+      const fc = parseProfileInteger(body.fire_calls);
+      const ec = parseProfileInteger(body.ems_calls);
 
       const newProfile = await FireDepartmentProfile.create({
         fire_department_id: parseInt(fire_department_id),
@@ -249,7 +279,7 @@ class AnalysisController {
 
       return res.status(200).json({
         message: "Profile created successfully",
-        data: newProfile,
+        data: serializeProfileRow(newProfile),
       });
     } catch (error) {
       console.error("Error updating profile:", error);
@@ -370,6 +400,7 @@ class AnalysisController {
           fire_department_id: parseInt(fire_department_id),
           company_id: companyIdInt,
         },
+        order: LATEST_PROFILE_ORDER,
       });
 
       // Enough years to show renewal row + history used for 5-yr totals (and older rows for context)
@@ -464,7 +495,7 @@ class AnalysisController {
           analysis_company_id: companyIdInt,
           /** Most recent underwriting_year for this company; not necessarily "today's" policy year until a row exists */
           latest_underwriting_year: latestUnderwritingYearForCompany,
-          profile: currentProfile,
+          profile: serializeProfileRow(currentProfile),
           underwriting: underwritingRows,
           results: results,
           policies: policies,
@@ -525,6 +556,7 @@ class AnalysisController {
           fire_department_id: parseInt(fire_department_id),
           company_id: companyIdInt,
         },
+        order: LATEST_PROFILE_ORDER,
       });
 
       // Enough history for: selected renewal year + five prior years (worksheet 5-yr totals)

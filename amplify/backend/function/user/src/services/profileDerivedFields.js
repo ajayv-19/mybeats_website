@@ -4,6 +4,50 @@
  * Total calls = fire_calls + EMS calls (treat missing addend as 0 when the other is present).
  */
 
+/** Broker may version profiles by effective_from; always use the newest row. */
+const LATEST_PROFILE_ORDER = [["id", "DESC"]];
+
+function parseProfileDecimal(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const raw =
+    typeof value === "object" && value !== null && typeof value.toString === "function"
+      ? value.toString()
+      : value;
+  const n = parseFloat(String(raw).replace(/,/g, "").trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+function parseProfileInteger(value) {
+  if (value === null || value === undefined || value === "") return null;
+  const raw =
+    typeof value === "object" && value !== null && typeof value.toString === "function"
+      ? value.toString()
+      : value;
+  const n = parseInt(String(raw).replace(/,/g, "").trim(), 10);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Square miles must be > 0; invalid/empty/zero does not overwrite an existing value. */
+function parseSquareMiles(value) {
+  const n = parseProfileDecimal(value);
+  if (n == null || n <= 0) return null;
+  return n;
+}
+
+/** Normalize DECIMAL fields for JSON responses (pg/sequelize often return strings). */
+function serializeProfileRow(profile) {
+  if (!profile) return null;
+  const plain = profile.get ? profile.get({ plain: true }) : { ...profile };
+  if (plain.square_miles != null && plain.square_miles !== "") {
+    plain.square_miles = parseSquareMiles(plain.square_miles);
+  }
+  if (plain.density != null && plain.density !== "") {
+    const d = parseProfileInteger(plain.density);
+    plain.density = d != null && d > 0 ? d : null;
+  }
+  return plain;
+}
+
 function computeProfileDensity(population, squareMiles) {
   if (population == null || squareMiles == null) return null;
   const sm =
@@ -26,6 +70,11 @@ function computeProfileTotalCalls(fireCalls, emsCalls) {
 }
 
 module.exports = {
+  LATEST_PROFILE_ORDER,
+  parseProfileDecimal,
+  parseProfileInteger,
+  parseSquareMiles,
+  serializeProfileRow,
   computeProfileDensity,
   computeProfileTotalCalls,
 };

@@ -12,10 +12,54 @@ const {
   extractPolicyYear,
   flattenFormData,
 } = require("../services/formExtraction.service");
+const EmailService = require("../services/email.service");
 const { Op } = require("sequelize");
 const uploadDocuments = require("../config/multerDocuments");
 
 class AgentController {
+  async sendMessageNotificationEmail({
+    formId,
+    senderId,
+    receiverId,
+    messageType,
+    messageText,
+  }) {
+    try {
+      if (!receiverId || !senderId) return;
+      if (String(receiverId).trim() === String(senderId).trim()) return;
+
+      const form = await FormData.findByPk(formId, {
+        attributes: ["id", "fire_department", "insurance_company"],
+      });
+      const fireDepartment = form?.fire_department || "your application";
+      const shortMessage =
+        messageType === "file"
+          ? "sent you a document attachment."
+          : String(messageText || "").trim().slice(0, 240) || "sent you a message.";
+
+      const emailService = new EmailService();
+      await emailService.sendTemplateEmail(
+        receiverId,
+        `New message from insurance on Form #${formId}`,
+        "agent-form-message-notification",
+        {
+          receiverEmail: receiverId,
+          senderEmail: senderId,
+          formId,
+          fireDepartment,
+          insuranceCompany: form?.insurance_company || "",
+          messagePreview: shortMessage,
+        },
+      );
+    } catch (emailErr) {
+      // Notification failure should never block chat delivery.
+      console.warn(
+        `[sendMessage] Notification email failed for form ${formId}:`,
+        emailErr?.message || emailErr,
+      );
+    }
+  }
+
   setupRoutes(app) {
     app.post("/agentform/submit", (...args) => this.submitAgentForm(...args));
     app.post("/agentform/update", (...args) => this.updateAgentForm(...args));
@@ -847,6 +891,14 @@ class AgentController {
         read: false,
       });
 
+      await this.sendMessageNotificationEmail({
+        formId: parsedFormId,
+        senderId: sender_id,
+        receiverId: receiver_id,
+        messageType,
+        messageText: message,
+      });
+
       // Ensure message is properly serialized for JSON response
       const messageResponse = newMessage.toJSON();
       
@@ -907,6 +959,14 @@ class AgentController {
         receiver_id: receiver_id, // VARCHAR - email address
         message: messageData, // JSON object with file URL
         read: false,
+      });
+
+      await this.sendMessageNotificationEmail({
+        formId: parsedFormId,
+        senderId: sender_id,
+        receiverId: receiver_id,
+        messageType: "file",
+        messageText: req.file.originalname || "Attachment",
       });
 
       res.status(200).json({
