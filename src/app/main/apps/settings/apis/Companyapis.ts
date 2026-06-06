@@ -30,7 +30,7 @@ export const useCompany = (company_id: number) => {
       );
       return response.data;
     },
-    enabled: !!company_id, // Prevents execution if company_id is undefined
+    enabled: !!company_id, 
   });
 };
 
