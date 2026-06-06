@@ -1,4 +1,8 @@
 const APP_URL = "https://mybeatshealth.com";
+const SES_INVITE_SENDER = "firebeatsapp@gmail.com";
+const SES_NOTIFICATION_SENDER = "av3855@nyu.edu";
+const SES_NOTIFICATION_RECIPIENT = "firebeatsapp@gmail.com";
+const BROKER_PORTAL_URL = "https://broker.mybeatshealth.com/";
 const API_URL = "https://b89ns5qxe2.execute-api.us-east-1.amazonaws.com/dev";
 const API_PREFIX = "/backendapi";
 const STRIPE_SECRET_KEY =
@@ -13,6 +17,10 @@ const COGNITO_JWT_JSON = `${COGNITO_ISSUER}/.well-known/jwks.json`;
 
 module.exports = {
   APP_URL,
+  SES_INVITE_SENDER,
+  SES_NOTIFICATION_SENDER,
+  SES_NOTIFICATION_RECIPIENT,
+  BROKER_PORTAL_URL,
   API_URL,
   API_PREFIX,
   STRIPE_SECRET_KEY,

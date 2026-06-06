@@ -2,7 +2,7 @@ const AWS = require('aws-sdk');
 const fs = require('fs').promises;
 const path = require('path');
 const handlebars = require('handlebars');
-const { AWS_REGION } = require('../globals.const');
+const { AWS_REGION, SES_INVITE_SENDER } = require('../globals.const');
 
 AWS.config.update({ region: AWS_REGION });
 
@@ -37,13 +37,16 @@ class EmailService {
      * @param {string} subject - Email subject
      * @param {string} templateName - Template name (without extension)
      * @param {Object} replacements - Dynamic values for the template
+     * @param {Object} [options]
+     * @param {string} [options.from] - SES verified sender (defaults to invite sender)
      * @returns {Promise}
      */
-    async sendTemplateEmail(to, subject, templateName, replacements) {
+    async sendTemplateEmail(to, subject, templateName, replacements, options = {}) {
         const htmlContent = await this.loadTemplate(templateName, replacements);
+        const source = options.from || SES_INVITE_SENDER;
         try {
             const params = {
-                Source: "firebeatsapp@gmail.com",
+                Source: source,
                 Destination: { ToAddresses: [to] },
                 Message: {
                     Subject: { Data: subject },

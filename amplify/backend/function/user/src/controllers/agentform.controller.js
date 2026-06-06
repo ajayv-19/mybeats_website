@@ -13,6 +13,11 @@ const {
   flattenFormData,
 } = require("../services/formExtraction.service");
 const EmailService = require("../services/email.service");
+const {
+  SES_NOTIFICATION_SENDER,
+  SES_NOTIFICATION_RECIPIENT,
+  BROKER_PORTAL_URL,
+} = require("../globals.const");
 const { Op } = require("sequelize");
 const uploadDocuments = require("../config/multerDocuments");
 
@@ -20,41 +25,65 @@ class AgentController {
   async sendMessageNotificationEmail({
     formId,
     senderId,
-    receiverId,
     messageType,
     messageText,
   }) {
     try {
-      if (!receiverId || !senderId) return;
-      if (String(receiverId).trim() === String(senderId).trim()) return;
+      if (!senderId) return;
 
       const form = await FormData.findByPk(formId, {
         attributes: ["id", "fire_department", "insurance_company"],
       });
-      const fireDepartment = form?.fire_department || "your application";
+      const fireDepartment = form?.fire_department || "Unknown";
       const shortMessage =
         messageType === "file"
-          ? "sent you a document attachment."
-          : String(messageText || "").trim().slice(0, 240) || "sent you a message.";
+          ? "sent a document attachment."
+          : String(messageText || "").trim().slice(0, 240) || "sent a message.";
 
       const emailService = new EmailService();
       await emailService.sendTemplateEmail(
-        receiverId,
-        `New message from insurance on Form #${formId}`,
+        SES_NOTIFICATION_RECIPIENT,
+        `New message on Form #${formId}`,
         "agent-form-message-notification",
         {
-          receiverEmail: receiverId,
           senderEmail: senderId,
           formId,
           fireDepartment,
           insuranceCompany: form?.insurance_company || "",
           messagePreview: shortMessage,
+          brokerPortalUrl: BROKER_PORTAL_URL,
         },
+        { from: SES_NOTIFICATION_SENDER },
       );
     } catch (emailErr) {
       // Notification failure should never block chat delivery.
       console.warn(
         `[sendMessage] Notification email failed for form ${formId}:`,
+        emailErr?.message || emailErr,
+      );
+    }
+  }
+
+  async sendFormApprovedNotificationEmail({ form, approvedBy }) {
+    try {
+      const emailService = new EmailService();
+      await emailService.sendTemplateEmail(
+        SES_NOTIFICATION_RECIPIENT,
+        `Form #${form.id} approved`,
+        "agent-form-approved-notification",
+        {
+          formId: form.id,
+          fireDepartment: form.fire_department || "Unknown",
+          insuranceCompany: form.insurance_company || "",
+          policyYear: form.year || "",
+          approvedBy,
+          brokerPortalUrl: BROKER_PORTAL_URL,
+        },
+        { from: SES_NOTIFICATION_SENDER },
+      );
+    } catch (emailErr) {
+      console.warn(
+        `[approve] Notification email failed for form ${form.id}:`,
         emailErr?.message || emailErr,
       );
     }
@@ -495,6 +524,8 @@ class AgentController {
             });
           }
         }
+
+        await this.sendFormApprovedNotificationEmail({ form, approvedBy: updatedBy });
       }
 
       res.status(200).json({
@@ -894,7 +925,6 @@ class AgentController {
       await this.sendMessageNotificationEmail({
         formId: parsedFormId,
         senderId: sender_id,
-        receiverId: receiver_id,
         messageType,
         messageText: message,
       });
@@ -964,7 +994,6 @@ class AgentController {
       await this.sendMessageNotificationEmail({
         formId: parsedFormId,
         senderId: sender_id,
-        receiverId: receiver_id,
         messageType: "file",
         messageText: req.file.originalname || "Attachment",
       });

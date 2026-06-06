@@ -2,20 +2,20 @@
 <html>
   <head>
     <meta charset="UTF-8" />
-    <title>New Message Notification</title>
+    <title>Application Approved</title>
   </head>
   <body style="font-family: Arial, sans-serif; color: #111827; line-height: 1.5;">
-    <h2 style="margin: 0 0 12px;">You have a new message</h2>
+    <h2 style="margin: 0 0 12px;">Application approved</h2>
     <p style="margin: 0 0 10px;">
-      A new message was posted on Form #{{formId}}.
+      Form #{{formId}} has been approved by the carrier team.
     </p>
     <p style="margin: 0 0 10px;"><strong>Fire Department:</strong> {{fireDepartment}}</p>
     {{#if insuranceCompany}}
       <p style="margin: 0 0 10px;"><strong>Insurance Company:</strong> {{insuranceCompany}}</p>
     {{/if}}
-    <p style="margin: 0 0 10px;"><strong>From:</strong> {{senderEmail}}</p>
-    <p style="margin: 0 0 14px;"><strong>Message Preview:</strong> {{messagePreview}}</p>
-    <p style="margin: 0 0 16px;">Sign in to the broker portal to view and reply.</p>
+    <p style="margin: 0 0 10px;"><strong>Policy year:</strong> {{policyYear}}</p>
+    <p style="margin: 0 0 10px;"><strong>Approved by:</strong> {{approvedBy}}</p>
+    <p style="margin: 0 0 16px;">Sign in to the broker portal to review the application.</p>
     <p style="margin: 0;">
       <a href="{{brokerPortalUrl}}" style="background-color: #dc2626; color: #ffffff; padding: 10px 20px; text-decoration: none; font-weight: bold; border-radius: 5px; display: inline-block;">
         Open Broker Portal
